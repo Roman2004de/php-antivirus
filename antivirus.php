@@ -14,7 +14,8 @@ class Antivirus {
     private $outputJson = false;
     private $blockSize = 32768; // 32KB
     private $maxFileSize = 104857600; // 100MB
-    private $extensions = ['php', 'js', 'phtml', 'phtm']; // Фильтр файлов
+    private $extensions = ['php', 'js', 'phtml', 'phtm']; // File extensions to scan
+    private $signaturesFile = null;
 
     private $virusSignatures = [];
     private $binaryFormats = [
@@ -30,19 +31,23 @@ class Antivirus {
         'mp4' => "\x00\x00\x00\x18\x66\x74\x79\x70" // MP4 video
     ];
 
-    public function __construct($logMode, $logFile = null, $quarantinePath = null, $outputJson = false) {
+    public function __construct($logMode, $signaturesFile = null, $logFile = null, $quarantinePath = null, $outputJson = false) {
         $this->logMode = $logMode;
         $this->logFile = $logFile;
         $this->quarantinePath = $quarantinePath;
         $this->outputJson = $outputJson;
+        $this->signaturesFile = $signaturesFile;
 
         $this->loadSignatures();
     }
 
     private function loadSignatures() {
-        $signatureFile = __DIR__ . '/signatures.txt';
-        if (file_exists($signatureFile)) {
-            $this->virusSignatures = array_map('trim', file($signatureFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES));
+        if (!empty($this->signaturesFile) && file_exists($this->signaturesFile)) {
+            try {
+                $this->virusSignatures = array_map('trim', file($this->signaturesFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES));
+            } catch (Exception $e) {
+                $this->log("Error loading virus signatures: " . $e->getMessage(), true);
+            }
         } else {
             $this->virusSignatures = [
                 '/base64_decode\s*\(/i',
@@ -57,6 +62,7 @@ class Antivirus {
                 '/\b(move_uploaded_file|copy)\s*\(\s*\$_FILES\s*\[\s*[\'"].*[\'"]\s*\]\s*\[\s*[\'"]tmp_name[\'"]\s*\]/i' // Обход загрузки файлов
             ];
         }
+        print_r($this->virusSignatures);
     }
 
     public function scan($path) {
@@ -195,18 +201,19 @@ class Antivirus {
 }
 
 // Command-line processing
-$options = getopt('', ['path:', 'log-mode:', 'log-file:', 'quarantine:', 'json-report']);
+$options = getopt('', ['path:', 'signatures-file:', 'log-mode:', 'log-file:', 'quarantine:', 'json-report']);
 
 if (!isset($options['path'])) {
     echo "Usage:\n";
-    echo "php antivirus.php --path=/path/to/scan [--log-mode=verbose|short] [--log-file=/path/to/log.txt] [--quarantine=/path/to/quarantine] [--json-report]\n";
+    echo "php antivirus.php --path=/path/to/scan [--signatures-file=/path/to/signatures.txt] [--log-mode=verbose|short] [--log-file=/path/to/log.txt] [--quarantine=/path/to/quarantine] [--json-report]\n";
     exit(1);
 }
 
+$signaturesFile = $options['signatures-file'] ?? null;
 $logMode = $options['log-mode'] ?? 'short';
 $logFile = $options['log-file'] ?? null;
 $quarantinePath = $options['quarantine'] ?? null;
 $outputJson = isset($options['json-report']);
 
-$antivirus = new Antivirus($logMode, $logFile, $quarantinePath, $outputJson);
+$antivirus = new Antivirus($logMode, $signaturesFile, $logFile, $quarantinePath, $outputJson);
 $antivirus->scan(rtrim($options['path'], '/'));
