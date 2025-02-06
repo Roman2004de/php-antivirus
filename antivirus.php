@@ -17,15 +17,15 @@ class Antivirus {
     private $outputJson = false;
     private $blockSize = 32768; // 32KB
     private $maxFileSize = 104857600; // 100MB
-    private $extensions = ['php', 'js', 'phtml', 'phtm']; // File extensions to scan
+    private $extensions = ['php', 'js', 'phtml', 'phtm', 'cgi', 'pl', 'o', 'so', 'py', 'sh', 'phtml', 'php3', 'php4', 'php5', 'php6', 'php7', 'pht', 'shtml', 'susp', 'suspected', 'infected', 'vir', 'html', 'htm', 'tpl', 'inc', 'css', 'txt', 'sql']; // File extensions to scan
     private $signaturesFile = null;
 
     private $virusSignatures = [];
-    private $binaryFormats = [
+    private $binaryFormats = [ // binary Files to skip scanning
         'exe' => "\x4D\x5A",          // MZ
         'png' => "\x89\x50\x4E\x47",  // PNG
         'jpg' => "\xFF\xD8\xFF",      // JPEG
-        'zip' => "\x50\x4B\x03\x04",   // ZIP
+        'zip' => "\x50\x4B\x03\x04",  // ZIP
         'pdf' => "\x25\x50\x44\x46",  // PDF document
         'rar' => "\x52\x61\x72\x21",  // RAR archive
         'gif' => "\x47\x49\x46\x38",  // GIF image
@@ -53,19 +53,21 @@ class Antivirus {
             }
         } else {
             $this->virusSignatures = [
+                '<\s*script|<\s*iframe|<\s*object|<\s*embed|fromCharCode|setTimeout|setInterval|location\.|document\.|window\.|navigator\.|\$(this)\.',
+                '<\s*title|<\s*html|<\s*form|<\s*body|bank|account',
+                '<\?php|<\?=|#!/usr|#!/bin|eval|assert|base64_decode|system|passthru|proc_open|pcntl_exec|shell_exec|create_function|exec|socket_create|curl_exec|curl_multi_exec|popen|fwrite|fputs|file_get_|call_user_func|file_put_|\$_REQUEST|ob_start|\$_GET|\$_POST|\$_SERVER|\$_FILES|move|copy|array_|reg_replace|mysql_|chr|fsockopen|\$GLOBALS|sqliteCreateFunction', // potentially dangerous functions
                 '/base64_decode\s*\(/i',
                 '/gzuncompress\s*\(/i',
                 '/str_rot13\s*\(/i',
                 '/\$_(GET|POST|REQUEST|COOKIE)\s*\[.*\]\s*\(\$/',
                 '/\x75\x6E\x61\x6D\x65\x28\x29\x20\x7B\x20\x7D/i',
-                '/assert\s*\(/i',               // Выполнение кода через assert
-                '/file_put_contents\s*\(\s*["\']php:\/\/input["\']\s*,/i', // Задний вход (Web Shell)
-                '/\b(eval|system|shell_exec|popen|fsockopen|socket_create|curl_exec|curl_multi_exec|exec|passthru|proc_open|pcntl_exec)\s*\(/i', // Потенциально вредоносные функции
-                '/preg_replace\s*\(\s*[\'"].*\/e[\'"]\s*,/i', // Исполнение кода через модификатор `/e`
-                '/\b(move_uploaded_file|copy)\s*\(\s*\$_FILES\s*\[\s*[\'"].*[\'"]\s*\]\s*\[\s*[\'"]tmp_name[\'"]\s*\]/i' // Обход загрузки файлов
+                '/assert\s*\(/i', // execute commands using assert
+                '/file_put_contents\s*\(\s*["\']php:\/\/input["\']\s*,/i', // web shell
+                '/\b(eval|system|shell_exec|popen|exec|passthru|proc_open|pcntl_exec)\s*\(/i', // potentially dangerous functions (short list)
+                '/preg_replace\s*\(\s*[\'"].*\/e[\'"]\s*,/i', // execute code using modifier `/e`
+                '/\b(move_uploaded_file|copy)\s*\(\s*\$_FILES\s*\[\s*[\'"].*[\'"]\s*\]\s*\[\s*[\'"]tmp_name[\'"]\s*\]/i' // bypass file downloads
             ];
         }
-        print_r($this->virusSignatures);
     }
 
     public function scan($path) {
@@ -125,7 +127,7 @@ class Antivirus {
                 }
 
                 if (!in_array($file->getExtension(), $this->extensions)) {
-                    continue; // Фильтрация файлов
+                    continue; 
                 }
 
                 $this->totalScanned++;
