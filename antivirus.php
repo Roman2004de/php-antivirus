@@ -1,8 +1,11 @@
 <?php
 /**
  * PHP Antivirus: Command-Line Malware Scanner
- * Version: 3.0
+ * Version: 1.0
  * License: MIT
+ *
+ * @author Roman Tarasenko
+ * @github https://github.com/Roman2004de/php-antivirus
  */
 
 class Antivirus {
