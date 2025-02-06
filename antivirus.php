@@ -53,8 +53,8 @@ class Antivirus {
             }
         } else {
             $this->virusSignatures = [
-                '<\s*script|<\s*iframe|<\s*object|<\s*embed|fromCharCode|setTimeout|setInterval|location\.|document\.|window\.|navigator\.|\$(this)\.',
-                '<\s*title|<\s*html|<\s*form|<\s*body|bank|account',
+                '<\s*script|<\s*iframe|<\s*object|<\s*embed|fromCharCode|setTimeout|setInterval|location\.|document\.|window\.|navigator\.|\$(this)\.', // js viruses
+                '<\s*title|<\s*html|<\s*form|<\s*body|bank|account', // phishing
                 '<\?php|<\?=|#!/usr|#!/bin|eval|assert|base64_decode|system|passthru|proc_open|pcntl_exec|shell_exec|create_function|exec|socket_create|curl_exec|curl_multi_exec|popen|fwrite|fputs|file_get_|call_user_func|file_put_|\$_REQUEST|ob_start|\$_GET|\$_POST|\$_SERVER|\$_FILES|move|copy|array_|reg_replace|mysql_|chr|fsockopen|\$GLOBALS|sqliteCreateFunction', // potentially dangerous functions
                 '/base64_decode\s*\(/i',
                 '/gzuncompress\s*\(/i',
