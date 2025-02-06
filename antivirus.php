@@ -1,0 +1,212 @@
+<?php
+/**
+ * PHP Antivirus: Command-Line Malware Scanner
+ * Version: 3.0
+ * License: MIT
+ */
+
+class Antivirus {
+    private $logMode = 'short';
+    private $infectedFiles = [];
+    private $totalScanned = 0;
+    private $logFile = null;
+    private $quarantinePath = null;
+    private $outputJson = false;
+    private $blockSize = 32768; // 32KB
+    private $maxFileSize = 104857600; // 100MB
+    private $extensions = ['php', 'js', 'phtml', 'phtm']; // Фильтр файлов
+
+    private $virusSignatures = [];
+    private $binaryFormats = [
+        'exe' => "\x4D\x5A",          // MZ
+        'png' => "\x89\x50\x4E\x47",  // PNG
+        'jpg' => "\xFF\xD8\xFF",      // JPEG
+        'zip' => "\x50\x4B\x03\x04",   // ZIP
+        'pdf' => "\x25\x50\x44\x46",  // PDF document
+        'rar' => "\x52\x61\x72\x21",  // RAR archive
+        'gif' => "\x47\x49\x46\x38",  // GIF image
+        'elf' => "\x7F\x45\x4C\x46",  // Linux Executable (ELF)
+        'mp3' => "\x49\x44\x33",      // MP3 audio
+        'mp4' => "\x00\x00\x00\x18\x66\x74\x79\x70" // MP4 video
+    ];
+
+    public function __construct($logMode, $logFile = null, $quarantinePath = null, $outputJson = false) {
+        $this->logMode = $logMode;
+        $this->logFile = $logFile;
+        $this->quarantinePath = $quarantinePath;
+        $this->outputJson = $outputJson;
+
+        $this->loadSignatures();
+    }
+
+    private function loadSignatures() {
+        $signatureFile = __DIR__ . '/signatures.txt';
+        if (file_exists($signatureFile)) {
+            $this->virusSignatures = array_map('trim', file($signatureFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES));
+        } else {
+            $this->virusSignatures = [
+                '/base64_decode\s*\(/i',
+                '/gzuncompress\s*\(/i',
+                '/str_rot13\s*\(/i',
+                '/\$_(GET|POST|REQUEST|COOKIE)\s*\[.*\]\s*\(\$/',
+                '/\x75\x6E\x61\x6D\x65\x28\x29\x20\x7B\x20\x7D/i',
+                '/assert\s*\(/i',               // Выполнение кода через assert
+                '/file_put_contents\s*\(\s*["\']php:\/\/input["\']\s*,/i', // Задний вход (Web Shell)
+                '/\b(eval|system|shell_exec|popen|fsockopen|socket_create|curl_exec|curl_multi_exec|exec|passthru|proc_open|pcntl_exec)\s*\(/i', // Потенциально вредоносные функции
+                '/preg_replace\s*\(\s*[\'"].*\/e[\'"]\s*,/i', // Исполнение кода через модификатор `/e`
+                '/\b(move_uploaded_file|copy)\s*\(\s*\$_FILES\s*\[\s*[\'"].*[\'"]\s*\]\s*\[\s*[\'"]tmp_name[\'"]\s*\]/i' // Обход загрузки файлов
+            ];
+        }
+    }
+
+    public function scan($path) {
+        if (!file_exists($path)) {
+            $this->log("Error: Path $path does not exist!", true);
+            exit(1);
+        }
+
+        $this->log("Starting scan: $path");
+        
+        if (is_dir($path)) {
+            $this->scanDirectory($path);
+        } else {
+            $this->totalScanned++;
+            $this->checkFile($path);
+        }
+
+        $this->showResults();
+    }
+
+    private function showResults() {
+        if ($this->outputJson) {
+            echo json_encode([
+                'total_scanned' => $this->totalScanned,
+                'threats_found' => count($this->infectedFiles),
+                'infected_files' => $this->infectedFiles
+            ], JSON_PRETTY_PRINT);
+        } else {
+            $this->log("\nScan complete!");
+            $this->log("Total files scanned: " . $this->totalScanned);
+            $this->log("Threats found: " . count($this->infectedFiles));
+        }
+
+        if (!empty($this->infectedFiles)) {
+            foreach ($this->infectedFiles as $file) {
+                $this->log(" - $file", true);
+                if ($this->quarantinePath) {
+                    $this->moveToQuarantine($file);
+                }
+            }
+            exit(1);
+        }
+        exit(0);
+    }
+
+    private function scanDirectory($directory) {
+        try {
+            $iterator = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($directory, FilesystemIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::SELF_FIRST
+            );
+
+            foreach ($iterator as $file) {
+                if ($file->isDir()) {
+                    $this->log("Scanning directory: " . $file->getRealPath());
+                    continue;
+                }
+
+                if (!in_array($file->getExtension(), $this->extensions)) {
+                    continue; // Фильтрация файлов
+                }
+
+                $this->totalScanned++;
+                $this->checkFile($file->getRealPath());
+            }
+        } catch (Exception $e) {
+            $this->log("Error scanning directory: " . $e->getMessage(), true);
+        }
+    }
+
+    private function checkFile($file) {
+        $this->log("Checking: $file");
+
+        if ($this->isBinaryFile($file)) {
+            $this->log("Skipping binary file: $file");
+            return;
+        }
+
+        $size = @filesize($file);
+        if ($size > $this->maxFileSize) {
+            $this->processLargeFile($file);
+            return;
+        }
+
+        $content = file_get_contents($file);
+        $this->checkContent($content, $file);
+    }
+
+    private function processLargeFile($file) {
+        $this->log("Processing large file: $file");
+        $handle = fopen($file, 'rb');
+        $buffer = '';
+
+        while (!feof($handle)) {
+            $buffer .= fread($handle, $this->blockSize);
+            $this->checkContent($buffer, $file);
+            $buffer = substr($buffer, -512);
+        }
+        fclose($handle);
+    }
+
+    private function checkContent($text, $file) {
+        foreach ($this->virusSignatures as $signature) {
+            if (preg_match($signature, $text)) {
+                $this->infectedFiles[] = $file;
+                $this->log("Threat detected in: $file", true);
+                return;
+            }
+        }
+    }
+
+    private function isBinaryFile($file) {
+        $header = file_get_contents($file, false, null, 0, 4);
+        foreach ($this->binaryFormats as $signature) {
+            if (strpos($header, $signature) === 0) return true;
+        }
+        return false;
+    }
+
+    private function moveToQuarantine($file) {
+        $destination = $this->quarantinePath . '/' . basename($file);
+        rename($file, $destination);
+        $this->log("Moved to quarantine: $destination", true);
+    }
+
+    private function log($message, $isError = false) {
+        if ($this->logMode === 'verbose' || $isError) {
+            $logMessage = date('[Y-m-d H:i:s] ') . $message . PHP_EOL;
+            echo $logMessage;
+
+            if ($this->logFile) {
+                file_put_contents($this->logFile, $logMessage, FILE_APPEND);
+            }
+        }
+    }
+}
+
+// Command-line processing
+$options = getopt('', ['path:', 'log-mode:', 'log-file:', 'quarantine:', 'json-report']);
+
+if (!isset($options['path'])) {
+    echo "Usage:\n";
+    echo "php antivirus.php --path=/path/to/scan [--log-mode=verbose|short] [--log-file=/path/to/log.txt] [--quarantine=/path/to/quarantine] [--json-report]\n";
+    exit(1);
+}
+
+$logMode = $options['log-mode'] ?? 'short';
+$logFile = $options['log-file'] ?? null;
+$quarantinePath = $options['quarantine'] ?? null;
+$outputJson = isset($options['json-report']);
+
+$antivirus = new Antivirus($logMode, $logFile, $quarantinePath, $outputJson);
+$antivirus->scan(rtrim($options['path'], '/'));
