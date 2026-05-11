@@ -20,6 +20,14 @@ class Antivirus {
     private $extensions = ['php', 'js', 'phtml', 'phtm', 'cgi', 'pl', 'o', 'so', 'py', 'sh', 'phtml', 'php3', 'php4', 'php5', 'php6', 'php7', 'pht', 'shtml', 'susp', 'suspected', 'infected', 'vir', 'html', 'htm', 'tpl', 'inc', 'css', 'txt', 'sql']; // File extensions to scan
     private $signaturesFile = null;
 
+    private $runtimeErrors = 0;
+
+    const EXIT_CLEAN = 0;
+    const EXIT_THREATS_FOUND = 1;
+    const EXIT_CLI_ERROR = 2;
+    const EXIT_RUNTIME_ERROR = 3;
+    const EXIT_PARTIAL_ERROR = 4;
+
     private $virusSignatures = [];
     private $binaryFormats = [ // binary Files to skip scanning
         'exe' => "\x4D\x5A",          // MZ
@@ -68,7 +76,7 @@ class Antivirus {
     public function scan($path) {
         if (!file_exists($path)) {
             $this->log("Error: Path $path does not exist!", true);
-            exit(1);
+            exit(self::EXIT_RUNTIME_ERROR);
         }
 
         $this->log("Starting scan: $path");
@@ -88,24 +96,33 @@ class Antivirus {
             echo json_encode([
                 'total_scanned' => $this->totalScanned,
                 'threats_found' => count($this->infectedFiles),
-                'infected_files' => $this->infectedFiles
+                'runtime_errors' => $this->runtimeErrors,
+                'infected_files' => array_values($this->infectedFiles)
             ], JSON_PRETTY_PRINT);
         } else {
             $this->log("\nScan complete!");
             $this->log("Total files scanned: " . $this->totalScanned);
             $this->log("Threats found: " . count($this->infectedFiles));
+            $this->log("Runtime errors: " . $this->runtimeErrors);
         }
 
         if (!empty($this->infectedFiles)) {
             foreach ($this->infectedFiles as $file) {
                 $this->log(" - $file", true);
+
                 if ($this->quarantinePath) {
                     $this->moveToQuarantine($file);
                 }
             }
-            exit(1);
+
+            exit(self::EXIT_THREATS_FOUND);
         }
-        exit(0);
+
+        if ($this->runtimeErrors > 0) {
+            exit(self::EXIT_PARTIAL_ERROR);
+        }
+
+        exit(self::EXIT_CLEAN);
     }
 
     private function scanDirectory($directory) {
@@ -129,7 +146,7 @@ class Antivirus {
                 $this->checkFile($file->getRealPath());
             }
         } catch (Exception $e) {
-            $this->log("Error scanning directory: " . $e->getMessage(), true);
+            $this->addRuntimeError("Error scanning directory: " . $e->getMessage());
         }
     }
 
@@ -137,24 +154,24 @@ class Antivirus {
         $this->log("Checking: $file");
 
         if (!is_file($file)) {
-            $this->log("Skipping non-regular file: $file", true);
+            $this->addRuntimeError("Skipping non-regular file: $file");
             return;
         }
 
         if (!is_readable($file)) {
-            $this->log("Cannot read file: $file", true);
+            $this->addRuntimeError("Cannot read file: $file");
             return;
         }
 
         if ($this->isBinaryFile($file)) {
-            $this->log("Skipping binary file: $file");
+            $this->addRuntimeError("Skipping binary file: $file");
             return;
         }
 
         $size = @filesize($file);
 
         if ($size === false) {
-            $this->log("Cannot determine file size: $file", true);
+            $this->addRuntimeError("Cannot determine file size: $file");
             return;
         }
 
@@ -166,7 +183,7 @@ class Antivirus {
         $content = @file_get_contents($file);
 
         if ($content === false) {
-            $this->log("Failed to read file: $file", true);
+            $this->addRuntimeError("Failed to read file: $file");
             return;
         }
 
@@ -174,12 +191,12 @@ class Antivirus {
     }
 
     private function processLargeFile($file) {
-        $this->log("Processing large file: $file");
+        $this->addRuntimeError("Failed to open large file: $file");
 
         $handle = @fopen($file, 'rb');
 
         if ($handle === false) {
-            $this->log("Failed to open large file: $file", true);
+            $this->addRuntimeError("Failed to open large file: $file");
             return;
         }
 
@@ -189,7 +206,7 @@ class Antivirus {
             $chunk = fread($handle, $this->blockSize);
 
             if ($chunk === false) {
-                $this->log("Failed to read chunk from file: $file", true);
+                $this->addRuntimeError("Failed to read chunk from file: $file");
                 break;
             }
 
@@ -334,6 +351,11 @@ class Antivirus {
         $this->log("Moved to quarantine: $destination", true);
     }
 
+    private function addRuntimeError($message) {
+        $this->runtimeErrors++;
+        $this->log($message, true);
+    }
+
     private function log($message, $isError = false) {
         if ($this->logMode === 'verbose' || $isError) {
             $logMessage = date('[Y-m-d H:i:s] ') . $message . PHP_EOL;
@@ -352,7 +374,7 @@ $options = getopt('', ['path:', 'signatures-file:', 'log-mode:', 'log-file:', 'q
 if (!isset($options['path'])) {
     echo "Usage:\n";
     echo "php antivirus.php --path=/path/to/scan [--signatures-file=/path/to/signatures.txt] [--log-mode=verbose|short] [--log-file=/path/to/log.txt] [--quarantine=/path/to/quarantine] [--json-report]\n";
-    exit(1);
+    exit(Antivirus::EXIT_CLI_ERROR);
 }
 
 $signaturesFile = $options['signatures-file'] ?? null;
