@@ -361,13 +361,19 @@ class Antivirus {
     private function log($message, $isError = false) {
         if ($this->logMode === 'verbose' || $isError) {
             $logMessage = date('[Y-m-d H:i:s] ') . $message . PHP_EOL;
-            echo $logMessage;
+
+            if ($this->outputJson) {
+                fwrite(STDERR, $logMessage);
+            } else {
+                echo $logMessage;
+            }
 
             if ($this->logFile) {
                 file_put_contents($this->logFile, $logMessage, FILE_APPEND);
             }
         }
     }
+
 }
 
 // Command-line processing
