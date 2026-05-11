@@ -108,7 +108,9 @@ class Antivirus {
 
         if (!empty($this->infectedFiles)) {
             foreach ($this->infectedFiles as $file) {
-                $this->log(" - $file", true);
+                if (!$this->outputJson) {
+                    $this->log(" - $file", true);
+                }
 
                 if ($this->quarantinePath) {
                     $this->moveToQuarantine($file);
@@ -164,7 +166,7 @@ class Antivirus {
         }
 
         if ($this->isBinaryFile($file)) {
-            $this->addRuntimeError("Skipping binary file: $file");
+            $this->log("Skipping binary file: $file");
             return;
         }
 
@@ -191,7 +193,7 @@ class Antivirus {
     }
 
     private function processLargeFile($file) {
-        $this->addRuntimeError("Failed to open large file: $file");
+        $this->log("Processing large file: $file");
 
         $handle = @fopen($file, 'rb');
 
