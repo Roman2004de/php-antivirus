@@ -53,17 +53,12 @@ class Antivirus {
             }
         } else {
             $this->virusSignatures = [
-                '<\s*script|<\s*iframe|<\s*object|<\s*embed|fromCharCode|setTimeout|setInterval|location\.|document\.|window\.|navigator\.|\$(this)\.', // js viruses
-                '<\s*title|<\s*html|<\s*form|<\s*body|bank|account', // phishing
-                '<\?php|<\?=|#!/usr|#!/bin|eval|assert|base64_decode|system|passthru|proc_open|pcntl_exec|shell_exec|create_function|exec|socket_create|curl_exec|curl_multi_exec|popen|fwrite|fputs|file_get_|call_user_func|file_put_|\$_REQUEST|ob_start|\$_GET|\$_POST|\$_SERVER|\$_FILES|move|copy|array_|reg_replace|mysql_|chr|fsockopen|\$GLOBALS|sqliteCreateFunction', // potentially dangerous functions
-                '/base64_decode\s*\(/i',
-                '/gzuncompress\s*\(/i',
-                '/str_rot13\s*\(/i',
+                '/<\s*(script|iframe|object|embed)\b|fromCharCode\s*\(|setTimeout\s*\(|setInterval\s*\(/i',
+                '/<\s*form\b[^>]*action\s*=\s*["\'][^"\']*(login|signin|bank|account|paypal|wallet)[^"\']*["\']/i',
+		'/\b(eval|assert|base64_decode|system|passthru|proc_open|pcntl_exec|shell_exec|create_function|exec|socket_create|curl_exec|curl_multi_exec|popen|call_user_func|fsockopen|gzuncompress|str_rot13)\s*\(/i',
                 '/\$_(GET|POST|REQUEST|COOKIE)\s*\[.*\]\s*\(\$/',
                 '/\x75\x6E\x61\x6D\x65\x28\x29\x20\x7B\x20\x7D/i',
-                '/assert\s*\(/i', // execute commands using assert
                 '/file_put_contents\s*\(\s*["\']php:\/\/input["\']\s*,/i', // web shell
-                '/\b(eval|system|shell_exec|popen|exec|passthru|proc_open|pcntl_exec)\s*\(/i', // potentially dangerous functions (short list)
                 '/preg_replace\s*\(\s*[\'"].*\/e[\'"]\s*,/i', // execute code using modifier `/e`
                 '/\b(move_uploaded_file|copy)\s*\(\s*\$_FILES\s*\[\s*[\'"].*[\'"]\s*\]\s*\[\s*[\'"]tmp_name[\'"]\s*\]/i' // bypass file downloads
             ];
@@ -170,13 +165,30 @@ class Antivirus {
     }
 
     private function checkContent($text, $file) {
+        if ($text === false || $text === '') {
+            return;
+        }
+
         foreach ($this->virusSignatures as $signature) {
+            if (!$this->isValidRegex($signature)) {
+                $this->log("Invalid signature skipped: $signature", true);
+                continue;
+            }
+
             if (preg_match($signature, $text)) {
-                $this->infectedFiles[] = $file;
+                $this->infectedFiles[$file] = $file;
                 $this->log("Threat detected in: $file", true);
                 return;
             }
         }
+    }
+
+    private function isValidRegex($pattern) {
+        set_error_handler(function () {});
+        $result = preg_match($pattern, '');
+        restore_error_handler();
+
+        return $result !== false;
     }
 
     private function isBinaryFile($file) {
