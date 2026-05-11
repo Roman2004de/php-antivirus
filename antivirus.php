@@ -17,7 +17,7 @@ class Antivirus {
     private $outputJson = false;
     private $blockSize = 32768; // 32KB
     private $maxFileSize = 104857600; // 100MB
-    private $extensions = ['php', 'js', 'phtml', 'phtm', 'cgi', 'pl', 'o', 'so', 'py', 'sh', 'phtml', 'php3', 'php4', 'php5', 'php6', 'php7', 'pht', 'shtml', 'susp', 'suspected', 'infected', 'vir', 'html', 'htm', 'tpl', 'inc', 'css', 'txt', 'sql']; // File extensions to scan
+    private $extensions = ['php', 'js', 'phtml', 'phtm', 'cgi', 'pl', 'o', 'so', 'py', 'sh', 'phtml', 'php3', 'php4', 'php5', 'php6', 'php7', 'pht', 'shtml', 'susp', 'suspected', 'infected', 'vir', 'html', 'htm', 'tpl', 'inc', 'css', 'txt', 'sql', 'svg', 'htaccess']; // File extensions to scan
     private $signaturesFile = null;
 
     private $runtimeErrors = 0;
