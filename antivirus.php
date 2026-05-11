@@ -267,8 +267,70 @@ class Antivirus {
     }
 
     private function moveToQuarantine($file) {
-        $destination = $this->quarantinePath . '/' . basename($file);
-        rename($file, $destination);
+        if (!is_file($file)) {
+            $this->log("Cannot quarantine non-regular file: $file", true);
+            return;
+        }
+
+        if (!is_readable($file)) {
+            $this->log("Cannot quarantine unreadable file: $file", true);
+            return;
+        }
+
+        if (!is_dir($this->quarantinePath)) {
+            if (!mkdir($this->quarantinePath, 0755, true) && !is_dir($this->quarantinePath)) {
+                $this->log("Failed to create quarantine directory: {$this->quarantinePath}", true);
+                return;
+            }
+        }
+
+        if (!is_writable($this->quarantinePath)) {
+            $this->log("Quarantine directory is not writable: {$this->quarantinePath}", true);
+            return;
+        }
+
+        $originalPath = realpath($file);
+        $hash = hash_file('sha256', $file);
+
+        if ($hash === false) {
+            $this->log("Failed to calculate hash for: $file", true);
+            return;
+        }
+
+        $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', basename($file));
+
+        $uniqueName =
+            date('Ymd_His') . '_' .
+            substr($hash, 0, 16) . '_' .
+            $safeName;
+
+        $destination =
+            rtrim($this->quarantinePath, DIRECTORY_SEPARATOR) .
+            DIRECTORY_SEPARATOR .
+            $uniqueName;
+
+        if (!@rename($file, $destination)) {
+            $this->log("Failed to move file to quarantine: $file", true);
+            return;
+        }
+
+        $metadata = [
+            'original_path' => $originalPath ?: $file,
+            'quarantined_path' => $destination,
+            'sha256' => $hash,
+            'quarantined_at' => date('c'),
+            'original_name' => basename($file),
+        ];
+
+        $metadataJson = json_encode(
+            $metadata,
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+        );
+
+        if ($metadataJson !== false) {
+            @file_put_contents($destination . '.json', $metadataJson);
+        }
+
         $this->log("Moved to quarantine: $destination", true);
     }
 
