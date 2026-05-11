@@ -136,31 +136,76 @@ class Antivirus {
     private function checkFile($file) {
         $this->log("Checking: $file");
 
+        if (!is_file($file)) {
+            $this->log("Skipping non-regular file: $file", true);
+            return;
+        }
+
+        if (!is_readable($file)) {
+            $this->log("Cannot read file: $file", true);
+            return;
+        }
+
         if ($this->isBinaryFile($file)) {
             $this->log("Skipping binary file: $file");
             return;
         }
 
         $size = @filesize($file);
+
+        if ($size === false) {
+            $this->log("Cannot determine file size: $file", true);
+            return;
+        }
+
         if ($size > $this->maxFileSize) {
             $this->processLargeFile($file);
             return;
         }
 
-        $content = file_get_contents($file);
+        $content = @file_get_contents($file);
+
+        if ($content === false) {
+            $this->log("Failed to read file: $file", true);
+            return;
+        }
+
         $this->checkContent($content, $file);
     }
 
     private function processLargeFile($file) {
         $this->log("Processing large file: $file");
-        $handle = fopen($file, 'rb');
+
+        $handle = @fopen($file, 'rb');
+
+        if ($handle === false) {
+            $this->log("Failed to open large file: $file", true);
+            return;
+        }
+
         $buffer = '';
 
         while (!feof($handle)) {
-            $buffer .= fread($handle, $this->blockSize);
+            $chunk = fread($handle, $this->blockSize);
+
+            if ($chunk === false) {
+                $this->log("Failed to read chunk from file: $file", true);
+                break;
+            }
+
+            if ($chunk === '') {
+                break;
+            }
+
+            $buffer .= $chunk;
             $this->checkContent($buffer, $file);
             $buffer = substr($buffer, -512);
+
+            if (isset($this->infectedFiles[$file])) {
+                break;
+            }
         }
+
         fclose($handle);
     }
 
@@ -192,10 +237,32 @@ class Antivirus {
     }
 
     private function isBinaryFile($file) {
-        $header = file_get_contents($file, false, null, 0, 4);
+        $maxSignatureLength = 0;
+
         foreach ($this->binaryFormats as $signature) {
-            if (strpos($header, $signature) === 0) return true;
+            $length = strlen($signature);
+
+            if ($length > $maxSignatureLength) {
+                $maxSignatureLength = $length;
+            }
         }
+
+        if ($maxSignatureLength <= 0) {
+            return false;
+        }
+
+        $header = @file_get_contents($file, false, null, 0, $maxSignatureLength);
+
+        if ($header === false || $header === '') {
+            return false;
+        }
+
+        foreach ($this->binaryFormats as $signature) {
+            if (strpos($header, $signature) === 0) {
+                return true;
+            }
+        }
+
         return false;
     }
 
