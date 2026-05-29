@@ -1,0 +1,36 @@
+<?php
+
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_TAB_MAIN'] = 'Основные';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_TAB_MAIN_TITLE'] = 'Параметры сканирования';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_SCAN_PATH'] = 'Путь сканирования по умолчанию';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_PROFILE'] = 'Профиль чувствительности';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_PROFILE_BALANCED'] = 'Balanced';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_PROFILE_STRICT'] = 'Strict';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_PROFILE_PARANOID'] = 'Paranoid';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ACTION'] = 'Действие по умолчанию';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ACTION_REPORT'] = 'Только отчет';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ACTION_QUARANTINE'] = 'Карантин';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ACTION_DELETE'] = 'Удаление';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_DRY_RUN'] = 'Dry-run';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_QUARANTINE_PATH'] = 'Путь карантина';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_BATCH_SIZE'] = 'Размер порции сканирования';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_MAX_FILE_SIZE_MB'] = 'Максимальный размер файла, МБ';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_EXCLUDE_PATHS'] = 'Исключения, по одному пути на строку';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_NOTE'] = 'Настройки сохраняются через Bitrix Option. Макрос #DOCUMENT_ROOT# будет обработан на этапе запуска сканирования.';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_OPEN_SCAN'] = 'Открыть страницу сканирования';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_SAVE'] = 'Сохранить';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_APPLY'] = 'Применить';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_RESTORE_DEFAULTS'] = 'Вернуть по умолчанию';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_RESTORE_CONFIRM'] = 'Вернуть настройки модуля к значениям по умолчанию?';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_SAVED'] = 'Настройки сохранены.';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_TITLE'] = 'Настройки не сохранены';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_SESSID'] = 'Сессия истекла. Обновите страницу и повторите сохранение.';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_REQUIRED'] = 'Поле "#FIELD#" обязательно для заполнения.';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_PATH'] = 'Поле "#FIELD#" содержит недопустимый путь.';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_TOO_LONG'] = 'Поле "#FIELD#" слишком длинное.';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_PROFILE'] = 'Выбран неизвестный профиль чувствительности.';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_ACTION'] = 'Выбрано неизвестное действие.';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_DELETE_WITHOUT_DRY_RUN'] = 'Удаление без dry-run нельзя сохранить до появления отдельного подтверждения destructive actions.';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_BATCH_SIZE'] = 'Размер порции должен быть числом от 1 до 1000.';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_MAX_FILE_SIZE'] = 'Максимальный размер файла должен быть числом от 1 до 1024 МБ.';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_EXCLUDE_PATHS'] = 'Список исключений содержит недопустимый путь.';

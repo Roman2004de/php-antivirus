@@ -1,0 +1,31 @@
+.delement-antivirus-panel {
+    max-width: 900px;
+}
+
+.delement-antivirus-title {
+    margin: 0 0 8px;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.delement-antivirus-muted {
+    margin-bottom: 16px;
+    color: #666;
+    line-height: 1.45;
+}
+
+.delement-antivirus-actions {
+    margin-bottom: 16px;
+}
+
+.delement-antivirus-output {
+    display: block;
+    min-height: 96px;
+    max-width: 100%;
+    padding: 12px;
+    overflow: auto;
+    border: 1px solid #d8d8d8;
+    background: #f7f7f7;
+    color: #333;
+    white-space: pre-wrap;
+}
