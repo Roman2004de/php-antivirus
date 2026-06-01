@@ -1,5 +1,8 @@
 <?php
 
+use Bitrix\Main\Loader;
+use Delement\Antivirus\Admin\AjaxController;
+
 define('NO_KEEP_STATISTIC', true);
 define('NO_AGENT_STATISTIC', true);
 define('DisableEventsCheck', true);
@@ -32,18 +35,32 @@ if (!check_bitrix_sessid()) {
     ], 403);
 }
 
-$action = isset($_REQUEST['action']) ? (string)$_REQUEST['action'] : '';
-
-if ($action === 'ping') {
+if (!Loader::includeModule($moduleId)) {
     $sendJson([
-        'success' => true,
-        'module' => $moduleId,
-        'version' => '0.0.1',
-        'status' => 'skeleton_ready',
-    ]);
+        'success' => false,
+        'error' => 'module_not_loaded',
+    ], 500);
 }
 
-$sendJson([
-    'success' => false,
-    'error' => 'unknown_action',
-], 400);
+$action = isset($_REQUEST['action']) ? (string)$_REQUEST['action'] : '';
+$userId = is_object($USER) && method_exists($USER, 'GetID') ? (int)$USER->GetID() : 0;
+
+try {
+    $controller = new AjaxController($moduleId, (string)$_SERVER['DOCUMENT_ROOT']);
+    $sendJson($controller->handle($action, $_REQUEST, $userId));
+} catch (InvalidArgumentException $exception) {
+    $sendJson([
+        'success' => false,
+        'error' => $exception->getMessage(),
+    ], 400);
+} catch (RuntimeException $exception) {
+    $sendJson([
+        'success' => false,
+        'error' => $exception->getMessage(),
+    ], 500);
+} catch (Throwable $exception) {
+    $sendJson([
+        'success' => false,
+        'error' => 'internal_error',
+    ], 500);
+}

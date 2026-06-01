@@ -1,0 +1,71 @@
+<?php
+
+use Delement\Antivirus\Detection\Severity;
+
+return [
+    [
+        'id' => 'bitrix_php_in_upload',
+        'name' => 'PHP file inside upload directory',
+        'category' => 'bitrix_specific',
+        'severity' => Severity::HIGH,
+        'score' => 8,
+        'path_contains' => '/upload/',
+        'extensions' => ['php', 'phtml', 'phtm', 'php3', 'php4', 'php5', 'php6', 'php7'],
+    ],
+    [
+        'id' => 'bitrix_authorize_hardcoded_id',
+        'name' => 'Bitrix user authorization by hardcoded ID',
+        'category' => 'bitrix_specific',
+        'severity' => Severity::HIGH,
+        'score' => 8,
+        'pattern' => '/\$USER\s*->\s*Authorize\s*\(\s*\d+\s*\)/i',
+        'extensions' => ['php', 'phtml', 'phtm', 'inc'],
+    ],
+    [
+        'id' => 'bitrix_init_dynamic_execution',
+        'name' => 'Dynamic execution inside Bitrix init.php',
+        'category' => 'bitrix_specific',
+        'severity' => Severity::HIGH,
+        'score' => 7,
+        'pattern' => '/\b(eval|assert|shell_exec|exec|system|passthru)\s*\(/i',
+        'path_equals' => '/bitrix/php_interface/init.php',
+        'extensions' => ['php'],
+    ],
+    [
+        'id' => 'bitrix_include_from_upload',
+        'name' => 'Include or require from upload directory',
+        'category' => 'bitrix_specific',
+        'severity' => Severity::HIGH,
+        'score' => 7,
+        'pattern' => '/\b(include|require|include_once|require_once)\s*\(?\s*[^;]*(\/upload\/|["\']upload\/)/i',
+        'extensions' => ['php', 'phtml', 'phtm', 'inc'],
+    ],
+    [
+        'id' => 'bitrix_suspicious_access_php',
+        'name' => 'Suspicious .access.php code',
+        'category' => 'bitrix_specific',
+        'severity' => Severity::MEDIUM,
+        'score' => 4,
+        'pattern' => '/\b(eval|base64_decode|shell_exec|assert|file_put_contents)\s*\(/i',
+        'path_equals' => '/.access.php',
+        'extensions' => ['php'],
+    ],
+    [
+        'id' => 'bitrix_event_handler_dynamic_exec',
+        'name' => 'Suspicious Bitrix event handler',
+        'category' => 'bitrix_specific',
+        'severity' => Severity::HIGH,
+        'score' => 6,
+        'pattern' => '/(AddEventHandler|registerEventHandler)[^;]*(eval|assert|shell_exec|exec|system|base64_decode)/is',
+        'extensions' => ['php', 'phtml', 'phtm', 'inc'],
+    ],
+    [
+        'id' => 'bitrix_upload_to_executable',
+        'name' => 'Uploaded file moved to executable extension',
+        'category' => 'bitrix_specific',
+        'severity' => Severity::HIGH,
+        'score' => 6,
+        'pattern' => '/move_uploaded_file\s*\([^;]+\.(php|phtml|php3|php4|php5|php7)[\'"]/i',
+        'extensions' => ['php', 'phtml', 'phtm', 'inc'],
+    ],
+];

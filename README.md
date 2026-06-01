@@ -1,448 +1,164 @@
-# PHP Antivirus CLI Malware Scanner
+# delement.antivirus
 
-**PHP Antivirus** — это консольный middleware/utility-скрипт для базовой проверки файлов и директорий на признаки вредоносного кода с помощью регулярных выражений-сигнатур. Проект ориентирован на DevOps- и backend-сценарии: ручная проверка web-root, интеграция в cron, CI/CD pipeline, pre-deploy проверки и первичный аудит подозрительных файлов.
+Модуль 1С-Битрикс **«Интеллектуальный поиск вирусов и троянов»**.
 
-> Текущая версия в исходном коде: **1.0**  
-> Лицензия: **MIT**  
-> Автор: **Roman Tarasenko**
+Текущий репозиторий больше не содержит самостоятельный CLI-сканер. Корневые `antivirus.php` и `signatures.txt` вынесены в отдельный проект, а здесь развивается устанавливаемый модуль для 1С-Битрикс Marketplace.
 
----
+## Паспорт модуля
 
-## Возможности
+- `MODULE_ID`: `delement.antivirus`
+- Псевдоним: `antivirus`
+- Версия: `0.0.1`
+- Партнер: `Цифровой Элемент`
+- Сайт партнера: `https://d-element.ru`
+- Язык интерфейса: русский
+- Минимальная цель совместимости: PHP 7.4+, с обязательной проверкой на актуальной версии PHP, поддерживаемой Bitrix
+- Composer на первом этапе не используется
 
-- Рекурсивное сканирование директорий.
-- Сканирование отдельного файла.
-- Проверка только заданного набора расширений.
-- Встроенный набор сигнатур для поиска типичных вредоносных конструкций.
-- Поддержка внешнего файла сигнатур.
-- Проверка валидности regex-сигнатур перед использованием.
-- Обнаружение подозрительных PHP/JS/web-shell паттернов:
-  - `eval`, `assert`, `base64_decode`, `shell_exec`, `system`, `passthru`, `proc_open`, `pcntl_exec`;
-  - `create_function`, `call_user_func`, `curl_exec`, `fsockopen`, `gzuncompress`, `str_rot13`;
-  - подозрительные `<script>`, `<iframe>`, `<object>`, `<embed>`;
-  - формы, похожие на phishing/login/banking/paypal/wallet страницы;
-  - запись входящего потока `php://input`;
-  - устаревший и опасный `preg_replace(... /e ...)`;
-  - загрузка файлов через `move_uploaded_file`/`copy` из `$_FILES`.
-- Пропуск известных бинарных форматов по magic bytes.
-- Обработка больших файлов чанками.
-- Краткий и подробный режим логирования.
-- Запись логов в файл.
-- JSON-отчёт для автоматизированной обработки.
-- Перемещение найденных угроз в карантин.
-- Генерация JSON metadata-файла для каждого объекта в карантине.
-- Корректные exit codes для использования в shell/CI/CD.
+## Что уже реализовано
 
----
+- Устанавливаемый skeleton модуля.
+- `install/index.php`, `install/version.php`, `include.php`, `options.php`.
+- Административные proxy-файлы для `/bitrix/admin`.
+- Страницы админки: сканирование, результаты, карантин.
+- Настройки через `Bitrix\Main\Config\Option`.
+- D7 autoload map для классов модуля.
+- Модульный scanner engine в `lib/`.
+- Базовые правила детекта: PHP, JavaScript, HTML, Bitrix-specific.
+- AJAX actions: `ping`, `start_scan`, `scan_step`, `get_status`, `cancel_scan`.
+- Пошаговое сканирование через AJAX.
+- Файловые scan sessions в `var/sessions`.
+- JSON reports в `var/reports`.
+- Smoke-test engine без ядра Bitrix.
 
-## Требования
+## Структура
 
-- PHP **7.4+** или PHP **8.x**.
-- CLI-доступ к PHP.
-- Права на чтение сканируемых файлов.
-- Права на запись, если используется лог-файл или карантин.
+```text
+bitrix/modules/delement.antivirus/
+  include.php
+  default_option.php
+  options.php
 
-Проверить версию PHP:
+  install/
+    index.php
+    version.php
+    admin/
+    css/
+    js/
+    tools/
 
-```bash
-php -v
+  admin/
+    ajax.php
+    menu.php
+    scan.php
+    results.php
+    quarantine.php
+
+  lib/
+    Admin/
+    Config/
+    Detection/
+    File/
+    Rules/
+    Scanner/
+
+  lang/
+    ru/
+
+  tests/
+    engine_smoke.php
+
+  var/
+    reports/
+    sessions/
+    quarantine/
 ```
 
----
+## Scanner Engine
 
-## Установка
+Основной движок находится в `bitrix/modules/delement.antivirus/lib`.
 
-Склонируйте репозиторий или скачайте файл `antivirus.php`:
+Ключевые классы:
 
-```bash
-git clone https://github.com/Roman2004de/php-antivirus.git
-cd php-antivirus
+- `Delement\Antivirus\Config\ScanConfig`
+- `Delement\Antivirus\Scanner\Scanner`
+- `Delement\Antivirus\Scanner\ScanResult`
+- `Delement\Antivirus\Scanner\ScanSummary`
+- `Delement\Antivirus\Detection\RuleEngine`
+- `Delement\Antivirus\Detection\Detector`
+- `Delement\Antivirus\File\FileCollector`
+- `Delement\Antivirus\File\FileFilter`
+- `Delement\Antivirus\File\FileReader`
+
+Движок не пишет HTML, не вызывает `echo`/`exit` и возвращает структурированные результаты, чтобы его можно было использовать из админки, AJAX, cron runner и будущего CLI-wrapper модуля.
+
+## Настройки
+
+В `options.php` доступны:
+
+- путь сканирования;
+- профиль чувствительности: `balanced`, `strict`, `paranoid`;
+- действие: `report`, `quarantine`, `delete`;
+- `dry-run`;
+- путь карантина;
+- размер порции сканирования;
+- максимальный размер файла;
+- список исключений.
+
+Пока destructive actions не завершены, удаление без `dry-run` не разрешается сохранять.
+
+## AJAX API
+
+Endpoint:
+
+```text
+/bitrix/admin/delement_antivirus_ajax.php
 ```
 
-Скрипт не требует Composer-зависимостей и запускается напрямую через PHP CLI.
+Actions:
 
----
+- `ping`
+- `start_scan`
+- `scan_step`
+- `get_status`
+- `cancel_scan`
 
-## Быстрый старт
+Каждый запрос проходит проверку авторизации, прав модуля и `bitrix_sessid`.
 
-Сканирование директории:
+## Проверки разработки
 
-```bash
-php antivirus.php --path=/var/www/html
-```
-
-Сканирование одного файла:
-
-```bash
-php antivirus.php --path=/var/www/html/index.php
-```
-
-Подробный вывод:
+Проверить синтаксис PHP-файлов модуля:
 
 ```bash
-php antivirus.php --path=/var/www/html --log-mode=verbose
+php -l bitrix/modules/delement.antivirus/include.php
 ```
 
-JSON-отчёт:
+Полный локальный syntax check из PowerShell:
 
-```bash
-php antivirus.php --path=/var/www/html --json-report
-```
-
-Сохранение логов:
-
-```bash
-php antivirus.php --path=/var/www/html --log-file=/var/log/php-antivirus.log
-```
-
-Перемещение найденных угроз в карантин:
-
-```bash
-php antivirus.php --path=/var/www/html --quarantine=/var/quarantine/php-antivirus
-```
-
-Использование внешнего файла сигнатур:
-
-```bash
-php antivirus.php \
-  --path=/var/www/html \
-  --signatures-file=/opt/php-antivirus/signatures.txt
-```
-
----
-
-## CLI-параметры
-
-| Параметр | Обязательный | Значение по умолчанию | Описание |
-|---|---:|---|---|
-| `--path` | Да | — | Путь к файлу или директории для сканирования. |
-| `--signatures-file` | Нет | встроенные сигнатуры | Путь к внешнему файлу regex-сигнатур. |
-| `--log-mode` | Нет | `short` | Режим логирования: `short` или `verbose`. |
-| `--log-file` | Нет | не используется | Путь к файлу для записи логов. |
-| `--quarantine` | Нет | не используется | Директория, куда будут перемещены найденные угрозы. |
-| `--json-report` | Нет | `false` | Вывод результата в JSON-формате. |
-
-Справка выводится автоматически, если не передан обязательный параметр `--path`:
-
-```bash
-php antivirus.php
-```
-
----
-
-## Режимы логирования
-
-### `short`
-
-Режим по умолчанию. Показывает только ошибки, найденные угрозы и финальный результат.
-
-```bash
-php antivirus.php --path=/var/www/html --log-mode=short
-```
-
-### `verbose`
-
-Подробный режим. Показывает процесс обхода директорий и проверки файлов.
-
-```bash
-php antivirus.php --path=/var/www/html --log-mode=verbose
-```
-
----
-
-## JSON-отчёт
-
-При использовании `--json-report` итоговый результат выводится в `STDOUT` в формате JSON.
-
-Пример:
-
-```json
-{
-    "total_scanned": 128,
-    "threats_found": 2,
-    "runtime_errors": 0,
-    "infected_files": [
-        "/var/www/html/upload/shell.php",
-        "/var/www/html/cache/backdoor.phtml"
-    ]
+```powershell
+$errors = @()
+Get-ChildItem -Recurse -Filter *.php -LiteralPath bitrix/modules/delement.antivirus | ForEach-Object {
+    $result = & php -l $_.FullName 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        $errors += [pscustomobject]@{ File = $_.FullName; Output = ($result -join "`n") }
+    }
 }
+if ($errors.Count -gt 0) { $errors | Format-List; exit 1 }
 ```
 
-Логи и ошибки при включённом JSON-режиме пишутся в `STDERR`, чтобы не ломать JSON-вывод и позволить безопасно парсить результат в CI/CD или shell-скриптах.
-
----
-
-## Внешний файл сигнатур
-
-Файл сигнатур должен содержать по одной regex-сигнатуре на строку.
-
-Пример `signatures.txt`:
-
-```txt
-/\beval\s*\(/i
-/\bbase64_decode\s*\(/i
-/file_put_contents\s*\(\s*["']php:\/\/input["']\s*,/i
-/<\s*iframe\b/i
-```
-
-Запуск с внешними сигнатурами:
+Smoke-test engine без Bitrix:
 
 ```bash
-php antivirus.php \
-  --path=/var/www/html \
-  --signatures-file=./signatures.txt
+php bitrix/modules/delement.antivirus/tests/engine_smoke.php
 ```
 
-Если внешний файл сигнатур не передан или не найден, скрипт использует встроенный набор сигнатур.
+## Важные ограничения
 
-> Важно: каждая сигнатура должна быть валидным PHP PCRE-выражением, включая разделители, например `/pattern/i`.
+- Это сигнатурный и rule-based scanner, а не полноценная EDR/AV/WAF-система.
+- Автоматическое удаление не должно быть поведением по умолчанию.
+- Любые destructive actions должны иметь `dry-run`, проверку прав, `sessid` и явное подтверждение.
+- `/upload/` целиком не исключается: PHP-файлы внутри `/upload/` являются важным индикатором компрометации.
 
----
+## Следующий этап
 
-## Поддерживаемые расширения для сканирования
-
-Скрипт сканирует только файлы с расширениями из внутреннего allowlist:
-
-```txt
-php, js, phtml, phtm, cgi, pl, o, so, py, sh,
-php3, php4, php5, php6, php7, pht, shtml,
-susp, suspected, infected, vir, html, htm, tpl,
-inc, css, txt, sql, svg, htaccess
-```
-
-Файлы с другими расширениями при рекурсивном сканировании директорий пропускаются.
-
----
-
-## Пропуск бинарных файлов
-
-Перед чтением содержимого скрипт проверяет сигнатуру начала файла и пропускает известные бинарные форматы:
-
-- `exe`
-- `png`
-- `jpg`
-- `zip`
-- `pdf`
-- `rar`
-- `gif`
-- `elf`
-- `mp3`
-- `mp4`
-
-Это снижает количество ложных срабатываний и уменьшает нагрузку при сканировании web-директорий.
-
----
-
-## Обработка больших файлов
-
-Файлы размером больше **100 MB** не читаются целиком в память. Вместо этого используется блочная обработка:
-
-- размер блока: **32 KB**;
-- между блоками сохраняется хвост буфера в **512 байт**, чтобы не пропустить сигнатуру на границе чанков.
-
----
-
-## Карантин
-
-Если передан параметр `--quarantine`, каждый найденный подозрительный файл перемещается в указанную директорию.
-
-Пример:
-
-```bash
-php antivirus.php \
-  --path=/var/www/html \
-  --quarantine=/var/quarantine/php-antivirus
-```
-
-Для каждого файла формируется безопасное уникальное имя:
-
-```txt
-YYYYMMDD_HHMMSS_<sha256-prefix>_<original-filename>
-```
-
-Рядом создаётся metadata-файл:
-
-```txt
-YYYYMMDD_HHMMSS_<sha256-prefix>_<original-filename>.json
-```
-
-Пример metadata:
-
-```json
-{
-    "original_path": "/var/www/html/upload/shell.php",
-    "quarantined_path": "/var/quarantine/php-antivirus/20250201_120000_abcd1234ef567890_shell.php",
-    "sha256": "abcd1234...",
-    "quarantined_at": "2025-02-01T12:00:00+00:00",
-    "original_name": "shell.php"
-}
-```
-
----
-
-## Exit codes
-
-Скрипт использует exit codes, чтобы его можно было безопасно применять в автоматизации.
-
-| Код | Константа | Значение |
-|---:|---|---|
-| `0` | `EXIT_CLEAN` | Угрозы не найдены, ошибок выполнения нет. |
-| `1` | `EXIT_THREATS_FOUND` | Найдены подозрительные или заражённые файлы. |
-| `2` | `EXIT_CLI_ERROR` | Ошибка CLI-вызова, например не передан `--path`. |
-| `3` | `EXIT_RUNTIME_ERROR` | Критическая runtime-ошибка, например путь не существует. |
-| `4` | `EXIT_PARTIAL_ERROR` | Сканирование завершено, но были runtime-ошибки чтения/обхода. |
-
-Пример использования в bash:
-
-```bash
-php antivirus.php --path=/var/www/html --json-report > report.json
-status=$?
-
-case "$status" in
-  0)
-    echo "Clean"
-    ;;
-  1)
-    echo "Threats found"
-    ;;
-  2)
-    echo "CLI usage error"
-    ;;
-  3)
-    echo "Runtime error"
-    ;;
-  4)
-    echo "Partial scan error"
-    ;;
-esac
-```
-
----
-
-## Примеры DevOps-интеграции
-
-### Cron-задача
-
-Ежедневное сканирование web-root с логированием:
-
-```cron
-0 3 * * * /usr/bin/php /opt/php-antivirus/antivirus.php --path=/var/www/html --log-file=/var/log/php-antivirus.log --quarantine=/var/quarantine/php-antivirus
-```
-
-### CI/CD pipeline
-
-Пример для shell-шага:
-
-```bash
-php antivirus.php --path="$CI_PROJECT_DIR" --json-report > antivirus-report.json
-status=$?
-
-if [ "$status" -eq 1 ]; then
-  echo "Malware signatures detected. Check antivirus-report.json"
-  exit 1
-fi
-
-if [ "$status" -ge 2 ]; then
-  echo "Antivirus scan failed with status: $status"
-  exit "$status"
-fi
-```
-
-### Pre-deploy проверка
-
-```bash
-php antivirus.php --path=./public --log-mode=verbose
-```
-
----
-
-## Рекомендации по эксплуатации
-
-- Запускайте сканирование от пользователя с минимально необходимыми правами.
-- Для production-серверов используйте `--log-file`, чтобы сохранять историю проверок.
-- Для автоматизации используйте `--json-report` и exit codes.
-- Перед включением `--quarantine` убедитесь, что директория карантина находится вне web-root.
-- Не удаляйте подозрительные файлы автоматически без ручной проверки.
-- Регулярно обновляйте внешний файл сигнатур.
-- После обнаружения угроз проверяйте логи веб-сервера, access logs, upload-директории и историю деплоя.
-
----
-
-## Ограничения
-
-Этот скрипт является сигнатурным сканером и не заменяет полноценные EDR/AV/WAF-решения.
-
-Текущие ограничения:
-
-- Нет поведенческого анализа.
-- Нет sandbox-исполнения подозрительного кода.
-- Нет AST-парсинга PHP/JS.
-- Нет декодирования вложенной обфускации перед проверкой.
-- Нет автоматического восстановления файлов из карантина.
-- Возможны ложные срабатывания на легитимный код, использующий опасные функции.
-- Возможны пропуски новых или сильно обфусцированных угроз.
-- При сканировании директории учитываются только расширения из allowlist.
-
----
-
-## Безопасность
-
-Найденное совпадение означает, что файл содержит подозрительный паттерн, а не обязательно является вредоносным. Всегда выполняйте ручную проверку перед удалением или окончательной блокировкой файла.
-
-Особое внимание стоит уделять файлам, содержащим:
-
-- динамическое выполнение кода;
-- вызовы shell-команд;
-- сетевые функции;
-- загрузку и перемещение пользовательских файлов;
-- запись в `php://input`;
-- обфускацию через base64/gzip/rot13;
-- HTML/JS-вставки в неожиданных местах.
-
----
-
-## Структура проекта
-
-Минимальная структура:
-
-```txt
-php-antivirus/
-├── antivirus.php
-├── signatures.txt
-└── README.md
-```
-
-Где:
-
-- `antivirus.php` — основной CLI-скрипт сканера;
-- `signatures.txt` — опциональный внешний файл сигнатур;
-- `README.md` — документация проекта.
-
----
-
-## Roadmap
-
-Потенциальные направления развития:
-
-- Добавить режим `--delete` для удаления после подтверждения.
-- Добавить restore-команду для восстановления из карантина.
-- Добавить конфигурационный файл `config.json` или `config.yaml`.
-- Добавить исключения директорий и файлов.
-- Добавить настройку списка расширений через CLI.
-- Добавить severity-level для сигнатур.
-- Добавить structured JSONL logs.
-- Добавить unit-тесты для regex-сигнатур и quarantine logic.
-- Добавить GitHub Actions workflow для проверки pull requests.
-- Добавить поддержку Composer-пакета.
-
----
-
-## Лицензия
-
-Проект распространяется под лицензией **MIT**.
-
----
-
-## Disclaimer
-
-Инструмент предназначен для первичного анализа и автоматизированной проверки файлов на известные подозрительные паттерны. Используйте его как дополнительный слой защиты, а не как единственный механизм безопасности.
+Ближайшая задача: реализовать полноценное отображение результатов сканирования в `admin/results.php`, фильтры и экспорт JSON из сохраненных reports.

@@ -35,7 +35,6 @@ $tabControl->Begin();
 ?>
 <form id="delement-antivirus-scan-form" method="post" action="/bitrix/admin/delement_antivirus_ajax.php">
     <?php echo bitrix_sessid_post(); ?>
-    <input type="hidden" name="action" value="ping">
     <?php $tabControl->BeginNextTab(); ?>
     <tr>
         <td colspan="2">
@@ -44,13 +43,26 @@ $tabControl->Begin();
                     <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_MODULE_NAME'); ?>
                 </div>
                 <div class="delement-antivirus-muted">
-                    <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_SKELETON_TEXT'); ?>
+                    <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_ENGINE_TEXT'); ?>
                 </div>
                 <div class="delement-antivirus-actions">
-                    <button type="button" class="adm-btn adm-btn-save" id="delement-antivirus-ping">
-                        <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_PING'); ?>
+                    <button type="button" class="adm-btn adm-btn-save" id="delement-antivirus-start">
+                        <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_START'); ?>
+                    </button>
+                    <button type="button" class="adm-btn" id="delement-antivirus-cancel" disabled>
+                        <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_CANCEL'); ?>
                     </button>
                 </div>
+                <div class="delement-antivirus-progress">
+                    <div class="delement-antivirus-progress-bar" id="delement-antivirus-progress-bar"></div>
+                </div>
+                <div class="delement-antivirus-stats">
+                    <span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS'); ?>: <b id="delement-antivirus-status">idle</b></span>
+                    <span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_PROCESSED'); ?>: <b id="delement-antivirus-processed">0</b>/<b id="delement-antivirus-total">0</b></span>
+                    <span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_FOUND'); ?>: <b id="delement-antivirus-found">0</b></span>
+                    <span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_ERRORS'); ?>: <b id="delement-antivirus-errors">0</b></span>
+                </div>
+                <div class="delement-antivirus-current" id="delement-antivirus-current"></div>
                 <pre class="delement-antivirus-output" id="delement-antivirus-output"></pre>
             </div>
         </td>

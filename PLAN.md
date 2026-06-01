@@ -1,630 +1,296 @@
-# PHP Antivirus — Актуализированный план рефакторинга и выхода в Production
+# План разработки delement.antivirus
 
-> Обновлённый roadmap проекта на основе текущего состояния исходного кода.
->
-> Текущая стадия проекта: **advanced MVP / pre-production refactor**.
+Модуль 1С-Битрикс Marketplace **«Интеллектуальный поиск вирусов и троянов»**.
 
----
+## Цель
 
-# 📌 Текущее состояние проекта
+Создать production-oriented модуль для 1С-Битрикс, который позволяет администратору:
 
-## Уже реализовано
+- запускать проверку файлов сайта из административной панели;
+- видеть прогресс сканирования;
+- получать список подозрительных файлов;
+- понимать причины срабатывания;
+- безопасно помещать файлы в карантин;
+- запускать проверку по cron;
+- использовать dry-run перед destructive actions;
+- настраивать исключения;
+- использовать профили чувствительности;
+- получать JSON-отчеты для аудита и автоматизации.
 
-### Основной функционал
+## Принцип продукта
 
-- CLI-антивирус на PHP
-- Рекурсивное сканирование директорий
-- Сигнатурный анализ
-- Поддержка внешнего файла сигнатур
-- Обработка больших файлов чанками
-- Пропуск бинарных файлов
-- Фильтрация файлов по расширениям
-- JSON output
-- Verbose / short режимы
-- Quarantine mode
-- Логирование
-- Exit codes
-- Базовый detection engine
-
----
-
-## Техническое состояние
-
-### Сильные стороны
-
-- Проект уже является рабочим CLI utility
-- Архитектура текущего скрипта понятна
-- Есть foundation для дальнейшего развития
-- CLI интерфейс уже usable
-- Реализованы production-like режимы
-
----
-
-### Основные проблемы
-
-- Весь проект находится в одном файле
-- Отсутствует модульная архитектура
-- Нет findings model
-- Нет scoring engine
-- Нет whitelist
-- Нет полноценного rule engine
-- Нет profiles/config system
-- Нет тестов
-- Нет performance cache
-- Нет многопоточности
-- Нет explainability layer
-- Высокий риск false positives
-
----
-
-# 🎯 Цель рефакторинга
-
-Преобразовать проект из utility-level scanner в production-ready malware scanner:
-
-- расширяемый
-- explainable
-- modular
-- configurable
-- scalable
-- безопасный
-- пригодный для CI/CD и automation
-
----
-
-# 🧱 Целевая архитектура
+Безопасный порядок действий:
 
 ```text
-project/
-│
-├── antivirus.php
-│
-├── src/
-│   ├── Scanner/
-│   ├── Engine/
-│   ├── Rules/
-│   ├── Heuristics/
-│   ├── Quarantine/
-│   ├── Reporting/
-│   ├── Profiles/
-│   ├── Whitelist/
-│   └── Utils/
-│
-├── config/
-│   ├── rules/
-│   ├── profiles/
-│   ├── whitelist/
-│   └── settings.php
-│
-├── var/
-│   ├── logs/
-│   ├── cache/
-│   ├── quarantine/
-│   └── reports/
-│
-├── tests/
-│
-└── README.md
+scan -> explain -> review -> quarantine -> restore/delete manually
 ```
 
----
-
-# 🧠 Целевая модель анализа
-
-```text
-rules
-   ↓
-findings
-   ↓
-heuristics
-   ↓
-scoring
-   ↓
-verdict
-   ↓
-actions
-```
-
----
+Автоматическое удаление без ручного подтверждения не должно быть поведением по умолчанию.
 
-# 📊 Целевая структура результата
+## Паспорт
 
-```json
-{
-  "file": "index.php",
-  "status": "suspicious",
-  "score": 12,
-  "findings": [],
-  "categories": [],
-  "heuristics": [],
-  "verdict": "high_risk"
-}
-```
+- `MODULE_ID`: `delement.antivirus`
+- Псевдоним: `antivirus`
+- Версия: `0.0.1`
+- Партнер: `Цифровой Элемент`
+- URI партнера: `https://d-element.ru`
+- Namespace: `Delement\Antivirus`
+- Composer: не использовать на первом этапе
+- Интерфейс: русский
 
----
+## Текущий статус
 
-# 🚦 Статусы проверки
+Стадия: ранний MVP.
 
-| Status | Описание |
-|---|---|
-| clean | угроз не найдено |
-| skipped | файл пропущен |
-| low_risk | слабые сигнатуры |
-| suspicious | подозрительный файл |
-| malicious | вредоносный файл |
-| error | ошибка обработки |
+Уже есть устанавливаемый skeleton, настройки, модульный scanner engine и AJAX-пошаговое сканирование. Следующий крупный блок: results UI и нормальная модель результатов.
 
----
+## Этапы
 
-# ⚖️ Модель scoring
+### [x] Этап 1. Installable skeleton
 
-| Indicator | Score |
-|---|---|
-| eval() | +5 |
-| system()/exec() | +4 |
-| base64_decode | +2 |
-| gzinflate | +2 |
-| dynamic include | +3 |
-| obfuscation chain | +5 |
-| webshell signature | +8 |
+Цель: создать устанавливаемый модуль.
 
----
+Сделано:
 
-# 🧪 Профили сканирования
+- создана структура `bitrix/modules/delement.antivirus`;
+- добавлены `install/index.php`, `install/version.php`;
+- добавлены `include.php`, `default_option.php`, `options.php`;
+- добавлены admin proxy files;
+- добавлены страницы `scan.php`, `results.php`, `quarantine.php`;
+- добавлен `admin/menu.php`;
+- реализованы `DoInstall()` и `DoUninstall()`;
+- добавлены `lang/ru` файлы;
+- добавлены `install/js`, `install/css`, `install/tools`;
+- каталог `var/` закрыт от веб-доступа.
 
-| Profile | Описание |
-|---|---|
-| balanced | стандартный режим |
-| strict | минимизация false negatives |
-| paranoid | aggressive detection |
-| ci | machine-friendly output |
+Acceptance:
 
----
+- [x] модуль имеет стандартную структуру;
+- [x] модуль регистрируется через `RegisterModule`;
+- [x] proxy-файлы копируются в `/bitrix/admin`;
+- [x] uninstall удаляет proxy/assets/tools;
+- [ ] установка/удаление проверены на живом Bitrix-стенде.
 
-# 📂 Whitelist Model
+### [x] Этап 2. Settings UI
 
-Поддержка:
+Цель: сделать настройки модуля через Bitrix UI.
 
-- paths
-- regex patterns
-- hashes
-- trusted vendors
-- file exceptions
-- directory exclusions
+Сделано:
 
----
+- форма настроек в `options.php`;
+- хранение через `Bitrix\Main\Config\Option`;
+- поля: scan path, profile, action, dry-run, quarantine path, exclusions, batch size, max file size;
+- дефолты в `default_option.php`;
+- проверка `sessid`;
+- базовая валидация путей, диапазонов и действия;
+- запрет сохранить `delete` без `dry-run` до реализации подтверждений.
 
-# ⚙️ Режимы работы
+Acceptance:
 
-| Mode | Описание |
-|---|---|
-| report | только отчет |
-| quarantine | карантин |
-| delete | удаление |
-| dry-run | тестовый режим |
-| ci | режим CI/CD |
+- [x] настройки сохраняются;
+- [x] настройки загружаются;
+- [x] значения валидируются;
+- [x] можно сбросить настройки к значениям по умолчанию;
+- [ ] форма проверена на живом Bitrix-стенде.
 
----
+### [x] Этап 3. Scanner engine extraction
 
-# 🚧 Актуализированный Roadmap
+Цель: вынести scanner engine в reusable-классы модуля.
 
----
+Сделано:
 
-# Phase 1 — Архитектурный рефакторинг
+- создан `Delement\Antivirus\Config\ScanConfig`;
+- создан `Delement\Antivirus\Scanner\Scanner`;
+- создан файловый слой `FileCollector`, `FileFilter`, `FileReader`, `FileTypeDetector`;
+- создан detection слой `Detector`, `RuleEngine`, `SignatureLoader`;
+- созданы DTO `ScanResult`, `ScanSummary`, `Finding`;
+- добавлены `Severity` и `Verdict`;
+- добавлены правила в `lib/Rules`: PHP, JavaScript, HTML, Bitrix-specific;
+- scanner не зависит от UI;
+- scanner не вызывает `echo` и `exit`;
+- добавлен `tests/engine_smoke.php`.
 
-> Цель: разделить monolith и стабилизировать ядро.
+Acceptance:
 
-## 1. Разделение проекта на модули
+- [x] scanner работает без UI;
+- [x] scanner возвращает структурированный результат;
+- [x] scanner не пишет HTML;
+- [x] smoke-test находит PHP-файл внутри `/upload/`;
+- [ ] нужен набор unit/integration tests для правил и false positives.
 
-### Tasks
+### [x] Этап 4. AJAX scan
 
-- вынести scanner logic
-- вынести cli parser
-- вынести logging
-- вынести quarantine
-- создать src/
-- создать базовые классы
+Цель: сделать порционное сканирование из админки.
 
-### Status
+Сделано:
 
-⬜ NOT STARTED
+- `admin/ajax.php` подключает модуль и передает запросы в controller;
+- создан `Delement\Antivirus\Admin\AjaxController`;
+- создан `Delement\Antivirus\Scanner\ScanSessionStore`;
+- реализованы actions: `ping`, `start_scan`, `scan_step`, `get_status`, `cancel_scan`;
+- scan sessions сохраняются в `var/sessions`;
+- JSON reports сохраняются в `var/reports`;
+- UI страницы сканирования показывает прогресс, статус, счетчики и текущий файл;
+- JS крутит `scan_step` до `finished` или `cancelled`.
+
+Acceptance:
+
+- [x] endpoint проверяет авторизацию, права и `sessid`;
+- [x] scan выполняется порциями;
+- [x] есть cancel;
+- [x] есть JSON report;
+- [ ] сценарий проверен в браузере на живом Bitrix-стенде;
+- [ ] нужно добавить обработку больших объемов результатов без раздувания session JSON.
 
----
+### [ ] Этап 5. Results UI
 
-## 2. Rule Engine
+Цель: показать результаты сканирования в админке.
 
-### Tasks
+Задачи:
+
+- реализовать `admin/results.php`;
+- читать reports из `var/reports`;
+- сделать список последних сканов;
+- сделать таблицу findings;
+- добавить фильтры по status, severity, category, signature;
+- добавить просмотр деталей finding;
+- добавить экспорт JSON;
+- экранировать excerpts и пути;
+- подготовить переход из scan page на results page.
+
+Acceptance:
+
+- [ ] результаты доступны после скана;
+- [ ] видно file, score, severity, category, signature, excerpt;
+- [ ] можно фильтровать malicious/suspicious;
+- [ ] экспорт JSON доступен;
+- [ ] большие фрагменты файлов не выводятся без escaping.
 
-- нормализовать signatures
-- categories
-- severity
-- metadata
-- отдельные rules files
-
-### Status
-
-🟨 PARTIALLY IMPLEMENTED
-
----
-
-## 3. Findings Model
-
-### Tasks
-
-- findings entity
-- evidence
-- offsets
-- matched rule
-- severity
-- explanation
-
-### Status
-
-⬜ NOT STARTED
-
----
-
-## 4. Regex Refactor
-
-### Tasks
-
-- убрать dangerous regex
-- минимизировать false positives
-- оптимизировать patterns
-- grouped patterns
-- benchmark regex
-
-### Status
-
-🟨 PARTIALLY IMPLEMENTED
-
----
-
-# Phase 2 — Detection Intelligence
-
-> Цель: сделать scanner explainable и reliable.
-
-## 5. Scoring Engine
-
-### Tasks
-
-- weighted scoring
-- thresholds
-- verdict system
-- profile-aware scoring
-
-### Status
-
-⬜ NOT STARTED
-
----
-
-## 6. Категории угроз
-
-### Categories
-
-- webshell
-- obfuscation
-- downloader
-- phishing
-- persistence
-- malware
-- backdoor
-- crypto miner
-
-### Status
-
-⬜ NOT STARTED
-
----
-
-## 7. Heuristics Engine
-
-### Tasks
-
-- obfuscation chains
-- entropy checks
-- suspicious nesting
-- dynamic execution detection
-- encoded payload detection
-
-### Status
-
-🟨 BASIC IMPLEMENTATION EXISTS
-
----
-
-## 8. Whitelist System
-
-### Tasks
-
-- whitelist config
-- vendor exclusions
-- trusted hashes
-- path ignore
-- regex exclusions
-
-### Status
-
-⬜ NOT STARTED
-
----
-
-# Phase 3 — CLI и Reporting
-
-> Цель: production-grade UX и automation.
-
-## 9. CLI Refactor
-
-### Tasks
-
-- improved help
-- subcommands
-- validation
-- profile selection
-- interactive flags
-
-### Status
-
-🟩 BASIC IMPLEMENTATION READY
-
----
-
-## 10. Reporting System
-
-### Tasks
-
-- HTML reports
-- statistics
-- grouped findings
-- timeline
-- severity summary
-- machine-readable reports
-
-### Status
-
-🟨 JSON READY
-
----
-
-## 11. Quarantine System
-
-### Tasks
-
-- metadata
-- restore support
-- integrity validation
-- quarantine index
-
-### Status
-
-🟩 BASIC IMPLEMENTATION READY
-
----
-
-## 12. Стандартизация Exit Codes
-
-### Tasks
-
-- stable CI codes
-- documented exit map
-- automation compatibility
-
-### Status
-
-🟩 IMPLEMENTED
-
----
-
-# Phase 4 — Производительность и масштабируемость
-
-> Цель: production performance.
-
-## 13. Оптимизация производительности
-
-### Tasks
-
-- streaming scan
-- smart IO
-- async logging
-- optimized traversal
-- memory profiling
-
-### Status
-
-🟨 PARTIALLY IMPLEMENTED
-
----
-
-## 14. Incremental Cache
-
-### Tasks
-
-- file hash cache
-- modified time cache
-- incremental scan
-- cache invalidation
-
-### Status
-
-⬜ NOT STARTED
-
----
-
-## 15. Параллельное сканирование
-
-### Tasks
-
-- pcntl_fork
-- worker pool
-- parallel traversal
-- process-safe logging
-
-### Status
-
-⬜ NOT STARTED
-
----
-
-# Phase 5 — Production Readiness
-
-> Цель: довести проект до production-grade уровня.
-
-## 16. Configuration System
-
-### Tasks
-
-- global config
-- profiles config
-- rules config
-- runtime overrides
-
-### Status
-
-⬜ NOT STARTED
-
----
-
-## 17. Тестирование
-
-### Tasks
-
-- unit tests
-- integration tests
-- malware fixtures
-- regression tests
-- false positive tests
-
-### Status
-
-⬜ NOT STARTED
-
----
-
-## 18. CI/CD Integration
-
-### Tasks
-
-- GitHub Actions
-- static analysis
-- automated tests
-- release artifacts
-
-### Status
-
-⬜ NOT STARTED
-
----
-
-## 19. Security Hardening
-
-### Tasks
-
-- safe path handling
-- sandboxing
-- symlink protection
-- secure quarantine
-- log sanitization
-
-### Status
-
-⬜ NOT STARTED
-
----
-
-## 20. Документация
-
-### Tasks
-
-- architecture docs
-- rule writing guide
-- developer docs
-- API docs
-- operational docs
-
-### Status
-
-🟨 README EXISTS
-
----
-
-# 📈 Общий прогресс проекта
-
-| Направление | Progress |
-|---|---|
-| Core Scanner | 80% |
-| CLI | 70% |
-| Detection | 45% |
-| Architecture | 20% |
-| Reporting | 40% |
-| Performance | 25% |
-| Production Readiness | 10% |
-
----
-
-# 🧭 Приоритеты разработки
-
-## Priority 1 — Critical
-
-1. Modular architecture
-2. Findings model
-3. Scoring engine
-4. Whitelist
-5. Rule engine normalization
-
----
-
-## Priority 2 — Important
-
-6. Heuristics engine
-7. Reporting system
-8. Config/profiles
-9. Tests
-
----
-
-## Priority 3 — Scaling
-
-10. Cache
-11. Parallel scanning
-12. CI/CD
-13. Security hardening
-
----
-
-# 📍 Текущая стадия проекта
-
-```text
-WORKING MVP
-    ↓
-ARCHITECTURE REFACTOR
-    ↓
-DETECTION ENGINE
-    ↓
-PRODUCTION HARDENING
-    ↓
-PRODUCTION READY
-```
-
----
-
-# 🏁 Рекомендуемый следующий шаг
-
-## Immediate Next Action
-
-Начать с:
-
-### Step 1
-
-Создать modular architecture:
-
-- src/
-- Scanner/
-- Engine/
-- Rules/
-- Reporting/
-- Quarantine/
-
-И вынести core scanner logic из monolith-файла.
-
-Это откроет возможность для всего дальнейшего рефакторинга.
-
+### [ ] Этап 6. Quarantine
+
+Цель: сделать безопасный карантин.
+
+Задачи:
+
+- создать `QuarantineManager`;
+- реализовать quarantine action;
+- сохранить metadata JSON;
+- считать SHA256;
+- не перезаписывать файлы;
+- поддержать restore;
+- поддержать permanent delete;
+- добавить `admin/quarantine.php`;
+- логировать destructive actions;
+- учитывать dry-run.
+
+Acceptance:
+
+- [ ] файлы не перезаписываются;
+- [ ] metadata создается;
+- [ ] restore работает;
+- [ ] dry-run не меняет файловую систему;
+- [ ] destructive actions требуют права уровня `X` и подтверждение.
+
+### [ ] Этап 7. Whitelist
+
+Цель: снизить false positives.
+
+Задачи:
+
+- создать `Whitelist`;
+- реализовать whitelist по path;
+- реализовать whitelist по regex path;
+- реализовать whitelist по hash;
+- реализовать whitelist по signature id;
+- реализовать исключение `file + signature id`;
+- добавить UI actions из results page.
+
+Acceptance:
+
+- [ ] файл можно добавить в whitelist;
+- [ ] конкретную сигнатуру можно исключить для файла;
+- [ ] whitelist учитывается при scan;
+- [ ] пользовательские regex валидируются перед сохранением.
+
+### [ ] Этап 8. Cron runner
+
+Цель: добавить запуск по расписанию.
+
+Задачи:
+
+- доработать `install/tools/scan.php`;
+- подключить Bitrix prolog;
+- читать настройки модуля;
+- поддержать CLI args: profile, path, json, dry-run;
+- запускать scanner engine;
+- сохранять report;
+- возвращать корректный exit code.
+
+Acceptance:
+
+- [ ] scan запускается из CLI;
+- [ ] report сохраняется;
+- [ ] exit code корректный;
+- [ ] вывод JSON не ломается логами.
+
+### [ ] Этап 9. Marketplace polish
+
+Цель: подготовить модуль к ручной проверке перед публикацией.
+
+Задачи:
+
+- вынести все тексты в `lang/ru`;
+- убрать debug output;
+- проверить install/uninstall;
+- проверить права;
+- проверить `sessid`;
+- проверить path validation;
+- подготовить README;
+- подготовить changelog;
+- подготовить screenshots;
+- проверить совместимость с актуальными требованиями 1С-Битрикс Marketplace.
+
+Acceptance:
+
+- [ ] модуль ставится и удаляется без ошибок;
+- [ ] нет debug output;
+- [ ] нет hardcoded абсолютных путей;
+- [ ] административные страницы проверяют права;
+- [ ] AJAX проверяет `sessid`;
+- [ ] uninstall корректно удаляет proxy-файлы;
+- [ ] документация готова.
+
+## MVP Definition of Done
+
+MVP считается готовым, когда:
+
+- [x] модуль устанавливаемой структуры создан;
+- [x] настройки сохраняются;
+- [x] scanner engine выделен в классы;
+- [x] сканирование запускается через AJAX endpoint;
+- [x] прогресс доступен в UI;
+- [ ] результаты полноценно отображаются;
+- [ ] quarantine работает;
+- [ ] dry-run работает для destructive actions;
+- [ ] cron runner работает;
+- [x] базовые права и `sessid` проверяются в AJAX;
+- [ ] права уровней `D/R/W/X` реализованы полностью;
+- [ ] uninstall проверен на стенде;
+- [ ] документация и changelog готовы.
+
+## Правила разработки
+
+- Один крупный этап — отдельный PR.
+- Не возвращать корневой CLI в этот проект.
+- Не добавлять Composer на первом этапе.
+- Не копировать код из сторонних модулей.
+- Scanner engine не должен писать HTML.
+- UI не должен содержать detector logic.
+- Любое destructive action должно иметь dry-run и подтверждение.
+- После каждого этапа запускать PHP syntax check.
+
+## Ближайший следующий шаг
+
+Этап 5: `Results UI`.
+
+Начать с чтения JSON reports из `var/reports`, списка последних сканов и таблицы findings в `admin/results.php`.
