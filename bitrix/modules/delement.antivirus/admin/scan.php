@@ -97,6 +97,13 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_ad
         line-height: 1.5 !important;
         white-space: pre-wrap !important;
     }
+
+    .delement-antivirus-disabled,
+    .delement-antivirus-actions button:disabled {
+        cursor: default !important;
+        opacity: 0.55 !important;
+        pointer-events: none !important;
+    }
 </style>
 <?php
 
@@ -129,7 +136,7 @@ $tabControl->Begin();
                     <button type="button" class="adm-btn adm-btn-save" id="delement-antivirus-start">
                         <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_START'); ?>
                     </button>
-                    <button type="button" class="adm-btn" id="delement-antivirus-cancel" disabled>
+                    <button type="button" class="adm-btn delement-antivirus-disabled" id="delement-antivirus-cancel" disabled aria-disabled="true">
                         <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_CANCEL'); ?>
                     </button>
                 </div>
@@ -137,7 +144,7 @@ $tabControl->Begin();
                     <div class="delement-antivirus-progress-bar" id="delement-antivirus-progress-bar"></div>
                 </div>
                 <div class="delement-antivirus-stats">
-                    <span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS'); ?>: <b id="delement-antivirus-status">idle</b></span>
+                    <span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS'); ?>: <b id="delement-antivirus-status">Ожидание</b></span>
                     <span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_PROCESSED'); ?>: <b id="delement-antivirus-processed">0</b>/<b id="delement-antivirus-total">0</b></span>
                     <span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_FOUND'); ?>: <b id="delement-antivirus-found">0</b></span>
                     <span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_ERRORS'); ?>: <b id="delement-antivirus-errors">0</b></span>

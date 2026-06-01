@@ -16,6 +16,75 @@
         }
     }
 
+    function statusLabel(status) {
+        var labels = {
+            idle: 'Ожидание',
+            iddle: 'Ожидание',
+            created: 'Создано',
+            running: 'Сканирование',
+            progress: 'Сканирование',
+            finished: 'Завершено',
+            cancelled: 'Остановлено',
+            canceled: 'Остановлено',
+            failed: 'Ошибка',
+            error: 'Ошибка',
+            skipped: 'Пропущено',
+            clean: 'Чисто',
+            low_risk: 'Низкий риск',
+            suspicious: 'Подозрительно',
+            malicious: 'Опасно',
+            unknown: 'Неизвестно'
+        };
+
+        return labels[status] || status || labels.unknown;
+    }
+
+    function localizeStatusesForDisplay(value, key) {
+        var result;
+        var itemKey;
+
+        if (Array.isArray(value)) {
+            return value.map(function (item) {
+                return localizeStatusesForDisplay(item);
+            });
+        }
+
+        if (value && typeof value === 'object') {
+            result = {};
+
+            for (itemKey in value) {
+                if (Object.prototype.hasOwnProperty.call(value, itemKey)) {
+                    result[itemKey] = localizeStatusesForDisplay(value[itemKey], itemKey);
+                }
+            }
+
+            return result;
+        }
+
+        if (key === 'status' && typeof value === 'string') {
+            return statusLabel(value);
+        }
+
+        return value;
+    }
+
+    function setButtonDisabled(button, disabled) {
+        if (!button) {
+            return;
+        }
+
+        button.disabled = disabled;
+        button.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+
+        if (button.classList) {
+            if (disabled) {
+                button.classList.add('delement-antivirus-disabled');
+            } else {
+                button.classList.remove('delement-antivirus-disabled');
+            }
+        }
+    }
+
     ready(function () {
         var form = document.getElementById('delement-antivirus-scan-form');
         var startButton = document.getElementById('delement-antivirus-start');
@@ -34,6 +103,9 @@
         if (!form || !startButton || !cancelButton || !output) {
             return;
         }
+
+        setButtonDisabled(cancelButton, true);
+        setText(statusNode, statusLabel('idle'));
 
         function request(action, data, onComplete) {
             var xhr = new XMLHttpRequest();
@@ -80,7 +152,7 @@
             var percent = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
             var status = data.status || (data.success === false ? 'failed' : 'unknown');
 
-            setText(statusNode, status);
+            setText(statusNode, statusLabel(status));
             setText(processedNode, processed);
             setText(totalNode, total);
             setText(foundNode, data.found_total || 0);
@@ -93,13 +165,13 @@
         }
 
         function show(data) {
-            output.textContent = JSON.stringify(data, null, 2);
+            output.textContent = JSON.stringify(localizeStatusesForDisplay(data), null, 2);
         }
 
         function finish(data) {
             activeScanId = null;
-            startButton.disabled = false;
-            cancelButton.disabled = true;
+            setButtonDisabled(startButton, false);
+            setButtonDisabled(cancelButton, true);
             updateProgress(data);
             show(data);
         }
@@ -130,9 +202,10 @@
         startButton.addEventListener('click', function () {
             cancelled = false;
             activeScanId = null;
-            startButton.disabled = true;
-            cancelButton.disabled = false;
-            output.textContent = 'Starting...';
+            setButtonDisabled(startButton, true);
+            setButtonDisabled(cancelButton, true);
+            setText(statusNode, 'Запуск');
+            output.textContent = 'Запуск...';
 
             if (progressBar) {
                 progressBar.style.width = '0';
@@ -145,6 +218,7 @@
                 }
 
                 activeScanId = response.scan_id;
+                setButtonDisabled(cancelButton, false);
                 updateProgress(response);
                 show(response);
                 step();
