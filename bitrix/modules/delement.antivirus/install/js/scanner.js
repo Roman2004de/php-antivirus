@@ -78,8 +78,9 @@
             var total = parseInt(data.total_files_estimated || 0, 10);
             var processed = parseInt(data.processed_files || 0, 10);
             var percent = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
+            var status = data.status || (data.success === false ? 'failed' : 'unknown');
 
-            setText(statusNode, data.status || 'unknown');
+            setText(statusNode, status);
             setText(processedNode, processed);
             setText(totalNode, total);
             setText(foundNode, data.found_total || 0);

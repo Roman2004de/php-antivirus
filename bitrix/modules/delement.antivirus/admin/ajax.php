@@ -21,25 +21,38 @@ $sendJson = static function (array $payload, $status = 200) {
     die();
 };
 
-if (!$USER->IsAuthorized() || $APPLICATION->GetGroupRight($moduleId) < 'W') {
-    $sendJson([
+$sendError = static function ($error, $status = 500, Throwable $exception = null) use ($sendJson) {
+    $payload = [
         'success' => false,
-        'error' => 'access_denied',
-    ], 403);
+        'status' => 'failed',
+        'error' => $error,
+        'processed_files' => 0,
+        'total_files_estimated' => 0,
+        'found_total' => 0,
+        'runtime_errors' => 1,
+        'current_file' => '',
+    ];
+
+    if ($exception !== null) {
+        $payload['message'] = $exception->getMessage();
+        $payload['exception'] = get_class($exception);
+        $payload['file'] = $exception->getFile();
+        $payload['line'] = $exception->getLine();
+    }
+
+    $sendJson($payload, $status);
+};
+
+if (!$USER->IsAuthorized() || $APPLICATION->GetGroupRight($moduleId) < 'W') {
+    $sendError('access_denied', 403);
 }
 
 if (!check_bitrix_sessid()) {
-    $sendJson([
-        'success' => false,
-        'error' => 'bad_sessid',
-    ], 403);
+    $sendError('bad_sessid', 403);
 }
 
 if (!Loader::includeModule($moduleId)) {
-    $sendJson([
-        'success' => false,
-        'error' => 'module_not_loaded',
-    ], 500);
+    $sendError('module_not_loaded', 500);
 }
 
 $action = isset($_REQUEST['action']) ? (string)$_REQUEST['action'] : '';
@@ -49,18 +62,9 @@ try {
     $controller = new AjaxController($moduleId, (string)$_SERVER['DOCUMENT_ROOT']);
     $sendJson($controller->handle($action, $_REQUEST, $userId));
 } catch (InvalidArgumentException $exception) {
-    $sendJson([
-        'success' => false,
-        'error' => $exception->getMessage(),
-    ], 400);
+    $sendError($exception->getMessage(), 400, $exception);
 } catch (RuntimeException $exception) {
-    $sendJson([
-        'success' => false,
-        'error' => $exception->getMessage(),
-    ], 500);
+    $sendError($exception->getMessage(), 500, $exception);
 } catch (Throwable $exception) {
-    $sendJson([
-        'success' => false,
-        'error' => 'internal_error',
-    ], 500);
+    $sendError('internal_error', 500, $exception);
 }
