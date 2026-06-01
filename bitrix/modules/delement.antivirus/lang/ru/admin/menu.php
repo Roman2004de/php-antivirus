@@ -1,6 +1,6 @@
 <?php
 
-$MESS['DELEMENT_ANTIVIRUS_MENU_TEXT'] = 'Антивирус';
+$MESS['DELEMENT_ANTIVIRUS_MENU_TEXT'] = 'Интеллектуальный поиск вирусов и троянов';
 $MESS['DELEMENT_ANTIVIRUS_MENU_TITLE'] = 'Интеллектуальный поиск вирусов и троянов';
 $MESS['DELEMENT_ANTIVIRUS_MENU_SCAN'] = 'Сканирование';
 $MESS['DELEMENT_ANTIVIRUS_MENU_SCAN_TITLE'] = 'Запуск антивирусного сканирования';

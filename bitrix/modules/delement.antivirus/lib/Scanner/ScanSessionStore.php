@@ -3,6 +3,7 @@
 namespace Delement\Antivirus\Scanner;
 
 use Delement\Antivirus\Config\ScanConfig;
+use Delement\Antivirus\Storage\RuntimeDirectory;
 use RuntimeException;
 
 class ScanSessionStore
@@ -12,7 +13,7 @@ class ScanSessionStore
     public function __construct(string $moduleRoot = null)
     {
         $moduleRoot = $moduleRoot ?: dirname(__DIR__, 2);
-        $this->sessionsPath = $moduleRoot . '/var/sessions';
+        $this->sessionsPath = RuntimeDirectory::resolve($moduleRoot, 'sessions');
     }
 
     public function create(ScanConfig $config, array $files, int $createdBy = 0): array
@@ -75,7 +76,7 @@ class ScanSessionStore
         $path = $this->getSessionPath((string)$session['scan_id']);
 
         if (file_put_contents($path, $json, LOCK_EX) === false) {
-            throw new RuntimeException('Cannot save scan session');
+            throw new RuntimeException('Cannot save scan session to ' . $path);
         }
     }
 
@@ -98,10 +99,4 @@ class ScanSessionStore
         return $scanId;
     }
 
-    private function ensureDirectory(string $path): void
-    {
-        if (!is_dir($path) && !mkdir($path, 0755, true) && !is_dir($path)) {
-            throw new RuntimeException('Cannot create directory: ' . $path);
-        }
-    }
 }

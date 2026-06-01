@@ -128,8 +128,8 @@ Acceptance:
 - создан `Delement\Antivirus\Admin\AjaxController`;
 - создан `Delement\Antivirus\Scanner\ScanSessionStore`;
 - реализованы actions: `ping`, `start_scan`, `scan_step`, `get_status`, `cancel_scan`;
-- scan sessions сохраняются в `var/sessions`;
-- JSON reports сохраняются в `var/reports`;
+- scan sessions сохраняются в writable runtime-каталог `/bitrix/tmp/delement.antivirus/sessions`;
+- JSON reports сохраняются в writable runtime-каталог `/bitrix/tmp/delement.antivirus/reports`;
 - UI страницы сканирования показывает прогресс, статус, счетчики и текущий файл;
 - JS крутит `scan_step` до `finished` или `cancelled`.
 
@@ -167,7 +167,7 @@ Acceptance:
 
 Acceptance:
 
-- [x] результаты сохраняются в `var/reports`;
+- [x] результаты сохраняются в writable runtime-каталог;
 - [x] список отчетов доступен в админке;
 - [x] отчет открывается по `scan_id`;
 - [x] экспорт JSON доступен;

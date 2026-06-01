@@ -15,7 +15,7 @@ class JsonReportWriter
         }
 
         if (file_put_contents($path, $json, LOCK_EX) === false) {
-            throw new RuntimeException('Cannot save scan report');
+            throw new RuntimeException('Cannot save scan report to ' . $path);
         }
     }
 

@@ -27,8 +27,8 @@
 - Базовые правила детекта: PHP, JavaScript, HTML, Bitrix-specific.
 - AJAX actions: `ping`, `start_scan`, `scan_step`, `get_status`, `cancel_scan`.
 - Пошаговое сканирование через AJAX.
-- Файловые scan sessions в `var/sessions`.
-- JSON reports в `var/reports`.
+- Файловые scan sessions в runtime-каталоге `/bitrix/tmp/delement.antivirus/sessions`.
+- JSON reports в runtime-каталоге `/bitrix/tmp/delement.antivirus/reports`.
 - Results storage через `Delement\Antivirus\Report\ReportManager`.
 - Базовая страница просмотра отчетов в `admin/results.php`.
 - Smoke-test engine без ядра Bitrix.

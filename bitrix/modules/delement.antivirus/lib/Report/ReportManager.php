@@ -2,6 +2,7 @@
 
 namespace Delement\Antivirus\Report;
 
+use Delement\Antivirus\Storage\RuntimeDirectory;
 use RuntimeException;
 
 class ReportManager
@@ -12,14 +13,12 @@ class ReportManager
     public function __construct(string $moduleRoot = null, JsonReportWriter $writer = null)
     {
         $moduleRoot = $moduleRoot ?: dirname(__DIR__, 2);
-        $this->reportsPath = $moduleRoot . '/var/reports';
+        $this->reportsPath = RuntimeDirectory::resolve($moduleRoot, 'reports');
         $this->writer = $writer ?: new JsonReportWriter();
     }
 
     public function saveFromSession(array $session): string
     {
-        $this->ensureDirectory($this->reportsPath);
-
         if (empty($session['scan_id'])) {
             throw new RuntimeException('Scan session id is empty');
         }
@@ -156,10 +155,4 @@ class ReportManager
         return $scanId;
     }
 
-    private function ensureDirectory(string $path): void
-    {
-        if (!is_dir($path) && !mkdir($path, 0755, true) && !is_dir($path)) {
-            throw new RuntimeException('Cannot create directory: ' . $path);
-        }
-    }
 }

@@ -3,6 +3,7 @@
 use Delement\Antivirus\Report\JsonReportWriter;
 use Delement\Antivirus\Report\ReportManager;
 
+require_once __DIR__ . '/../lib/Storage/RuntimeDirectory.php';
 require_once __DIR__ . '/../lib/Report/JsonReportWriter.php';
 require_once __DIR__ . '/../lib/Report/ReportManager.php';
 
@@ -54,7 +55,11 @@ $loaded = $manager->load($session['scan_id']);
 $reports = $manager->listReports();
 
 @unlink($path);
+@unlink($reportsPath . DIRECTORY_SEPARATOR . '.htaccess');
+@unlink($reportsPath . DIRECTORY_SEPARATOR . 'index.php');
 @rmdir($reportsPath);
+@unlink(dirname($reportsPath) . DIRECTORY_SEPARATOR . '.htaccess');
+@unlink(dirname($reportsPath) . DIRECTORY_SEPARATOR . 'index.php');
 @rmdir(dirname($reportsPath));
 @rmdir($moduleRoot);
 

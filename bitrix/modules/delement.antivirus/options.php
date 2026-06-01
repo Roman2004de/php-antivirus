@@ -277,7 +277,9 @@ $tabControl->Begin();
     <tr>
         <td colspan="2">
             <?php echo BeginNote(); ?>
-            <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_NOTE'); ?>
+            <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_NOTE', [
+                '#DOCUMENT_ROOT_VALUE#' => htmlspecialcharsbx((string)$_SERVER['DOCUMENT_ROOT']),
+            ]); ?>
             <br>
             <a href="/bitrix/admin/delement_antivirus_scan.php?lang=<?php echo LANGUAGE_ID; ?>">
                 <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_OPEN_SCAN'); ?>
