@@ -23,6 +23,34 @@ if (!Loader::includeModule($moduleId)) {
 
 $APPLICATION->SetTitle(Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_TITLE'));
 
+if (!function_exists('delement_antivirus_results_status_label')) {
+    function delement_antivirus_results_status_label($status): string
+    {
+        $status = trim((string)$status);
+        $statusKey = strtolower($status);
+        $labels = [
+            'idle' => 'Ожидание',
+            'iddle' => 'Ожидание',
+            'created' => 'Создано',
+            'running' => 'Сканирование',
+            'progress' => 'Сканирование',
+            'finished' => 'Завершено',
+            'cancelled' => 'Остановлено',
+            'canceled' => 'Остановлено',
+            'failed' => 'Ошибка',
+            'error' => 'Ошибка',
+            'skipped' => 'Пропущено',
+            'clean' => 'Чисто',
+            'low_risk' => 'Низкий риск',
+            'suspicious' => 'Подозрительно',
+            'malicious' => 'Опасно',
+            'unknown' => 'Неизвестно',
+        ];
+
+        return $labels[$statusKey] ?? ($status !== '' ? $status : $labels['unknown']);
+    }
+}
+
 $reportManager = new ReportManager();
 $scanId = isset($_GET['scan_id']) ? (string)$_GET['scan_id'] : '';
 $report = null;
@@ -51,6 +79,22 @@ $reports = $reportManager->listReports(100);
 
 require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_admin_after.php';
 
+?>
+<style>
+    .delement-antivirus-results-summary,
+    .delement-antivirus-results-summary td,
+    .delement-antivirus-results-summary .adm-detail-content-cell-l,
+    .delement-antivirus-results-summary .adm-detail-content-cell-r {
+        text-align: left !important;
+    }
+
+    .delement-antivirus-results-summary .adm-detail-content-cell-l,
+    .delement-antivirus-results-summary .adm-detail-content-cell-r {
+        vertical-align: top !important;
+    }
+</style>
+<?php
+
 if ($reportError !== '') {
     CAdminMessage::ShowMessage([
         'MESSAGE' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_REPORT_LOAD_ERROR'),
@@ -68,6 +112,7 @@ if (empty($reports)) {
         <thead>
         <tr class="adm-list-table-header">
             <td class="adm-list-table-cell"><div class="adm-list-table-cell-inner"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_SCAN_ID'); ?></div></td>
+            <td class="adm-list-table-cell"><div class="adm-list-table-cell-inner"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_STARTED_AT'); ?></div></td>
             <td class="adm-list-table-cell"><div class="adm-list-table-cell-inner"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_STATUS'); ?></div></td>
             <td class="adm-list-table-cell"><div class="adm-list-table-cell-inner"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_FINISHED_AT'); ?></div></td>
             <td class="adm-list-table-cell"><div class="adm-list-table-cell-inner"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_PROCESSED'); ?></div></td>
@@ -85,7 +130,8 @@ if (empty($reports)) {
                         <?php echo htmlspecialcharsbx($rowScanId); ?>
                     </a>
                 </td>
-                <td class="adm-list-table-cell"><?php echo htmlspecialcharsbx((string)($item['status'] ?? '')); ?></td>
+                <td class="adm-list-table-cell"><?php echo htmlspecialcharsbx((string)($item['started_at'] ?? '')); ?></td>
+                <td class="adm-list-table-cell"><?php echo htmlspecialcharsbx(delement_antivirus_results_status_label($item['status'] ?? '')); ?></td>
                 <td class="adm-list-table-cell"><?php echo htmlspecialcharsbx((string)($item['finished_at'] ?? '')); ?></td>
                 <td class="adm-list-table-cell"><?php echo (int)($item['processed_files'] ?? 0); ?> / <?php echo (int)($item['total_files_estimated'] ?? 0); ?></td>
                 <td class="adm-list-table-cell"><?php echo (int)($item['found_total'] ?? 0); ?></td>
@@ -108,7 +154,7 @@ if (is_array($report)) {
             <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_EXPORT_JSON'); ?>
         </a>
     </p>
-    <table class="adm-detail-content-table edit-table">
+    <table class="adm-detail-content-table edit-table delement-antivirus-results-summary">
         <tbody>
         <tr>
             <td width="40%" class="adm-detail-content-cell-l"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_SCAN_ID'); ?></td>
@@ -152,7 +198,7 @@ if (is_array($report)) {
                 ?>
                 <tr class="adm-list-table-row">
                     <td class="adm-list-table-cell"><?php echo htmlspecialcharsbx((string)($result['file_path'] ?? '')); ?></td>
-                    <td class="adm-list-table-cell"><?php echo htmlspecialcharsbx((string)($result['status'] ?? '')); ?></td>
+                    <td class="adm-list-table-cell"><?php echo htmlspecialcharsbx(delement_antivirus_results_status_label($result['status'] ?? '')); ?></td>
                     <td class="adm-list-table-cell"><?php echo (int)($result['score'] ?? 0); ?></td>
                     <td class="adm-list-table-cell"><?php echo htmlspecialcharsbx((string)($finding['severity'] ?? '')); ?></td>
                     <td class="adm-list-table-cell"><?php echo htmlspecialcharsbx((string)($finding['signature_id'] ?? '')); ?></td>
