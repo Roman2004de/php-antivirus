@@ -5,6 +5,7 @@ namespace Delement\Antivirus\Admin;
 use Bitrix\Main\Config\Option;
 use Delement\Antivirus\Config\ScanConfig;
 use Delement\Antivirus\File\FileCollector;
+use Delement\Antivirus\Report\ReportManager;
 use Delement\Antivirus\Scanner\Scanner;
 use Delement\Antivirus\Scanner\ScanSessionStore;
 use InvalidArgumentException;
@@ -16,12 +17,14 @@ class AjaxController
     private $moduleId;
     private $documentRoot;
     private $store;
+    private $reportManager;
 
-    public function __construct(string $moduleId, string $documentRoot, ScanSessionStore $store = null)
+    public function __construct(string $moduleId, string $documentRoot, ScanSessionStore $store = null, ReportManager $reportManager = null)
     {
         $this->moduleId = $moduleId;
         $this->documentRoot = rtrim($documentRoot, '/\\');
         $this->store = $store ?: new ScanSessionStore();
+        $this->reportManager = $reportManager ?: new ReportManager();
     }
 
     public function handle(string $action, array $request, int $userId = 0): array
@@ -137,7 +140,7 @@ class AjaxController
             $session['status'] = 'finished';
             $session['finished_at'] = date('c');
             $session['current_file'] = '';
-            $session['report_path'] = $this->store->saveReport($session);
+            $session['report_path'] = $this->reportManager->saveFromSession($session);
         }
 
         $this->store->save($session);

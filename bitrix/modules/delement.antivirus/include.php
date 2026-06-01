@@ -25,6 +25,8 @@ Loader::registerAutoLoadClasses(
         'Delement\\Antivirus\\File\\FileFilter' => 'lib/File/FileFilter.php',
         'Delement\\Antivirus\\File\\FileReader' => 'lib/File/FileReader.php',
         'Delement\\Antivirus\\File\\FileTypeDetector' => 'lib/File/FileTypeDetector.php',
+        'Delement\\Antivirus\\Report\\JsonReportWriter' => 'lib/Report/JsonReportWriter.php',
+        'Delement\\Antivirus\\Report\\ReportManager' => 'lib/Report/ReportManager.php',
         'Delement\\Antivirus\\Scanner\\Scanner' => 'lib/Scanner/Scanner.php',
         'Delement\\Antivirus\\Scanner\\ScanResult' => 'lib/Scanner/ScanResult.php',
         'Delement\\Antivirus\\Scanner\\ScanSessionStore' => 'lib/Scanner/ScanSessionStore.php',

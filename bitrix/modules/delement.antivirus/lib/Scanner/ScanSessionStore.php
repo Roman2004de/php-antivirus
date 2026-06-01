@@ -8,13 +8,11 @@ use RuntimeException;
 class ScanSessionStore
 {
     private $sessionsPath;
-    private $reportsPath;
 
     public function __construct(string $moduleRoot = null)
     {
         $moduleRoot = $moduleRoot ?: dirname(__DIR__, 2);
         $this->sessionsPath = $moduleRoot . '/var/sessions';
-        $this->reportsPath = $moduleRoot . '/var/reports';
     }
 
     public function create(ScanConfig $config, array $files, int $createdBy = 0): array
@@ -79,41 +77,6 @@ class ScanSessionStore
         if (file_put_contents($path, $json, LOCK_EX) === false) {
             throw new RuntimeException('Cannot save scan session');
         }
-    }
-
-    public function saveReport(array $session): string
-    {
-        $this->ensureDirectory($this->reportsPath);
-
-        if (empty($session['scan_id'])) {
-            throw new RuntimeException('Scan session id is empty');
-        }
-
-        $report = [
-            'scan_id' => $session['scan_id'],
-            'status' => $session['status'],
-            'started_at' => $session['started_at'],
-            'finished_at' => $session['finished_at'],
-            'processed_files' => $session['processed_files'],
-            'total_files_estimated' => $session['total_files_estimated'],
-            'found_total' => $session['found_total'],
-            'runtime_errors' => $session['runtime_errors'],
-            'results' => $session['results'],
-        ];
-
-        $json = json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-
-        if ($json === false) {
-            throw new RuntimeException('Cannot encode scan report');
-        }
-
-        $path = $this->reportsPath . '/' . $this->sanitizeScanId((string)$session['scan_id']) . '.json';
-
-        if (file_put_contents($path, $json, LOCK_EX) === false) {
-            throw new RuntimeException('Cannot save scan report');
-        }
-
-        return $path;
     }
 
     private function createScanId(): string

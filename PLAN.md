@@ -142,28 +142,37 @@ Acceptance:
 - [ ] сценарий проверен в браузере на живом Bitrix-стенде;
 - [ ] нужно добавить обработку больших объемов результатов без раздувания session JSON.
 
-### [ ] Этап 5. Results UI
+### [ ] Этап 5. Results storage и Results UI
 
 Цель: показать результаты сканирования в админке.
 
+Сделано:
+
+- создан `Delement\Antivirus\Report\ReportManager`;
+- создан `Delement\Antivirus\Report\JsonReportWriter`;
+- сохранение report вынесено из `ScanSessionStore`;
+- report получил версионированный JSON-формат: `format`, `format_version`, `summary`, `config`, `results`;
+- добавлен список последних отчетов в `admin/results.php`;
+- добавлен просмотр деталей отчета по `scan_id`;
+- добавлен экспорт JSON;
+- добавлен `tests/report_storage_smoke.php`.
+
 Задачи:
 
-- реализовать `admin/results.php`;
-- читать reports из `var/reports`;
-- сделать список последних сканов;
-- сделать таблицу findings;
+- улучшить таблицу findings;
 - добавить фильтры по status, severity, category, signature;
 - добавить просмотр деталей finding;
-- добавить экспорт JSON;
 - экранировать excerpts и пути;
 - подготовить переход из scan page на results page.
 
 Acceptance:
 
-- [ ] результаты доступны после скана;
-- [ ] видно file, score, severity, category, signature, excerpt;
+- [x] результаты сохраняются в `var/reports`;
+- [x] список отчетов доступен в админке;
+- [x] отчет открывается по `scan_id`;
+- [x] экспорт JSON доступен;
+- [x] видно file, score, severity, category, signature, excerpt;
 - [ ] можно фильтровать malicious/suspicious;
-- [ ] экспорт JSON доступен;
 - [ ] большие фрагменты файлов не выводятся без escaping.
 
 ### [ ] Этап 6. Quarantine

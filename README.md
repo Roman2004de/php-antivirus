@@ -29,6 +29,8 @@
 - Пошаговое сканирование через AJAX.
 - Файловые scan sessions в `var/sessions`.
 - JSON reports в `var/reports`.
+- Results storage через `Delement\Antivirus\Report\ReportManager`.
+- Базовая страница просмотра отчетов в `admin/results.php`.
 - Smoke-test engine без ядра Bitrix.
 
 ## Структура
@@ -150,6 +152,12 @@ Smoke-test engine без Bitrix:
 
 ```bash
 php bitrix/modules/delement.antivirus/tests/engine_smoke.php
+```
+
+Smoke-test хранилища отчетов:
+
+```bash
+php bitrix/modules/delement.antivirus/tests/report_storage_smoke.php
 ```
 
 ## Важные ограничения
