@@ -78,6 +78,21 @@ class ReportManager
         return is_file($this->getReportPath($scanId));
     }
 
+    public function deleteReport(string $scanId): bool
+    {
+        $path = $this->getReportPath($scanId);
+
+        if (!is_file($path)) {
+            return false;
+        }
+
+        if (!unlink($path)) {
+            throw new RuntimeException('Cannot delete report');
+        }
+
+        return true;
+    }
+
     private function buildReport(array $session): array
     {
         $results = isset($session['results']) && is_array($session['results']) ? $session['results'] : [];

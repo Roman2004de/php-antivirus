@@ -59,13 +59,55 @@ class WhitelistManager
 
     public function removeRule(string $id): void
     {
+        $this->deactivateRule($id);
+    }
+
+    public function activateRule(string $id): void
+    {
+        $this->setRuleActive($id, true);
+    }
+
+    public function deactivateRule(string $id): void
+    {
+        $this->setRuleActive($id, false);
+    }
+
+    public function deleteRule(string $id): void
+    {
+        $rules = $this->listRules();
+        $filteredRules = [];
+        $found = false;
+
+        foreach ($rules as $rule) {
+            if ((string)($rule['id'] ?? '') === $id) {
+                $found = true;
+                continue;
+            }
+
+            $filteredRules[] = $rule;
+        }
+
+        if (!$found) {
+            throw new RuntimeException('whitelist_rule_not_found');
+        }
+
+        $this->saveRules($filteredRules);
+    }
+
+    private function setRuleActive(string $id, bool $active): void
+    {
         $rules = $this->listRules();
         $found = false;
 
         foreach ($rules as &$rule) {
             if ((string)($rule['id'] ?? '') === $id) {
-                $rule['active'] = false;
-                $rule['disabled_at'] = date('c');
+                $rule['active'] = $active;
+                if ($active) {
+                    unset($rule['disabled_at']);
+                    $rule['activated_at'] = date('c');
+                } else {
+                    $rule['disabled_at'] = date('c');
+                }
                 $found = true;
                 break;
             }

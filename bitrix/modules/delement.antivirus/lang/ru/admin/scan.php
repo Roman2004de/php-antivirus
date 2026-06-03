@@ -3,7 +3,7 @@
 $MESS['DELEMENT_ANTIVIRUS_SCAN_TITLE'] = 'Сканирование';
 $MESS['DELEMENT_ANTIVIRUS_SCAN_TAB'] = 'Сканирование';
 $MESS['DELEMENT_ANTIVIRUS_SCAN_TAB_TITLE'] = 'Пошаговое сканирование файлов сайта';
-$MESS['DELEMENT_ANTIVIRUS_SCAN_MODULE_NAME'] = 'Интеллектуальный поиск вирусов и троянов';
+$MESS['DELEMENT_ANTIVIRUS_SCAN_MODULE_NAME'] = 'Антивирус: поиск вирусов и троянов';
 $MESS['DELEMENT_ANTIVIRUS_SCAN_ENGINE_TEXT'] = 'Сканирование выполняется порциями через AJAX-запросы и модульный движок сканирования.';
 $MESS['DELEMENT_ANTIVIRUS_SCAN_START'] = 'Запустить сканирование';
 $MESS['DELEMENT_ANTIVIRUS_SCAN_CANCEL'] = 'Остановить';

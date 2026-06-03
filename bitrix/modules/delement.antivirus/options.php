@@ -237,6 +237,21 @@ $tabControl->Begin();
         </td>
     </tr>
     <tr>
+        <td class="adm-detail-content-cell-l"></td>
+        <td class="adm-detail-content-cell-r">
+            <?php echo BeginNote(); ?>
+            <ul style="margin:0 0 8px 18px;padding:0;">
+                <li><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ACTION_LEGEND_REPORT'); ?></li>
+                <li><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ACTION_LEGEND_QUARANTINE'); ?></li>
+                <li><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ACTION_LEGEND_DELETE'); ?></li>
+            </ul>
+            <div style="color:#b00020;font-weight:bold;">
+                <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ACTION_DANGER_WARNING'); ?>
+            </div>
+            <?php echo EndNote(); ?>
+        </td>
+    </tr>
+    <tr>
         <td class="adm-detail-content-cell-l">
             <label for="delement_antivirus_dry_run"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_DRY_RUN'); ?></label>
         </td>

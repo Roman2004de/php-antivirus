@@ -35,6 +35,11 @@ return [
             'url' => 'delement_antivirus_results.php?lang=' . LANGUAGE_ID,
         ],
         [
+            'text' => Loc::getMessage('DELEMENT_ANTIVIRUS_MENU_WHITELIST'),
+            'title' => Loc::getMessage('DELEMENT_ANTIVIRUS_MENU_WHITELIST_TITLE'),
+            'url' => 'delement_antivirus_whitelist.php?lang=' . LANGUAGE_ID,
+        ],
+        [
             'text' => Loc::getMessage('DELEMENT_ANTIVIRUS_MENU_QUARANTINE'),
             'title' => Loc::getMessage('DELEMENT_ANTIVIRUS_MENU_QUARANTINE_TITLE'),
             'url' => 'delement_antivirus_quarantine.php?lang=' . LANGUAGE_ID,

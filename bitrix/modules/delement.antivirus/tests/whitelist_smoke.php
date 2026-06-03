@@ -60,7 +60,7 @@ $result = [
 ];
 
 $manager = new WhitelistManager($moduleRoot);
-$manager->addRule(WhitelistManager::TYPE_FILE_SIGNATURE, [
+$fileSignatureRule = $manager->addRule(WhitelistManager::TYPE_FILE_SIGNATURE, [
     'path' => $filePath,
     'hash' => $fileHash,
     'signature_id' => 'signature_one',
@@ -74,7 +74,7 @@ if (($filtered['status'] ?? '') !== 'low_risk' || ($filtered['score'] ?? 0) !== 
     exit(1);
 }
 
-$manager->addRule(WhitelistManager::TYPE_PATH_REGEX, [
+$regexRule = $manager->addRule(WhitelistManager::TYPE_PATH_REGEX, [
     'pattern' => '#/upload/.*\.php$#',
 ]);
 
@@ -97,11 +97,40 @@ try {
     // Expected.
 }
 
+$manager->deactivateRule((string)$regexRule['id']);
+$afterDeactivate = $manager->filterResult($result, $thresholds);
+
+if (($afterDeactivate['status'] ?? '') !== 'low_risk' || count($afterDeactivate['findings'] ?? []) !== 1) {
+    fwrite(STDERR, json_encode($afterDeactivate, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL);
+    delement_antivirus_whitelist_remove_tree($moduleRoot);
+    exit(1);
+}
+
+$manager->activateRule((string)$regexRule['id']);
+$afterActivate = $manager->filterResult($result, $thresholds);
+
+if (($afterActivate['status'] ?? '') !== 'clean' || count($afterActivate['findings'] ?? []) !== 0) {
+    fwrite(STDERR, json_encode($afterActivate, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL);
+    delement_antivirus_whitelist_remove_tree($moduleRoot);
+    exit(1);
+}
+
+$manager->deleteRule((string)$fileSignatureRule['id']);
+$rulesAfterDelete = $manager->listRules();
+
+if (count($rulesAfterDelete) !== 1) {
+    fwrite(STDERR, json_encode($rulesAfterDelete, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL);
+    delement_antivirus_whitelist_remove_tree($moduleRoot);
+    exit(1);
+}
+
 echo json_encode(
     [
         'partial_status' => $filtered['status'],
         'full_status' => $fullyFiltered['status'],
-        'rules' => count($manager->listRules()),
+        'after_deactivate_status' => $afterDeactivate['status'],
+        'after_activate_status' => $afterActivate['status'],
+        'rules' => count($rulesAfterDelete),
     ],
     JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
 ) . PHP_EOL;

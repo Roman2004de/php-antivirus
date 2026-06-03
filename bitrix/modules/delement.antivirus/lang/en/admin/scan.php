@@ -3,7 +3,7 @@
 $MESS['DELEMENT_ANTIVIRUS_SCAN_TITLE'] = 'Scanning';
 $MESS['DELEMENT_ANTIVIRUS_SCAN_TAB'] = 'Scanning';
 $MESS['DELEMENT_ANTIVIRUS_SCAN_TAB_TITLE'] = 'Step-by-step site file scanning';
-$MESS['DELEMENT_ANTIVIRUS_SCAN_MODULE_NAME'] = 'Intelligent virus and trojan detection';
+$MESS['DELEMENT_ANTIVIRUS_SCAN_MODULE_NAME'] = 'Antivirus: virus and trojan detection';
 $MESS['DELEMENT_ANTIVIRUS_SCAN_ENGINE_TEXT'] = 'Scanning runs in batches through AJAX requests and a modular scanner engine.';
 $MESS['DELEMENT_ANTIVIRUS_SCAN_START'] = 'Start scan';
 $MESS['DELEMENT_ANTIVIRUS_SCAN_CANCEL'] = 'Stop';

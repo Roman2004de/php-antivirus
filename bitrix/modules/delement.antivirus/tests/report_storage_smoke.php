@@ -53,8 +53,9 @@ $session = [
 $path = $manager->saveFromSession($session);
 $loaded = $manager->load($session['scan_id']);
 $reports = $manager->listReports();
+$deleted = $manager->deleteReport($session['scan_id']);
+$reportsAfterDelete = $manager->listReports();
 
-@unlink($path);
 @unlink($reportsPath . DIRECTORY_SEPARATOR . '.htaccess');
 @unlink($reportsPath . DIRECTORY_SEPARATOR . 'index.php');
 @rmdir($reportsPath);
@@ -63,8 +64,13 @@ $reports = $manager->listReports();
 @rmdir(dirname($reportsPath));
 @rmdir($moduleRoot);
 
-if (($loaded['summary']['findings_total'] ?? 0) !== 1 || count($reports) !== 1) {
-    fwrite(STDERR, json_encode(['loaded' => $loaded, 'reports' => $reports], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL);
+if (($loaded['summary']['findings_total'] ?? 0) !== 1 || count($reports) !== 1 || !$deleted || count($reportsAfterDelete) !== 0) {
+    fwrite(STDERR, json_encode([
+        'loaded' => $loaded,
+        'reports' => $reports,
+        'deleted' => $deleted,
+        'reports_after_delete' => $reportsAfterDelete,
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL);
     exit(1);
 }
 
