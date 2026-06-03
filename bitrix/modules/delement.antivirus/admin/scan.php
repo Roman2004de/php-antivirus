@@ -20,6 +20,29 @@ Asset::getInstance()->addJs('/bitrix/js/' . $moduleId . '/scanner.js');
 
 require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_admin_after.php';
 
+$scannerMessages = [
+    'starting' => Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_JS_STARTING'),
+    'request_failed' => Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_JS_REQUEST_FAILED'),
+    'statuses' => [
+        'idle' => Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS_IDLE'),
+        'iddle' => Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS_IDLE'),
+        'created' => Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS_CREATED'),
+        'running' => Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS_RUNNING'),
+        'progress' => Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS_RUNNING'),
+        'finished' => Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS_FINISHED'),
+        'cancelled' => Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS_CANCELLED'),
+        'canceled' => Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS_CANCELLED'),
+        'failed' => Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS_FAILED'),
+        'error' => Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS_FAILED'),
+        'skipped' => Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS_SKIPPED'),
+        'clean' => Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS_CLEAN'),
+        'low_risk' => Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS_LOW_RISK'),
+        'suspicious' => Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS_SUSPICIOUS'),
+        'malicious' => Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS_MALICIOUS'),
+        'unknown' => Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS_UNKNOWN'),
+    ],
+];
+
 ?>
 <style>
     .delement-antivirus-panel {
@@ -105,6 +128,9 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_ad
         pointer-events: none !important;
     }
 </style>
+<script>
+    window.DelementAntivirusScannerMessages = <?php echo json_encode($scannerMessages, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+</script>
 <?php
 
 $tabControl = new CAdminTabControl(
@@ -144,7 +170,7 @@ $tabControl->Begin();
                     <div class="delement-antivirus-progress-bar" id="delement-antivirus-progress-bar"></div>
                 </div>
                 <div class="delement-antivirus-stats">
-                    <span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS'); ?>: <b id="delement-antivirus-status">Ожидание</b></span>
+                    <span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS'); ?>: <b id="delement-antivirus-status"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS_IDLE'); ?></b></span>
                     <span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_PROCESSED'); ?>: <b id="delement-antivirus-processed">0</b>/<b id="delement-antivirus-total">0</b></span>
                     <span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_FOUND'); ?>: <b id="delement-antivirus-found">0</b></span>
                     <span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_ERRORS'); ?>: <b id="delement-antivirus-errors">0</b></span>

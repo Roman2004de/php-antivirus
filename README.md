@@ -11,7 +11,7 @@
 - Версия: `0.0.1`
 - Партнер: `Цифровой Элемент`
 - Сайт партнера: `https://d-element.ru`
-- Язык интерфейса: русский
+- Язык интерфейса: русский и английский
 - Минимальная цель совместимости: PHP 7.4+, с обязательной проверкой на актуальной версии PHP, поддерживаемой Bitrix
 - Composer на первом этапе не используется
 
@@ -31,6 +31,11 @@
 - JSON reports в runtime-каталоге `/bitrix/tmp/delement.antivirus/reports`.
 - Results storage через `Delement\Antivirus\Report\ReportManager`.
 - Базовая страница просмотра отчетов в `admin/results.php`.
+- Карантин через `Delement\Antivirus\Quarantine\QuarantineManager`.
+- Страница управления карантином в `admin/quarantine.php`.
+- Белый список через `Delement\Antivirus\Whitelist\WhitelistManager`.
+- Действия добавления whitelist-правил из `admin/results.php`.
+- RU/EN локализация в `lang/ru` и `lang/en`.
 - Smoke-test engine без ядра Bitrix.
 
 ## Структура
@@ -61,14 +66,23 @@ bitrix/modules/delement.antivirus/
     Config/
     Detection/
     File/
+    Quarantine/
+    Report/
     Rules/
     Scanner/
+    Storage/
+    Whitelist/
 
   lang/
+    en/
     ru/
 
   tests/
     engine_smoke.php
+    quarantine_smoke.php
+    report_storage_smoke.php
+    session_storage_smoke.php
+    whitelist_smoke.php
 
   var/
     reports/
@@ -108,6 +122,26 @@ bitrix/modules/delement.antivirus/
 - список исключений.
 
 Пока destructive actions не завершены, удаление без `dry-run` не разрешается сохранять.
+
+## Карантин
+
+При действии `quarantine` и выключенном `dry-run` найденный файл переносится в защищенный каталог карантина. Payload хранится как `payload.bin`, а рядом создается `meta.json` с исходным путем, SHA256, scan id и деталями срабатывания.
+
+Страница `/bitrix/admin/delement_antivirus_quarantine.php` позволяет просматривать записи, восстанавливать файл и удалять payload из карантина. Восстановление не перезаписывает существующий файл.
+
+## Белый список
+
+Whitelist применяется во время сканирования до выполнения действий `report` или `quarantine`. Если правило исключает все findings файла, результат пересчитывается в `clean`, и файл не попадает в карантин.
+
+Поддерживаются правила:
+
+- точный путь файла;
+- regex пути;
+- SHA256-хэш файла;
+- signature id;
+- конкретная пара `file + signature id`.
+
+Правила добавляются из страницы результатов сканирования. Пользовательские regex валидируются перед сохранением.
 
 ## AJAX API
 
@@ -160,6 +194,18 @@ Smoke-test хранилища отчетов:
 php bitrix/modules/delement.antivirus/tests/report_storage_smoke.php
 ```
 
+Smoke-test карантина:
+
+```bash
+php bitrix/modules/delement.antivirus/tests/quarantine_smoke.php
+```
+
+Smoke-test whitelist:
+
+```bash
+php bitrix/modules/delement.antivirus/tests/whitelist_smoke.php
+```
+
 ## Важные ограничения
 
 - Это сигнатурный и rule-based scanner, а не полноценная EDR/AV/WAF-система.
@@ -169,4 +215,4 @@ php bitrix/modules/delement.antivirus/tests/report_storage_smoke.php
 
 ## Следующий этап
 
-Ближайшая задача: реализовать полноценное отображение результатов сканирования в `admin/results.php`, фильтры и экспорт JSON из сохраненных reports.
+Ближайшие задачи: фильтры результатов, cron runner, отдельная страница управления whitelist и audit log действий карантина.

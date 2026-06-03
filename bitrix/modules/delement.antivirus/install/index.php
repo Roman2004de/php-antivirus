@@ -28,9 +28,9 @@ class delement_antivirus extends CModule
 
     public function DoInstall()
     {
-        global $APPLICATION;
+        global $APPLICATION, $USER;
 
-        if (!check_bitrix_sessid()) {
+        if (!is_object($USER) || !$USER->IsAdmin() || !check_bitrix_sessid()) {
             return false;
         }
 
@@ -47,9 +47,9 @@ class delement_antivirus extends CModule
 
     public function DoUninstall()
     {
-        global $APPLICATION;
+        global $APPLICATION, $USER;
 
-        if (!check_bitrix_sessid()) {
+        if (!is_object($USER) || !$USER->IsAdmin() || !check_bitrix_sessid()) {
             return false;
         }
 

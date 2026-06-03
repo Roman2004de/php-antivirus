@@ -16,27 +16,21 @@
         }
     }
 
-    function statusLabel(status) {
-        var labels = {
-            idle: 'Ожидание',
-            iddle: 'Ожидание',
-            created: 'Создано',
-            running: 'Сканирование',
-            progress: 'Сканирование',
-            finished: 'Завершено',
-            cancelled: 'Остановлено',
-            canceled: 'Остановлено',
-            failed: 'Ошибка',
-            error: 'Ошибка',
-            skipped: 'Пропущено',
-            clean: 'Чисто',
-            low_risk: 'Низкий риск',
-            suspicious: 'Подозрительно',
-            malicious: 'Опасно',
-            unknown: 'Неизвестно'
-        };
+    function getMessages() {
+        return window.DelementAntivirusScannerMessages || {};
+    }
 
-        return labels[status] || status || labels.unknown;
+    function getMessage(key) {
+        var messages = getMessages();
+
+        return messages[key] || '';
+    }
+
+    function statusLabel(status) {
+        var labels = getMessages().statuses || {};
+        var key = String(status || '').toLowerCase();
+
+        return labels[key] || status || labels.unknown || 'unknown';
     }
 
     function localizeStatusesForDisplay(value, key) {
@@ -135,7 +129,7 @@
                 } catch (error) {
                     onComplete({
                         success: false,
-                        error: xhr.responseText || 'request_failed'
+                        error: xhr.responseText || getMessage('request_failed') || 'request_failed'
                     });
                     return;
                 }
@@ -204,8 +198,8 @@
             activeScanId = null;
             setButtonDisabled(startButton, true);
             setButtonDisabled(cancelButton, true);
-            setText(statusNode, 'Запуск');
-            output.textContent = 'Запуск...';
+            setText(statusNode, statusLabel('running'));
+            output.textContent = getMessage('starting') || statusLabel('running');
 
             if (progressBar) {
                 progressBar.style.width = '0';

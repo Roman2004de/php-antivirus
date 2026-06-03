@@ -5,9 +5,11 @@ namespace Delement\Antivirus\Admin;
 use Bitrix\Main\Config\Option;
 use Delement\Antivirus\Config\ScanConfig;
 use Delement\Antivirus\File\FileCollector;
+use Delement\Antivirus\Quarantine\QuarantineManager;
 use Delement\Antivirus\Report\ReportManager;
 use Delement\Antivirus\Scanner\Scanner;
 use Delement\Antivirus\Scanner\ScanSessionStore;
+use Delement\Antivirus\Whitelist\WhitelistManager;
 use InvalidArgumentException;
 use RuntimeException;
 use Throwable;
@@ -121,6 +123,8 @@ class AjaxController
                 ];
             }
 
+            $result = (new WhitelistManager())->filterResult($result, $config->getThresholds());
+            $result = $this->applyConfiguredAction($result, $config, $scanId);
             $session['results'][] = $result;
             $stepResults[] = $result;
             $session['processed_files']++;
@@ -130,6 +134,10 @@ class AjaxController
             }
 
             if ($result['status'] === 'error') {
+                $session['runtime_errors']++;
+            }
+
+            if (isset($result['action_status']) && $result['action_status'] === 'failed') {
                 $session['runtime_errors']++;
             }
         }
@@ -186,6 +194,53 @@ class AjaxController
             'cursor' => (int)$session['cursor'],
             'report_path' => (string)$session['report_path'],
         ];
+    }
+
+    private function applyConfiguredAction(array $result, ScanConfig $config, string $scanId): array
+    {
+        $hasFindings = isset($result['findings']) && is_array($result['findings']) && !empty($result['findings']);
+        $plannedAction = $config->getAction();
+
+        if (!$hasFindings) {
+            return $result;
+        }
+
+        $result['planned_action'] = $plannedAction;
+
+        if ($plannedAction === ScanConfig::ACTION_REPORT) {
+            $result['action'] = ScanConfig::ACTION_REPORT;
+            $result['action_status'] = 'reported';
+            return $result;
+        }
+
+        if ($config->isDryRun()) {
+            $result['action'] = ScanConfig::ACTION_REPORT;
+            $result['action_status'] = 'dry_run';
+            return $result;
+        }
+
+        if ($plannedAction === ScanConfig::ACTION_QUARANTINE) {
+            try {
+                $quarantine = new QuarantineManager($config->getQuarantinePath(), $this->documentRoot);
+                $item = $quarantine->quarantine((string)($result['file_path'] ?? ''), $result, $scanId);
+
+                $result['action'] = ScanConfig::ACTION_QUARANTINE;
+                $result['action_status'] = 'done';
+                $result['quarantine_id'] = (string)$item['id'];
+                $result['quarantined_at'] = (string)$item['quarantined_at'];
+            } catch (RuntimeException $exception) {
+                $result['action'] = ScanConfig::ACTION_REPORT;
+                $result['action_status'] = 'failed';
+                $result['action_error'] = $exception->getMessage();
+            }
+
+            return $result;
+        }
+
+        $result['action'] = ScanConfig::ACTION_REPORT;
+        $result['action_status'] = 'unsupported';
+
+        return $result;
     }
 
     private function createConfigFromOptions(): ScanConfig

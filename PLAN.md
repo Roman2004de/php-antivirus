@@ -36,13 +36,13 @@ scan -> explain -> review -> quarantine -> restore/delete manually
 - URI партнера: `https://d-element.ru`
 - Namespace: `Delement\Antivirus`
 - Composer: не использовать на первом этапе
-- Интерфейс: русский
+- Интерфейс: русский и английский
 
 ## Текущий статус
 
-Стадия: ранний MVP.
+Стадия: MVP с работающим сканированием, отчетами и карантином.
 
-Уже есть устанавливаемый skeleton, настройки, модульный scanner engine и AJAX-пошаговое сканирование. Следующий крупный блок: results UI и нормальная модель результатов.
+Уже есть устанавливаемый skeleton, настройки, модульный scanner engine, AJAX-пошаговое сканирование, results storage/UI, RU/EN локализация и базовый карантин с восстановлением.
 
 ## Этапы
 
@@ -175,51 +175,71 @@ Acceptance:
 - [ ] можно фильтровать malicious/suspicious;
 - [ ] большие фрагменты файлов не выводятся без escaping.
 
-### [ ] Этап 6. Quarantine
+### [x] Этап 6. Quarantine
 
 Цель: сделать безопасный карантин.
 
-Задачи:
+Сделано:
 
-- создать `QuarantineManager`;
-- реализовать quarantine action;
-- сохранить metadata JSON;
-- считать SHA256;
-- не перезаписывать файлы;
-- поддержать restore;
-- поддержать permanent delete;
-- добавить `admin/quarantine.php`;
-- логировать destructive actions;
-- учитывать dry-run.
+- создан `Delement\Antivirus\Quarantine\QuarantineManager`;
+- реализован quarantine action при AJAX-сканировании;
+- файлы переносятся в защищенное хранилище как `payload.bin`;
+- рядом сохраняется `meta.json`;
+- сохраняются SHA256, исходный путь, scan id, verdict, score, severity и findings;
+- restore не перезаписывает существующий файл;
+- поддержан restore;
+- поддержано удаление payload из карантина;
+- добавлен рабочий `admin/quarantine.php`;
+- destructive actions требуют права `W`, POST, `sessid` и подтверждение для удаления;
+- `dry-run` не меняет файловую систему и сохраняет только планируемое действие;
+- добавлен `tests/quarantine_smoke.php`.
+
+Осталось улучшить:
+
+- добавить отдельный audit log действий restore/delete;
+- добавить переходы между отчетом и записью карантина;
+- добавить фильтры/поиск по карантину.
 
 Acceptance:
 
-- [ ] файлы не перезаписываются;
-- [ ] metadata создается;
-- [ ] restore работает;
-- [ ] dry-run не меняет файловую систему;
-- [ ] destructive actions требуют права уровня `X` и подтверждение.
+- [x] файлы не перезаписываются;
+- [x] metadata создается;
+- [x] restore работает;
+- [x] dry-run не меняет файловую систему;
+- [x] destructive actions требуют права уровня `W`, `sessid` и подтверждение удаления.
 
-### [ ] Этап 7. Whitelist
+### [x] Этап 7. Whitelist
 
 Цель: снизить false positives.
 
-Задачи:
+Сделано:
 
-- создать `Whitelist`;
-- реализовать whitelist по path;
-- реализовать whitelist по regex path;
-- реализовать whitelist по hash;
-- реализовать whitelist по signature id;
-- реализовать исключение `file + signature id`;
-- добавить UI actions из results page.
+- создан `Delement\Antivirus\Whitelist\WhitelistManager`;
+- правила сохраняются в runtime-каталог `/bitrix/tmp/delement.antivirus/whitelist`;
+- реализован whitelist по path;
+- реализован whitelist по regex path;
+- реализован whitelist по hash;
+- реализован whitelist по signature id;
+- реализовано исключение `file + signature id`;
+- whitelist применяется во время AJAX-сканирования до quarantine/report action;
+- findings пересчитываются после применения правил: score, severity, verdict;
+- из `admin/results.php` можно добавить правило по файлу, хэшу, сигнатуре, `file + signature`;
+- из `admin/results.php` можно добавить regex пути;
+- пользовательские regex валидируются перед сохранением;
+- добавлен `tests/whitelist_smoke.php`.
+
+Осталось улучшить:
+
+- добавить отдельную страницу просмотра и отключения правил;
+- добавить комментарии к правилам из UI;
+- показывать whitelisted findings в отчетах отдельным блоком.
 
 Acceptance:
 
-- [ ] файл можно добавить в whitelist;
-- [ ] конкретную сигнатуру можно исключить для файла;
-- [ ] whitelist учитывается при scan;
-- [ ] пользовательские regex валидируются перед сохранением.
+- [x] файл можно добавить в whitelist;
+- [x] конкретную сигнатуру можно исключить для файла;
+- [x] whitelist учитывается при scan;
+- [x] пользовательские regex валидируются перед сохранением.
 
 ### [ ] Этап 8. Cron runner
 
@@ -248,7 +268,7 @@ Acceptance:
 
 Задачи:
 
-- вынести все тексты в `lang/ru`;
+- вынести все тексты в `lang/ru` и `lang/en`;
 - убрать debug output;
 - проверить install/uninstall;
 - проверить права;
@@ -279,8 +299,8 @@ MVP считается готовым, когда:
 - [x] сканирование запускается через AJAX endpoint;
 - [x] прогресс доступен в UI;
 - [ ] результаты полноценно отображаются;
-- [ ] quarantine работает;
-- [ ] dry-run работает для destructive actions;
+- [x] quarantine работает;
+- [x] dry-run работает для quarantine action;
 - [ ] cron runner работает;
 - [x] базовые права и `sessid` проверяются в AJAX;
 - [ ] права уровней `D/R/W/X` реализованы полностью;
@@ -300,6 +320,6 @@ MVP считается готовым, когда:
 
 ## Ближайший следующий шаг
 
-Этап 5: `Results UI`.
+Этап 8: `Cron runner`.
 
-Начать с чтения JSON reports из `var/reports`, списка последних сканов и таблицы findings в `admin/results.php`.
+Начать с доработки `install/tools/scan.php`: чтение настроек модуля, запуск scanner engine, сохранение отчета и корректные exit codes.

@@ -3,7 +3,9 @@
 use Bitrix\Main\Config\Option;
 use Bitrix\Main\Localization\Loc;
 
-if (!$USER->IsAdmin()) {
+global $APPLICATION, $USER;
+
+if (!is_object($USER) || !$USER->IsAdmin()) {
     return;
 }
 

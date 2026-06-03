@@ -25,6 +25,7 @@ Loader::registerAutoLoadClasses(
         'Delement\\Antivirus\\File\\FileFilter' => 'lib/File/FileFilter.php',
         'Delement\\Antivirus\\File\\FileReader' => 'lib/File/FileReader.php',
         'Delement\\Antivirus\\File\\FileTypeDetector' => 'lib/File/FileTypeDetector.php',
+        'Delement\\Antivirus\\Quarantine\\QuarantineManager' => 'lib/Quarantine/QuarantineManager.php',
         'Delement\\Antivirus\\Report\\JsonReportWriter' => 'lib/Report/JsonReportWriter.php',
         'Delement\\Antivirus\\Report\\ReportManager' => 'lib/Report/ReportManager.php',
         'Delement\\Antivirus\\Scanner\\Scanner' => 'lib/Scanner/Scanner.php',
@@ -32,5 +33,6 @@ Loader::registerAutoLoadClasses(
         'Delement\\Antivirus\\Scanner\\ScanSessionStore' => 'lib/Scanner/ScanSessionStore.php',
         'Delement\\Antivirus\\Scanner\\ScanSummary' => 'lib/Scanner/ScanSummary.php',
         'Delement\\Antivirus\\Storage\\RuntimeDirectory' => 'lib/Storage/RuntimeDirectory.php',
+        'Delement\\Antivirus\\Whitelist\\WhitelistManager' => 'lib/Whitelist/WhitelistManager.php',
     ]
 );

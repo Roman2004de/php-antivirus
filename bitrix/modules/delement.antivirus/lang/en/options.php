@@ -1,0 +1,36 @@
+<?php
+
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_TAB_MAIN'] = 'General';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_TAB_MAIN_TITLE'] = 'Scan parameters';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_SCAN_PATH'] = 'Default scan path';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_PROFILE'] = 'Sensitivity profile';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_PROFILE_BALANCED'] = 'Balanced';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_PROFILE_STRICT'] = 'Strict';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_PROFILE_PARANOID'] = 'Paranoid';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ACTION'] = 'Default action';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ACTION_REPORT'] = 'Report only';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ACTION_QUARANTINE'] = 'Quarantine';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ACTION_DELETE'] = 'Delete';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_DRY_RUN'] = 'Dry run';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_QUARANTINE_PATH'] = 'Quarantine path';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_BATCH_SIZE'] = 'Scan batch size';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_MAX_FILE_SIZE_MB'] = 'Maximum file size, MB';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_EXCLUDE_PATHS'] = 'Excluded paths, one path per line';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_NOTE'] = 'Settings are stored through Bitrix Option. The #DOCUMENT_ROOT# macro will be replaced with #DOCUMENT_ROOT_VALUE# when scanning starts.';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_OPEN_SCAN'] = 'Open scan page';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_SAVE'] = 'Save';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_APPLY'] = 'Apply';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_RESTORE_DEFAULTS'] = 'Restore defaults';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_RESTORE_CONFIRM'] = 'Restore module settings to default values?';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_SAVED'] = 'Settings saved.';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_TITLE'] = 'Settings were not saved';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_SESSID'] = 'The session has expired. Refresh the page and try saving again.';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_REQUIRED'] = 'The "#FIELD#" field is required.';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_PATH'] = 'The "#FIELD#" field contains an invalid path.';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_TOO_LONG'] = 'The "#FIELD#" field is too long.';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_PROFILE'] = 'Unknown sensitivity profile selected.';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_ACTION'] = 'Unknown action selected.';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_DELETE_WITHOUT_DRY_RUN'] = 'Delete without dry run cannot be saved until a separate destructive action confirmation is implemented.';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_BATCH_SIZE'] = 'Batch size must be a number from 1 to 1000.';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_MAX_FILE_SIZE'] = 'Maximum file size must be a number from 1 to 1024 MB.';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_EXCLUDE_PATHS'] = 'The excluded paths list contains an invalid path.';
