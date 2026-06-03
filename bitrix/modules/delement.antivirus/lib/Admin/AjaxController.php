@@ -175,6 +175,11 @@ class AjaxController
             $session['finished_at'] = date('c');
             $session['current_file'] = '';
             $this->store->save($session);
+            $session['report_path'] = $this->reportManager->saveFromSession($session);
+            $this->store->save($session);
+        } elseif ($session['status'] === 'cancelled' && empty($session['report_path'])) {
+            $session['report_path'] = $this->reportManager->saveFromSession($session);
+            $this->store->save($session);
         }
 
         return $this->statusPayload($session);

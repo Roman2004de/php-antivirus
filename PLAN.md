@@ -130,6 +130,7 @@ Acceptance:
 - реализованы actions: `ping`, `start_scan`, `scan_step`, `get_status`, `cancel_scan`;
 - scan sessions сохраняются в writable runtime-каталог `/bitrix/tmp/delement.antivirus/sessions`;
 - JSON reports сохраняются в writable runtime-каталог `/bitrix/tmp/delement.antivirus/reports`;
+- отмененное сканирование сохраняет частичный JSON report со статусом `cancelled`;
 - UI страницы сканирования показывает прогресс, статус, счетчики и текущий файл;
 - JS крутит `scan_step` до `finished` или `cancelled`.
 
@@ -139,6 +140,7 @@ Acceptance:
 - [x] scan выполняется порциями;
 - [x] есть cancel;
 - [x] есть JSON report;
+- [x] при cancel сохраняется частичный report;
 - [ ] сценарий проверен в браузере на живом Bitrix-стенде;
 - [ ] нужно добавить обработку больших объемов результатов без раздувания session JSON.
 
@@ -155,6 +157,7 @@ Acceptance:
 - добавлен список последних отчетов в `admin/results.php`;
 - добавлен просмотр деталей отчета по `scan_id`;
 - добавлен экспорт JSON;
+- отмененные/прерванные сканирования отображаются в списке результатов;
 - добавлен `tests/report_storage_smoke.php`.
 
 Задачи:
@@ -172,6 +175,7 @@ Acceptance:
 - [x] отчет открывается по `scan_id`;
 - [x] экспорт JSON доступен;
 - [x] видно file, score, severity, category, signature, excerpt;
+- [x] частичные отчеты после cancel доступны в списке;
 - [ ] можно фильтровать malicious/suspicious;
 - [ ] большие фрагменты файлов не выводятся без escaping.
 

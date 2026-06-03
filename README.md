@@ -29,6 +29,7 @@
 - Пошаговое сканирование через AJAX.
 - Файловые scan sessions в runtime-каталоге `/bitrix/tmp/delement.antivirus/sessions`.
 - JSON reports в runtime-каталоге `/bitrix/tmp/delement.antivirus/reports`.
+- Частичные JSON reports для отмененных сканирований.
 - Results storage через `Delement\Antivirus\Report\ReportManager`.
 - Базовая страница просмотра отчетов в `admin/results.php`.
 - Карантин через `Delement\Antivirus\Quarantine\QuarantineManager`.
@@ -79,6 +80,7 @@ bitrix/modules/delement.antivirus/
 
   tests/
     engine_smoke.php
+    cancelled_report_smoke.php
     quarantine_smoke.php
     report_storage_smoke.php
     session_storage_smoke.php
@@ -186,6 +188,12 @@ Smoke-test engine без Bitrix:
 
 ```bash
 php bitrix/modules/delement.antivirus/tests/engine_smoke.php
+```
+
+Smoke-test сохранения отчета при отмене:
+
+```bash
+php bitrix/modules/delement.antivirus/tests/cancelled_report_smoke.php
 ```
 
 Smoke-test хранилища отчетов:

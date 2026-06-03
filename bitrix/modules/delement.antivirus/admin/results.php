@@ -151,16 +151,23 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_ad
 
 ?>
 <style>
-    .delement-antivirus-results-summary,
-    .delement-antivirus-results-summary td,
-    .delement-antivirus-results-summary .adm-detail-content-cell-l,
-    .delement-antivirus-results-summary .adm-detail-content-cell-r {
-        text-align: left !important;
+    .delement-antivirus-results-summary {
+        width: auto !important;
+        min-width: 640px !important;
+        margin: 0 0 18px !important;
+        border-collapse: collapse !important;
     }
 
-    .delement-antivirus-results-summary .adm-detail-content-cell-l,
-    .delement-antivirus-results-summary .adm-detail-content-cell-r {
+    .delement-antivirus-results-summary td {
+        text-align: left !important;
         vertical-align: top !important;
+        padding: 8px 10px !important;
+    }
+
+    .delement-antivirus-results-summary-label {
+        width: 220px !important;
+        font-weight: bold !important;
+        white-space: nowrap !important;
     }
 </style>
 <?php
@@ -236,23 +243,23 @@ if (is_array($report)) {
             <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_EXPORT_JSON'); ?>
         </a>
     </p>
-    <table class="adm-detail-content-table edit-table delement-antivirus-results-summary">
+    <table class="internal delement-antivirus-results-summary">
         <tbody>
         <tr>
-            <td width="40%" class="adm-detail-content-cell-l"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_SCAN_ID'); ?></td>
-            <td width="60%" class="adm-detail-content-cell-r"><?php echo htmlspecialcharsbx((string)($summary['scan_id'] ?? '')); ?></td>
+            <td class="delement-antivirus-results-summary-label"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_SCAN_ID'); ?></td>
+            <td><?php echo htmlspecialcharsbx((string)($summary['scan_id'] ?? '')); ?></td>
         </tr>
         <tr>
-            <td class="adm-detail-content-cell-l"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_PATH'); ?></td>
-            <td class="adm-detail-content-cell-r"><?php echo htmlspecialcharsbx((string)($summary['path'] ?? '')); ?></td>
+            <td class="delement-antivirus-results-summary-label"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_PATH'); ?></td>
+            <td><?php echo htmlspecialcharsbx((string)($summary['path'] ?? '')); ?></td>
         </tr>
         <tr>
-            <td class="adm-detail-content-cell-l"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_ACTION'); ?></td>
-            <td class="adm-detail-content-cell-r"><?php echo htmlspecialcharsbx(delement_antivirus_results_action_label($summary['action'] ?? '')); ?></td>
+            <td class="delement-antivirus-results-summary-label"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_ACTION'); ?></td>
+            <td><?php echo htmlspecialcharsbx(delement_antivirus_results_action_label($summary['action'] ?? '')); ?></td>
         </tr>
         <tr>
-            <td class="adm-detail-content-cell-l"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_DRY_RUN'); ?></td>
-            <td class="adm-detail-content-cell-r"><?php echo !empty($summary['dry_run']) ? 'Y' : 'N'; ?></td>
+            <td class="delement-antivirus-results-summary-label"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_DRY_RUN'); ?></td>
+            <td><?php echo !empty($summary['dry_run']) ? 'Y' : 'N'; ?></td>
         </tr>
         </tbody>
     </table>
