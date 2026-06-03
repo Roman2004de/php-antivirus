@@ -1,7 +1,10 @@
 <?php
 
+use Bitrix\Main\Config\Option;
 use Bitrix\Main\Loader;
 use Bitrix\Main\Localization\Loc;
+use Delement\Antivirus\Config\ScanConfig;
+use Delement\Antivirus\Quarantine\QuarantineManager;
 use Delement\Antivirus\Report\ReportManager;
 use Delement\Antivirus\Whitelist\WhitelistManager;
 
@@ -22,6 +25,8 @@ if (!Loader::includeModule($moduleId)) {
     require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/epilog_admin.php';
     return;
 }
+
+$APPLICATION->SetTitle(Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_DETAILS_TITLE'));
 
 if (!function_exists('delement_antivirus_results_status_label')) {
     function delement_antivirus_results_status_label($status): string
@@ -67,15 +72,168 @@ if (!function_exists('delement_antivirus_results_action_label')) {
     }
 }
 
+if (!function_exists('delement_antivirus_report_quarantine_manager')) {
+    function delement_antivirus_report_quarantine_manager(string $moduleId, string $documentRoot): QuarantineManager
+    {
+        $path = dirname(__DIR__) . '/default_option.php';
+        $defaults = [];
+        $delement_antivirus_default_option = [];
+
+        if (is_file($path)) {
+            require $path;
+        }
+
+        if (is_array($delement_antivirus_default_option)) {
+            $defaults = $delement_antivirus_default_option;
+        }
+
+        $options = [];
+
+        foreach ($defaults as $name => $defaultValue) {
+            $options[$name] = Option::get($moduleId, $name, (string)$defaultValue);
+        }
+
+        $config = ScanConfig::fromModuleOptions($options, $documentRoot);
+
+        return new QuarantineManager($config->getQuarantinePath(), $documentRoot);
+    }
+}
+
+if (!function_exists('delement_antivirus_report_finding_rows')) {
+    function delement_antivirus_report_finding_rows(array $report): array
+    {
+        $summary = isset($report['summary']) && is_array($report['summary']) ? $report['summary'] : [];
+        $scanId = (string)($summary['scan_id'] ?? '');
+        $results = isset($report['results']) && is_array($report['results']) ? $report['results'] : [];
+        $rows = [];
+
+        foreach ($results as $resultIndex => $result) {
+            if (!is_array($result)) {
+                continue;
+            }
+
+            $findings = isset($result['findings']) && is_array($result['findings']) ? $result['findings'] : [];
+
+            foreach ($findings as $findingIndex => $finding) {
+                if (!is_array($finding)) {
+                    continue;
+                }
+
+                $rowId = 'finding_' . (int)$resultIndex . '_' . (int)$findingIndex;
+                $rows[] = [
+                    'id' => $rowId,
+                    'scan_id' => $scanId,
+                    'file_path' => (string)($result['file_path'] ?? ''),
+                    'file_hash' => (string)($result['file_hash'] ?? ''),
+                    'status' => (string)($result['status'] ?? ''),
+                    'score' => (int)($result['score'] ?? 0),
+                    'severity' => (string)($finding['severity'] ?? ($result['severity'] ?? '')),
+                    'signature_id' => (string)($finding['signature_id'] ?? ''),
+                    'category' => (string)($finding['category'] ?? ''),
+                    'excerpt' => (string)($finding['excerpt'] ?? ''),
+                    'scan_result' => $result,
+                ];
+            }
+        }
+
+        return $rows;
+    }
+}
+
+if (!function_exists('delement_antivirus_report_finding_row_map')) {
+    function delement_antivirus_report_finding_row_map(array $rows): array
+    {
+        $map = [];
+
+        foreach ($rows as $row) {
+            $id = isset($row['id']) ? (string)$row['id'] : '';
+
+            if ($id !== '') {
+                $map[$id] = $row;
+            }
+        }
+
+        return $map;
+    }
+}
+
+if (!function_exists('delement_antivirus_report_sort_finding_rows')) {
+    function delement_antivirus_report_sort_finding_rows(array &$rows, $field, $order): void
+    {
+        $allowedFields = [
+            'file_path',
+            'status',
+            'score',
+            'severity',
+            'signature_id',
+            'category',
+            'excerpt',
+        ];
+        $field = in_array((string)$field, $allowedFields, true) ? (string)$field : 'score';
+        $direction = strtolower((string)$order) === 'asc' ? 1 : -1;
+
+        usort($rows, static function (array $left, array $right) use ($field, $direction) {
+            if ($field === 'score') {
+                $leftValue = (int)($left[$field] ?? 0);
+                $rightValue = (int)($right[$field] ?? 0);
+            } else {
+                $leftValue = (string)($left[$field] ?? '');
+                $rightValue = (string)($right[$field] ?? '');
+            }
+
+            if ($leftValue === $rightValue) {
+                return 0;
+            }
+
+            return ($leftValue < $rightValue ? -1 : 1) * $direction;
+        });
+    }
+}
+
+if (!function_exists('delement_antivirus_report_finding_row_ids')) {
+    function delement_antivirus_report_finding_row_ids(array $rows): array
+    {
+        $ids = [];
+
+        foreach ($rows as $row) {
+            $id = isset($row['id']) ? (string)$row['id'] : '';
+
+            if ($id !== '') {
+                $ids[] = $id;
+            }
+        }
+
+        return $ids;
+    }
+}
+
+if (!function_exists('delement_antivirus_report_display_rows')) {
+    function delement_antivirus_report_display_rows(array $rows): array
+    {
+        $displayRows = [];
+
+        foreach ($rows as $row) {
+            unset($row['scan_result']);
+            $displayRows[] = $row;
+        }
+
+        return $displayRows;
+    }
+}
+
 $reportManager = new ReportManager();
 $whitelistManager = null;
+$quarantineManager = null;
 $messages = [];
 $errors = [];
 $scanId = isset($_GET['scan_id']) ? (string)$_GET['scan_id'] : '';
 $report = null;
 $reportError = '';
-
-$APPLICATION->SetTitle(Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_DETAILS_TITLE'));
+$findingRows = [];
+$findingRowMap = [];
+$sTableID = 'tbl_delement_antivirus_report_findings';
+$oSort = new CAdminSorting($sTableID, 'score', 'desc');
+$lAdmin = new CAdminList($sTableID, $oSort);
 
 try {
     $whitelistManager = new WhitelistManager();
@@ -83,6 +241,26 @@ try {
     $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_WHITELIST_MANAGER_ERROR', [
         '#ERROR#' => htmlspecialcharsbx($exception->getMessage()),
     ]);
+}
+
+try {
+    $quarantineManager = delement_antivirus_report_quarantine_manager($moduleId, (string)$_SERVER['DOCUMENT_ROOT']);
+} catch (Throwable $exception) {
+    $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_QUARANTINE_MANAGER_ERROR', [
+        '#ERROR#' => htmlspecialcharsbx($exception->getMessage()),
+    ]);
+}
+
+if ($scanId === '') {
+    $reportError = Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_SCAN_ID_REQUIRED');
+} else {
+    try {
+        $report = $reportManager->load($scanId);
+        $findingRows = delement_antivirus_report_finding_rows($report);
+        $findingRowMap = delement_antivirus_report_finding_row_map($findingRows);
+    } catch (Throwable $exception) {
+        $reportError = $exception->getMessage();
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['whitelist_action'])) {
@@ -111,15 +289,110 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['whitelist_action'])) 
             ]);
         }
     }
-}
+} elseif (($selectedIds = $lAdmin->GroupAction()) !== false) {
+    $action = isset($_REQUEST['action']) ? (string)$_REQUEST['action'] : '';
+    $whitelistActions = [
+        'whitelist_file_signature' => WhitelistManager::TYPE_FILE_SIGNATURE,
+        'whitelist_signature' => WhitelistManager::TYPE_SIGNATURE,
+        'whitelist_hash' => WhitelistManager::TYPE_HASH,
+        'whitelist_path' => WhitelistManager::TYPE_PATH,
+    ];
 
-if ($scanId === '') {
-    $reportError = Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_SCAN_ID_REQUIRED');
-} else {
-    try {
-        $report = $reportManager->load($scanId);
-    } catch (Throwable $exception) {
-        $reportError = $exception->getMessage();
+    if (isset($_REQUEST['action_target']) && $_REQUEST['action_target'] === 'selected') {
+        $selectedIds = delement_antivirus_report_finding_row_ids($findingRows);
+    }
+
+    if (!is_array($selectedIds)) {
+        $selectedIds = [$selectedIds];
+    }
+
+    $selectedIds = array_values(array_unique(array_filter(array_map('strval', $selectedIds), 'strlen')));
+
+    if (isset($whitelistActions[$action])) {
+        if ($right < 'W') {
+            $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_WHITELIST_ERROR_ACCESS');
+        } elseif (!check_bitrix_sessid()) {
+            $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_WHITELIST_ERROR_SESSID');
+        } elseif ($whitelistManager === null) {
+            $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_WHITELIST_ERROR_MANAGER_NOT_READY');
+        } else {
+            $addedCount = 0;
+            $userId = is_object($USER) && method_exists($USER, 'GetID') ? (int)$USER->GetID() : 0;
+
+            foreach ($selectedIds as $rowId) {
+                if (!isset($findingRowMap[$rowId])) {
+                    continue;
+                }
+
+                $row = $findingRowMap[$rowId];
+                $data = [
+                    'path' => (string)($row['file_path'] ?? ''),
+                    'hash' => (string)($row['file_hash'] ?? ''),
+                    'signature_id' => (string)($row['signature_id'] ?? ''),
+                ];
+
+                try {
+                    $whitelistManager->addRule($whitelistActions[$action], $data, $userId);
+                    $addedCount++;
+                } catch (Throwable $exception) {
+                    $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_WHITELIST_ADD_ERROR', [
+                        '#ERROR#' => htmlspecialcharsbx($exception->getMessage()),
+                    ]);
+                }
+            }
+
+            if ($addedCount > 0) {
+                $messages[] = Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_WHITELIST_ADDED_COUNT', [
+                    '#COUNT#' => $addedCount,
+                ]);
+            }
+        }
+    } elseif ($action === 'quarantine_file') {
+        if ($right < 'W') {
+            $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_QUARANTINE_ERROR_ACCESS');
+        } elseif (!check_bitrix_sessid()) {
+            $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_QUARANTINE_ERROR_SESSID');
+        } elseif ($quarantineManager === null) {
+            $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_QUARANTINE_ERROR_MANAGER_NOT_READY');
+        } else {
+            $quarantinedCount = 0;
+            $processedPaths = [];
+
+            foreach ($selectedIds as $rowId) {
+                if (!isset($findingRowMap[$rowId])) {
+                    continue;
+                }
+
+                $row = $findingRowMap[$rowId];
+                $filePath = (string)($row['file_path'] ?? '');
+
+                if ($filePath === '' || isset($processedPaths[$filePath])) {
+                    continue;
+                }
+
+                $processedPaths[$filePath] = true;
+                $scanResult = isset($row['scan_result']) && is_array($row['scan_result']) ? $row['scan_result'] : [];
+                $scanResult['planned_action'] = ScanConfig::ACTION_QUARANTINE;
+                $scanResult['action'] = ScanConfig::ACTION_QUARANTINE;
+                $scanResult['action_status'] = 'forced';
+
+                try {
+                    $quarantineManager->quarantine($filePath, $scanResult, $scanId);
+                    $quarantinedCount++;
+                } catch (Throwable $exception) {
+                    $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_QUARANTINE_ADD_ERROR', [
+                        '#FILE#' => htmlspecialcharsbx($filePath),
+                        '#ERROR#' => htmlspecialcharsbx($exception->getMessage()),
+                    ]);
+                }
+            }
+
+            if ($quarantinedCount > 0) {
+                $messages[] = Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_QUARANTINE_ADDED_COUNT', [
+                    '#COUNT#' => $quarantinedCount,
+                ]);
+            }
+        }
     }
 }
 
@@ -133,6 +406,133 @@ if ($report !== null && isset($_GET['export']) && $_GET['export'] === 'Y') {
     echo json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     die();
 }
+
+delement_antivirus_report_sort_finding_rows($findingRows, $by ?? 'score', $order ?? 'desc');
+
+$lAdmin->AddHeaders([
+    [
+        'id' => 'FILE_PATH',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_FILE'),
+        'sort' => 'file_path',
+        'default' => true,
+    ],
+    [
+        'id' => 'STATUS',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_VERDICT'),
+        'sort' => 'status',
+        'default' => true,
+    ],
+    [
+        'id' => 'SCORE',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_SCORE'),
+        'sort' => 'score',
+        'default' => true,
+    ],
+    [
+        'id' => 'SEVERITY',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_SEVERITY'),
+        'sort' => 'severity',
+        'default' => true,
+    ],
+    [
+        'id' => 'SIGNATURE_ID',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_SIGNATURE'),
+        'sort' => 'signature_id',
+        'default' => true,
+    ],
+    [
+        'id' => 'CATEGORY',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_CATEGORY'),
+        'sort' => 'category',
+        'default' => true,
+    ],
+    [
+        'id' => 'EXCERPT',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_EXCERPT'),
+        'sort' => 'excerpt',
+        'default' => true,
+    ],
+]);
+
+$rsData = new CDBResult();
+$rsData->InitFromArray(delement_antivirus_report_display_rows($findingRows));
+$rsData = new CAdminResult($rsData, $sTableID);
+$rsData->NavStart();
+$lAdmin->NavText($rsData->GetNavPrint(Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_FINDINGS_LIST_NAV')));
+
+while ($rowData = $rsData->NavNext(true, 'f_')) {
+    $rowId = isset($rowData['id']) ? (string)$rowData['id'] : '';
+
+    if ($rowId === '') {
+        continue;
+    }
+
+    $row = $lAdmin->AddRow($rowId, $rowData);
+    $row->AddViewField('FILE_PATH', htmlspecialcharsbx((string)($rowData['file_path'] ?? '')));
+    $row->AddViewField('STATUS', htmlspecialcharsbx(delement_antivirus_results_status_label($rowData['status'] ?? '')));
+    $row->AddViewField('SCORE', (int)($rowData['score'] ?? 0));
+    $row->AddViewField('SEVERITY', htmlspecialcharsbx((string)($rowData['severity'] ?? '')));
+    $row->AddViewField('SIGNATURE_ID', htmlspecialcharsbx((string)($rowData['signature_id'] ?? '')));
+    $row->AddViewField('CATEGORY', htmlspecialcharsbx((string)($rowData['category'] ?? '')));
+    $row->AddViewField('EXCERPT', htmlspecialcharsbx((string)($rowData['excerpt'] ?? '')));
+
+    if ($right >= 'W') {
+        $actions = [];
+
+        if ($whitelistManager !== null) {
+            $actions[] = [
+                'TEXT' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_WHITELIST_MENU_FILE_SIGNATURE'),
+                'ACTION' => $lAdmin->ActionDoGroup($rowId, 'whitelist_file_signature'),
+            ];
+            $actions[] = [
+                'TEXT' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_WHITELIST_MENU_SIGNATURE'),
+                'ACTION' => $lAdmin->ActionDoGroup($rowId, 'whitelist_signature'),
+            ];
+
+            if ((string)($rowData['file_hash'] ?? '') !== '') {
+                $actions[] = [
+                    'TEXT' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_WHITELIST_MENU_HASH'),
+                    'ACTION' => $lAdmin->ActionDoGroup($rowId, 'whitelist_hash'),
+                ];
+            }
+
+            $actions[] = [
+                'TEXT' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_WHITELIST_MENU_PATH'),
+                'ACTION' => $lAdmin->ActionDoGroup($rowId, 'whitelist_path'),
+            ];
+        }
+
+        if ($quarantineManager !== null) {
+            if (!empty($actions)) {
+                $actions[] = ['SEPARATOR' => true];
+            }
+
+            $actions[] = [
+                'ICON' => 'move',
+                'TEXT' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_FORCE_QUARANTINE'),
+                'ACTION' => "if(confirm('" . CUtil::JSEscape(Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_FORCE_QUARANTINE_CONFIRM')) . "')) " . $lAdmin->ActionDoGroup($rowId, 'quarantine_file'),
+            ];
+        }
+
+        if (!empty($actions)) {
+            $row->AddActions($actions);
+        }
+    }
+}
+
+$lAdmin->AddFooter([
+    [
+        'title' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_LIST_TOTAL'),
+        'value' => $rsData->SelectedRowsCount(),
+    ],
+    [
+        'counter' => true,
+        'title' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_LIST_SELECTED'),
+        'value' => '0',
+    ],
+]);
+
+$lAdmin->CheckListMode();
 
 require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_admin_after.php';
 
@@ -196,7 +596,6 @@ foreach ($errors as $error) {
 
 if (is_array($report)) {
     $summary = isset($report['summary']) && is_array($report['summary']) ? $report['summary'] : [];
-    $results = isset($report['results']) && is_array($report['results']) ? $report['results'] : [];
     ?>
     <table class="internal delement-antivirus-results-summary">
         <tbody>
@@ -241,88 +640,7 @@ if (is_array($report)) {
     <?php endif; ?>
 
     <h2><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_FINDINGS_TITLE'); ?></h2>
-    <table class="adm-list-table">
-        <thead>
-        <tr class="adm-list-table-header">
-            <td class="adm-list-table-cell"><div class="adm-list-table-cell-inner"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_FILE'); ?></div></td>
-            <td class="adm-list-table-cell"><div class="adm-list-table-cell-inner"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_VERDICT'); ?></div></td>
-            <td class="adm-list-table-cell"><div class="adm-list-table-cell-inner"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_SCORE'); ?></div></td>
-            <td class="adm-list-table-cell"><div class="adm-list-table-cell-inner"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_SEVERITY'); ?></div></td>
-            <td class="adm-list-table-cell"><div class="adm-list-table-cell-inner"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_SIGNATURE'); ?></div></td>
-            <td class="adm-list-table-cell"><div class="adm-list-table-cell-inner"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_CATEGORY'); ?></div></td>
-            <td class="adm-list-table-cell"><div class="adm-list-table-cell-inner"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_EXCERPT'); ?></div></td>
-            <td class="adm-list-table-cell"><div class="adm-list-table-cell-inner"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_WHITELIST_ACTIONS'); ?></div></td>
-        </tr>
-        </thead>
-        <tbody>
-        <?php
-        $hasFindings = false;
-        foreach ($results as $result):
-            $findings = isset($result['findings']) && is_array($result['findings']) ? $result['findings'] : [];
-            foreach ($findings as $finding):
-                $hasFindings = true;
-                ?>
-                <tr class="adm-list-table-row">
-                    <?php
-                    $filePath = (string)($result['file_path'] ?? '');
-                    $fileHash = (string)($result['file_hash'] ?? '');
-                    $signatureId = (string)($finding['signature_id'] ?? '');
-                    ?>
-                    <td class="adm-list-table-cell"><?php echo htmlspecialcharsbx($filePath); ?></td>
-                    <td class="adm-list-table-cell"><?php echo htmlspecialcharsbx(delement_antivirus_results_status_label($result['status'] ?? '')); ?></td>
-                    <td class="adm-list-table-cell"><?php echo (int)($result['score'] ?? 0); ?></td>
-                    <td class="adm-list-table-cell"><?php echo htmlspecialcharsbx((string)($finding['severity'] ?? '')); ?></td>
-                    <td class="adm-list-table-cell"><?php echo htmlspecialcharsbx($signatureId); ?></td>
-                    <td class="adm-list-table-cell"><?php echo htmlspecialcharsbx((string)($finding['category'] ?? '')); ?></td>
-                    <td class="adm-list-table-cell"><?php echo htmlspecialcharsbx((string)($finding['excerpt'] ?? '')); ?></td>
-                    <td class="adm-list-table-cell">
-                        <?php if ($right >= 'W' && $whitelistManager !== null): ?>
-                            <form method="post" action="<?php echo $APPLICATION->GetCurPageParam('', ['whitelist_action', 'whitelist_type', 'file_path', 'file_hash', 'signature_id', 'pattern', 'sessid']); ?>" style="display:block;margin:0 0 6px;">
-                                <?php echo bitrix_sessid_post(); ?>
-                                <input type="hidden" name="whitelist_action" value="add">
-                                <input type="hidden" name="whitelist_type" value="<?php echo htmlspecialcharsbx(WhitelistManager::TYPE_FILE_SIGNATURE); ?>">
-                                <input type="hidden" name="file_path" value="<?php echo htmlspecialcharsbx($filePath); ?>">
-                                <input type="hidden" name="file_hash" value="<?php echo htmlspecialcharsbx($fileHash); ?>">
-                                <input type="hidden" name="signature_id" value="<?php echo htmlspecialcharsbx($signatureId); ?>">
-                                <input type="submit" class="adm-btn" value="<?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_WHITELIST_FILE_SIGNATURE'); ?>">
-                            </form>
-                            <form method="post" action="<?php echo $APPLICATION->GetCurPageParam('', ['whitelist_action', 'whitelist_type', 'file_path', 'file_hash', 'signature_id', 'pattern', 'sessid']); ?>" style="display:block;margin:0 0 6px;">
-                                <?php echo bitrix_sessid_post(); ?>
-                                <input type="hidden" name="whitelist_action" value="add">
-                                <input type="hidden" name="whitelist_type" value="<?php echo htmlspecialcharsbx(WhitelistManager::TYPE_SIGNATURE); ?>">
-                                <input type="hidden" name="signature_id" value="<?php echo htmlspecialcharsbx($signatureId); ?>">
-                                <input type="submit" class="adm-btn" value="<?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_WHITELIST_SIGNATURE'); ?>">
-                            </form>
-                            <?php if ($fileHash !== ''): ?>
-                                <form method="post" action="<?php echo $APPLICATION->GetCurPageParam('', ['whitelist_action', 'whitelist_type', 'file_path', 'file_hash', 'signature_id', 'pattern', 'sessid']); ?>" style="display:block;margin:0 0 6px;">
-                                    <?php echo bitrix_sessid_post(); ?>
-                                    <input type="hidden" name="whitelist_action" value="add">
-                                    <input type="hidden" name="whitelist_type" value="<?php echo htmlspecialcharsbx(WhitelistManager::TYPE_HASH); ?>">
-                                    <input type="hidden" name="file_hash" value="<?php echo htmlspecialcharsbx($fileHash); ?>">
-                                    <input type="submit" class="adm-btn" value="<?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_WHITELIST_HASH'); ?>">
-                                </form>
-                            <?php endif; ?>
-                            <form method="post" action="<?php echo $APPLICATION->GetCurPageParam('', ['whitelist_action', 'whitelist_type', 'file_path', 'file_hash', 'signature_id', 'pattern', 'sessid']); ?>" style="display:block;margin:0;">
-                                <?php echo bitrix_sessid_post(); ?>
-                                <input type="hidden" name="whitelist_action" value="add">
-                                <input type="hidden" name="whitelist_type" value="<?php echo htmlspecialcharsbx(WhitelistManager::TYPE_PATH); ?>">
-                                <input type="hidden" name="file_path" value="<?php echo htmlspecialcharsbx($filePath); ?>">
-                                <input type="submit" class="adm-btn" value="<?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_WHITELIST_PATH'); ?>">
-                            </form>
-                        <?php else: ?>
-                            <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_WHITELIST_UNAVAILABLE'); ?>
-                        <?php endif; ?>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
-        <?php endforeach; ?>
-        <?php if (!$hasFindings): ?>
-            <tr class="adm-list-table-row">
-                <td class="adm-list-table-cell" colspan="8"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_NO_FINDINGS'); ?></td>
-            </tr>
-        <?php endif; ?>
-        </tbody>
-    </table>
+    <?php $lAdmin->DisplayList(); ?>
     <?php
 }
 

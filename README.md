@@ -33,6 +33,8 @@
 - Results storage через `Delement\Antivirus\Report\ReportManager`.
 - Страница просмотра отчетов в `admin/results.php` на штатном Bitrix `CAdminList`.
 - Отдельная страница просмотра отчета в `admin/report.php`.
+- Таблица подозрительных файлов в отчете построена на штатном Bitrix `CAdminList`.
+- Контекстное меню подозрительного файла: добавить в whitelist и принудительно поместить в карантин.
 - Контекстное меню результатов сканирования: просмотр и удаление.
 - Карантин через `Delement\Antivirus\Quarantine\QuarantineManager`.
 - Страница управления карантином в `admin/quarantine.php`.
