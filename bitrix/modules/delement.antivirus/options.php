@@ -257,6 +257,9 @@ $tabControl->Begin();
         </td>
         <td class="adm-detail-content-cell-r">
             <input type="checkbox" id="delement_antivirus_dry_run" name="dry_run" value="Y"<?php echo $values['dry_run'] === 'Y' ? ' checked' : ''; ?>>
+            <div style="margin-top:6px;color:#555;max-width:760px;">
+                <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_DRY_RUN_HINT'); ?>
+            </div>
         </td>
     </tr>
     <tr>

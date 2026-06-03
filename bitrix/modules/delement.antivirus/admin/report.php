@@ -23,8 +23,6 @@ if (!Loader::includeModule($moduleId)) {
     return;
 }
 
-$APPLICATION->SetTitle(Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_DETAILS_TITLE'));
-
 if (!function_exists('delement_antivirus_results_status_label')) {
     function delement_antivirus_results_status_label($status): string
     {
@@ -76,6 +74,12 @@ $errors = [];
 $scanId = isset($_GET['scan_id']) ? (string)$_GET['scan_id'] : '';
 $report = null;
 $reportError = '';
+
+$reportTitle = $scanId !== ''
+    ? Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_DETAILS_TITLE_WITH_ID', ['#SCAN_ID#' => $scanId])
+    : Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_DETAILS_TITLE');
+
+$APPLICATION->SetTitle($reportTitle);
 
 try {
     $whitelistManager = new WhitelistManager();
@@ -181,18 +185,21 @@ foreach ($errors as $error) {
 }
 
 ?>
-<p>
-    <a class="adm-btn" href="/bitrix/admin/delement_antivirus_results.php?lang=<?php echo LANGUAGE_ID; ?>">
-        <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_BACK_TO_LIST'); ?>
+<div class="adm-detail-toolbar">
+    <span style="position:absolute;"></span>
+    <a href="/bitrix/admin/delement_antivirus_results.php?lang=<?php echo LANGUAGE_ID; ?>" class="adm-detail-toolbar-btn" id="btn_list">
+        <span class="adm-detail-toolbar-btn-l"></span>
+        <span class="adm-detail-toolbar-btn-text"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_BACK_TO_LIST'); ?></span>
+        <span class="adm-detail-toolbar-btn-r"></span>
     </a>
-</p>
+</div>
 <?php
 
 if (is_array($report)) {
     $summary = isset($report['summary']) && is_array($report['summary']) ? $report['summary'] : [];
     $results = isset($report['results']) && is_array($report['results']) ? $report['results'] : [];
     ?>
-    <h2><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_DETAILS_TITLE'); ?></h2>
+    <h2><?php echo htmlspecialcharsbx($reportTitle); ?></h2>
     <p>
         <a class="adm-btn" href="/bitrix/admin/delement_antivirus_report.php?lang=<?php echo LANGUAGE_ID; ?>&amp;scan_id=<?php echo urlencode((string)($summary['scan_id'] ?? '')); ?>&amp;export=Y">
             <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_EXPORT_JSON'); ?>

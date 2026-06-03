@@ -16,6 +16,7 @@ $MESS['DELEMENT_ANTIVIRUS_OPTIONS_ACTION_LEGEND_QUARANTINE'] = 'Quarantine: susp
 $MESS['DELEMENT_ANTIVIRUS_OPTIONS_ACTION_LEGEND_DELETE'] = 'Delete: suspicious files may be deleted when dry run is disabled and the action is allowed by safety settings.';
 $MESS['DELEMENT_ANTIVIRUS_OPTIONS_ACTION_DANGER_WARNING'] = 'The "Quarantine" and "Delete" modes are intended for experts. By selecting these modes and starting a scan, you accept responsibility for the consequences and understand the risk of site damage or file loss.';
 $MESS['DELEMENT_ANTIVIRUS_OPTIONS_DRY_RUN'] = 'Dry run';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_DRY_RUN_HINT'] = 'When dry run is enabled, the module scans and shows which actions would be performed, but does not move files to quarantine and does not delete them.';
 $MESS['DELEMENT_ANTIVIRUS_OPTIONS_QUARANTINE_PATH'] = 'Quarantine path';
 $MESS['DELEMENT_ANTIVIRUS_OPTIONS_BATCH_SIZE'] = 'Scan batch size';
 $MESS['DELEMENT_ANTIVIRUS_OPTIONS_MAX_FILE_SIZE_MB'] = 'Maximum file size, MB';

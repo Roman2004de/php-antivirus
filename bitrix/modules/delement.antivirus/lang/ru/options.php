@@ -16,6 +16,7 @@ $MESS['DELEMENT_ANTIVIRUS_OPTIONS_ACTION_LEGEND_QUARANTINE'] = 'Карантин
 $MESS['DELEMENT_ANTIVIRUS_OPTIONS_ACTION_LEGEND_DELETE'] = 'Удаление: подозрительные файлы могут быть удалены, если пробный режим выключен и действие будет разрешено настройками безопасности.';
 $MESS['DELEMENT_ANTIVIRUS_OPTIONS_ACTION_DANGER_WARNING'] = 'Режимы "Карантин" и "Удаление" предназначены для экспертов. Выбирая эти режимы и запуская сканирование, вы принимаете на себя ответственность за последствия и понимаете риск повреждения сайта или потери файлов.';
 $MESS['DELEMENT_ANTIVIRUS_OPTIONS_DRY_RUN'] = 'Пробный режим';
+$MESS['DELEMENT_ANTIVIRUS_OPTIONS_DRY_RUN_HINT'] = 'Когда пробный режим включен, модуль выполняет сканирование и показывает, какие действия были бы выполнены, но не переносит файлы в карантин и не удаляет их.';
 $MESS['DELEMENT_ANTIVIRUS_OPTIONS_QUARANTINE_PATH'] = 'Путь карантина';
 $MESS['DELEMENT_ANTIVIRUS_OPTIONS_BATCH_SIZE'] = 'Размер порции сканирования';
 $MESS['DELEMENT_ANTIVIRUS_OPTIONS_MAX_FILE_SIZE_MB'] = 'Максимальный размер файла, МБ';
