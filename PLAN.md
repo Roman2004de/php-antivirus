@@ -86,7 +86,7 @@ Acceptance:
 - дефолты в `default_option.php`;
 - проверка `sessid`;
 - базовая валидация путей, диапазонов и действия;
-- запрет сохранить `delete` без `dry-run` до реализации подтверждений.
+- предупреждение для опасных действий `quarantine` и `delete`.
 
 Acceptance:
 
@@ -135,6 +135,7 @@ Acceptance:
 - создан `Delement\Antivirus\Admin\AjaxController`;
 - создан `Delement\Antivirus\Scanner\ScanSessionStore`;
 - реализованы actions: `ping`, `start_scan`, `scan_step`, `get_status`, `cancel_scan`;
+- `delete` action выполняется через quarantine-like metadata и dry-run protection;
 - scan sessions сохраняются в writable runtime-каталог `/bitrix/tmp/delement.antivirus/sessions`;
 - JSON reports сохраняются в writable runtime-каталог `/bitrix/tmp/delement.antivirus/reports`;
 - отмененное сканирование сохраняет частичный JSON report со статусом `cancelled`;
@@ -147,6 +148,7 @@ Acceptance:
 - [x] scan выполняется порциями;
 - [x] есть cancel;
 - [x] есть JSON report;
+- [x] `delete` не выполняется при включенном `dry-run`;
 - [x] при cancel сохраняется частичный report;
 - [ ] сценарий проверен в браузере на живом Bitrix-стенде;
 - [ ] нужно добавить обработку больших объемов результатов без раздувания session JSON.
@@ -209,7 +211,9 @@ Acceptance:
 - добавлен рабочий `admin/quarantine.php`;
 - destructive actions требуют права `W`, POST, `sessid` и подтверждение для удаления;
 - `dry-run` не меняет файловую систему и сохраняет только планируемое действие;
+- `delete` сначала создает metadata-запись и quarantine payload, затем удаляет payload, оставляя audit metadata;
 - добавлен `tests/quarantine_smoke.php`.
+- добавлен `tests/delete_action_smoke.php`.
 
 Осталось улучшить:
 
@@ -223,6 +227,7 @@ Acceptance:
 - [x] metadata создается;
 - [x] restore работает;
 - [x] dry-run не меняет файловую систему;
+- [x] delete action оставляет metadata со статусом `deleted`;
 - [x] destructive actions требуют права уровня `W`, `sessid` и подтверждение удаления.
 
 ### [x] Этап 7. Whitelist
@@ -320,6 +325,7 @@ MVP считается готовым, когда:
 - [ ] результаты полноценно отображаются;
 - [x] quarantine работает;
 - [x] dry-run работает для quarantine action;
+- [x] dry-run работает для delete action;
 - [ ] cron runner работает;
 - [x] базовые права и `sessid` проверяются в AJAX;
 - [ ] права уровней `D/R/W/X` реализованы полностью;

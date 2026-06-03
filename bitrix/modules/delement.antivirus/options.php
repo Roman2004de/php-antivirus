@@ -151,10 +151,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['save']) || isset($_P
             $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_ACTION');
         }
 
-        if ($values['action'] === 'delete' && $values['dry_run'] !== 'Y') {
-            $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_DELETE_WITHOUT_DRY_RUN');
-        }
-
         if (!preg_match('/^\d+$/', $values['batch_size']) || (int)$values['batch_size'] < 1 || (int)$values['batch_size'] > 1000) {
             $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_BATCH_SIZE');
         }

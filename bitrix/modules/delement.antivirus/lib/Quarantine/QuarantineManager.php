@@ -59,6 +59,9 @@ class QuarantineManager
             'score' => isset($scanResult['score']) ? (int)$scanResult['score'] : 0,
             'severity' => isset($scanResult['severity']) ? (string)$scanResult['severity'] : '',
             'findings' => isset($scanResult['findings']) && is_array($scanResult['findings']) ? $scanResult['findings'] : [],
+            'planned_action' => isset($scanResult['planned_action']) ? (string)$scanResult['planned_action'] : '',
+            'action' => isset($scanResult['action']) ? (string)$scanResult['action'] : '',
+            'action_status' => isset($scanResult['action_status']) ? (string)$scanResult['action_status'] : '',
         ];
 
         $this->writeMetadata($metaPath, $metadata);
@@ -78,6 +81,58 @@ class QuarantineManager
         $this->writeMetadata($metaPath, $metadata);
 
         return $metadata;
+    }
+
+    public function deleteOriginal(string $filePath, array $scanResult, string $scanId): array
+    {
+        $sourcePath = realpath($filePath);
+
+        if ($sourcePath === false || !is_file($sourcePath)) {
+            throw new RuntimeException('delete_source_not_found');
+        }
+
+        if ($this->documentRoot !== '' && !$this->isPathInside($sourcePath, $this->documentRoot)) {
+            throw new RuntimeException('delete_source_outside_document_root');
+        }
+
+        $scanResult['planned_action'] = 'delete';
+        $scanResult['action'] = 'delete';
+        $scanResult['action_status'] = 'pending';
+
+        $item = $this->quarantine($sourcePath, $scanResult, $scanId);
+        $id = (string)$item['id'];
+
+        $item['planned_action'] = 'delete';
+        $item['action'] = 'delete';
+        $item['action_status'] = 'pending';
+        $item['deleted_from_original'] = true;
+        $this->writeMetadata($this->getMetaPath($id), $item);
+
+        try {
+            $item = $this->deletePayload($id);
+        } catch (RuntimeException $exception) {
+            try {
+                $failedItem = $this->load($id);
+                $failedItem['planned_action'] = 'delete';
+                $failedItem['action'] = 'delete';
+                $failedItem['action_status'] = 'failed';
+                $failedItem['action_error'] = $exception->getMessage();
+                $failedItem['deleted_from_original'] = true;
+                $this->writeMetadata($this->getMetaPath($id), $failedItem);
+            } catch (RuntimeException $metadataException) {
+                // Keep the original delete error; failed metadata update is secondary here.
+            }
+
+            throw $exception;
+        }
+
+        $item['planned_action'] = 'delete';
+        $item['action'] = 'delete';
+        $item['action_status'] = 'done';
+        $item['deleted_from_original'] = true;
+        $this->writeMetadata($this->getMetaPath($id), $item);
+
+        return $item;
     }
 
     public function listItems(): array

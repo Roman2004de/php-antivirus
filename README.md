@@ -90,6 +90,7 @@ bitrix/modules/delement.antivirus/
   tests/
     engine_smoke.php
     external_signatures_smoke.php
+    delete_action_smoke.php
     cancelled_report_smoke.php
     quarantine_smoke.php
     report_storage_smoke.php
@@ -136,13 +137,15 @@ bitrix/modules/delement.antivirus/
 - максимальный размер файла;
 - список исключений.
 
-Пока destructive actions не завершены, удаление без `dry-run` не разрешается сохранять.
+Для destructive actions рекомендуется сначала запускать `dry-run`. При включенном `dry-run` модуль только фиксирует планируемое действие в отчете и не меняет файловую систему.
 
 ## Карантин
 
 При действии `quarantine` и выключенном `dry-run` найденный файл переносится в защищенный каталог карантина. Payload хранится как `payload.bin`, а рядом создается `meta.json` с исходным путем, SHA256, scan id и деталями срабатывания.
 
 Страница `/bitrix/admin/delement_antivirus_quarantine.php` позволяет просматривать записи, восстанавливать файл и удалять payload из карантина. Восстановление не перезаписывает существующий файл.
+
+При действии `delete` и выключенном `dry-run` файл удаляется через тот же защищенный контур: сначала создается metadata-запись и файл переносится во временный quarantine payload, затем payload удаляется. В результате в карантине остается `meta.json` со статусом `deleted`, SHA256, исходным путем, scan id и findings; восстановить содержимое после `delete` нельзя.
 
 ## Белый список
 
@@ -207,6 +210,12 @@ Smoke-test внешних сигнатур:
 
 ```bash
 php bitrix/modules/delement.antivirus/tests/external_signatures_smoke.php
+```
+
+Smoke-test delete action:
+
+```bash
+php bitrix/modules/delement.antivirus/tests/delete_action_smoke.php
 ```
 
 Smoke-test сохранения отчета при отмене:

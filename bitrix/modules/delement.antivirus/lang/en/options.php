@@ -38,7 +38,6 @@ $MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_TOO_LONG'] = 'The "#FIELD#" field is too
 $MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_SIGNATURES_PATH'] = 'The external signatures file was not found or is not readable.';
 $MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_PROFILE'] = 'Unknown sensitivity profile selected.';
 $MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_ACTION'] = 'Unknown action selected.';
-$MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_DELETE_WITHOUT_DRY_RUN'] = 'Delete without dry run cannot be saved until a separate destructive action confirmation is implemented.';
 $MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_BATCH_SIZE'] = 'Batch size must be a number from 1 to 1000.';
 $MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_MAX_FILE_SIZE'] = 'Maximum file size must be a number from 1 to 1024 MB.';
 $MESS['DELEMENT_ANTIVIRUS_OPTIONS_ERROR_EXCLUDE_PATHS'] = 'The excluded paths list contains an invalid path.';

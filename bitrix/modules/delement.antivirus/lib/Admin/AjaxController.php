@@ -242,6 +242,25 @@ class AjaxController
             return $result;
         }
 
+        if ($plannedAction === ScanConfig::ACTION_DELETE) {
+            try {
+                $quarantine = new QuarantineManager($config->getQuarantinePath(), $this->documentRoot);
+                $item = $quarantine->deleteOriginal((string)($result['file_path'] ?? ''), $result, $scanId);
+
+                $result['action'] = ScanConfig::ACTION_DELETE;
+                $result['action_status'] = 'done';
+                $result['delete_id'] = (string)$item['id'];
+                $result['quarantine_id'] = (string)$item['id'];
+                $result['deleted_at'] = (string)$item['deleted_at'];
+            } catch (RuntimeException $exception) {
+                $result['action'] = ScanConfig::ACTION_REPORT;
+                $result['action_status'] = 'failed';
+                $result['action_error'] = $exception->getMessage();
+            }
+
+            return $result;
+        }
+
         $result['action'] = ScanConfig::ACTION_REPORT;
         $result['action_status'] = 'unsupported';
 
