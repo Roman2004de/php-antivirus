@@ -21,24 +21,52 @@ $sendJson = static function (array $payload, $status = 200) {
     die();
 };
 
-$sendError = static function ($error, $status = 500, Throwable $exception = null) use ($sendJson) {
+$normalizeErrorCode = static function ($error): string {
+    $error = trim((string)$error);
+
+    if ($error !== '' && preg_match('/^[a-z0-9_]+$/', $error)) {
+        return $error;
+    }
+
+    return 'internal_error';
+};
+
+$logException = static function ($error, Throwable $exception = null) use ($moduleId) {
+    if ($exception === null) {
+        return;
+    }
+
+    $message = implode("\n", [
+        'AJAX error: ' . (string)$error,
+        'Exception: ' . get_class($exception),
+        'Message: ' . $exception->getMessage(),
+        'File: ' . $exception->getFile(),
+        'Line: ' . $exception->getLine(),
+        'Trace: ' . $exception->getTraceAsString(),
+    ]);
+
+    if (function_exists('AddMessage2Log')) {
+        AddMessage2Log($message, $moduleId);
+        return;
+    }
+
+    error_log('[' . $moduleId . '] ' . $message);
+};
+
+$sendError = static function ($error, $status = 500, Throwable $exception = null) use ($sendJson, $normalizeErrorCode, $logException) {
+    $errorCode = $normalizeErrorCode($error);
+    $logException($errorCode, $exception);
+
     $payload = [
         'success' => false,
         'status' => 'failed',
-        'error' => $error,
+        'error' => $errorCode,
         'processed_files' => 0,
         'total_files_estimated' => 0,
         'found_total' => 0,
         'runtime_errors' => 1,
         'current_file' => '',
     ];
-
-    if ($exception !== null) {
-        $payload['message'] = $exception->getMessage();
-        $payload['exception'] = get_class($exception);
-        $payload['file'] = $exception->getFile();
-        $payload['line'] = $exception->getLine();
-    }
 
     $sendJson($payload, $status);
 };

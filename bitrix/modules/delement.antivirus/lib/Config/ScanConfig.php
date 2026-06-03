@@ -56,6 +56,7 @@ class ScanConfig
     private $action;
     private $dryRun;
     private $quarantinePath;
+    private $signaturesPath;
     private $excludePaths;
     private $batchSize;
     private $maxFileSizeBytes;
@@ -70,6 +71,7 @@ class ScanConfig
         $this->action = $this->normalizeAction(isset($options['action']) ? (string)$options['action'] : self::ACTION_REPORT);
         $this->dryRun = $this->normalizeBool(isset($options['dry_run']) ? $options['dry_run'] : true);
         $this->quarantinePath = $this->expandDocumentRoot(isset($options['quarantine_path']) ? (string)$options['quarantine_path'] : '');
+        $this->signaturesPath = $this->normalizeOptionalPath(isset($options['signatures_path']) ? (string)$options['signatures_path'] : '');
         $this->excludePaths = $this->normalizeLines(isset($options['exclude_paths']) ? $options['exclude_paths'] : []);
         $this->batchSize = $this->normalizeInt(isset($options['batch_size']) ? $options['batch_size'] : 50, 1, 1000);
         $this->maxFileSizeBytes = isset($options['max_file_size_bytes'])
@@ -87,6 +89,7 @@ class ScanConfig
             'action' => isset($options['action']) ? $options['action'] : null,
             'dry_run' => isset($options['dry_run']) ? $options['dry_run'] : null,
             'quarantine_path' => isset($options['quarantine_path']) ? $options['quarantine_path'] : null,
+            'signatures_path' => isset($options['signatures_path']) ? $options['signatures_path'] : null,
             'exclude_paths' => isset($options['exclude_paths']) ? $options['exclude_paths'] : [],
             'batch_size' => isset($options['batch_size']) ? $options['batch_size'] : null,
             'max_file_size_mb' => isset($options['max_file_size_mb']) ? $options['max_file_size_mb'] : null,
@@ -121,6 +124,11 @@ class ScanConfig
     public function getQuarantinePath(): string
     {
         return $this->quarantinePath;
+    }
+
+    public function getSignaturesPath(): string
+    {
+        return $this->signaturesPath;
     }
 
     public function getExcludePaths(): array
@@ -162,6 +170,7 @@ class ScanConfig
             'action' => $this->action,
             'dry_run' => $this->dryRun,
             'quarantine_path' => $this->quarantinePath,
+            'signatures_path' => $this->signaturesPath,
             'exclude_paths' => $this->excludePaths,
             'batch_size' => $this->batchSize,
             'max_file_size_bytes' => $this->maxFileSizeBytes,
@@ -202,6 +211,17 @@ class ScanConfig
     private function normalizeBool($value): bool
     {
         return $value === true || $value === 'Y' || $value === '1' || $value === 1;
+    }
+
+    private function normalizeOptionalPath(string $path): string
+    {
+        $path = trim($path);
+
+        if ($path === '') {
+            return '';
+        }
+
+        return $this->expandDocumentRoot($path);
     }
 
     private function normalizeInt($value, int $min, int $max): int

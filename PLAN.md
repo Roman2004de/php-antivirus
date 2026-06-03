@@ -14,6 +14,7 @@
 - запускать проверку по cron;
 - использовать dry-run перед destructive actions;
 - настраивать исключения;
+- подключать внешний файл сигнатур;
 - использовать профили чувствительности;
 - получать JSON-отчеты для аудита и автоматизации.
 
@@ -43,6 +44,7 @@ scan -> explain -> review -> quarantine -> restore/delete manually
 Стадия: MVP с работающим сканированием, отчетами и карантином.
 
 Уже есть устанавливаемый skeleton, настройки, модульный scanner engine, AJAX-пошаговое сканирование, results storage/UI, RU/EN локализация и базовый карантин с восстановлением.
+Scanner использует встроенные правила и может добавлять к ним внешний файл regex-сигнатур из настройки `signatures_path`.
 
 ## Этапы
 
@@ -80,6 +82,7 @@ Acceptance:
 - форма настроек в `options.php`;
 - хранение через `Bitrix\Main\Config\Option`;
 - поля: scan path, profile, action, dry-run, quarantine path, exclusions, batch size, max file size;
+- добавлена настройка `signatures_path` для внешнего файла regex-сигнатур;
 - дефолты в `default_option.php`;
 - проверка `sessid`;
 - базовая валидация путей, диапазонов и действия;
@@ -90,6 +93,7 @@ Acceptance:
 - [x] настройки сохраняются;
 - [x] настройки загружаются;
 - [x] значения валидируются;
+- [x] внешний файл сигнатур валидируется на существование и доступность для чтения;
 - [x] можно сбросить настройки к значениям по умолчанию;
 - [ ] форма проверена на живом Bitrix-стенде.
 
@@ -106,9 +110,11 @@ Acceptance:
 - созданы DTO `ScanResult`, `ScanSummary`, `Finding`;
 - добавлены `Severity` и `Verdict`;
 - добавлены правила в `lib/Rules`: PHP, JavaScript, HTML, Bitrix-specific;
+- `Scanner` объединяет встроенные правила с внешними сигнатурами из `ScanConfig::getSignaturesPath()`;
 - scanner не зависит от UI;
 - scanner не вызывает `echo` и `exit`;
 - добавлен `tests/engine_smoke.php`.
+- добавлен `tests/external_signatures_smoke.php`.
 
 Acceptance:
 
@@ -116,6 +122,7 @@ Acceptance:
 - [x] scanner возвращает структурированный результат;
 - [x] scanner не пишет HTML;
 - [x] smoke-test находит PHP-файл внутри `/upload/`;
+- [x] smoke-test подтверждает срабатывание внешней сигнатуры;
 - [ ] нужен набор unit/integration tests для правил и false positives.
 
 ### [x] Этап 4. AJAX scan

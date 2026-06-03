@@ -37,6 +37,7 @@ $optionNames = [
     'action',
     'dry_run',
     'quarantine_path',
+    'signatures_path',
     'exclude_paths',
     'batch_size',
     'max_file_size_mb',
@@ -52,6 +53,10 @@ $getOption = static function ($name) use ($moduleId, $getDefault) {
 
 $hasTraversal = static function ($value) {
     return preg_match('#(^|[\\\\/])\.\.([\\\\/]|$)#', $value) === 1;
+};
+
+$expandDocumentRoot = static function ($value) {
+    return str_replace('#DOCUMENT_ROOT#', (string)($_SERVER['DOCUMENT_ROOT'] ?? ''), (string)$value);
 };
 
 $normalizeLines = static function ($value) use ($hasTraversal) {
@@ -102,6 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['save']) || isset($_P
         $values['action'] = (string)($_POST['action'] ?? '');
         $values['dry_run'] = isset($_POST['dry_run']) && $_POST['dry_run'] === 'Y' ? 'Y' : 'N';
         $values['quarantine_path'] = trim((string)($_POST['quarantine_path'] ?? ''));
+        $values['signatures_path'] = trim((string)($_POST['signatures_path'] ?? ''));
         $values['batch_size'] = trim((string)($_POST['batch_size'] ?? ''));
         $values['max_file_size_mb'] = trim((string)($_POST['max_file_size_mb'] ?? ''));
 
@@ -121,6 +127,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['save']) || isset($_P
 
             if (strlen($values[$name]) > 4096) {
                 $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_TOO_LONG', ['#FIELD#' => $label]);
+            }
+        }
+
+        if ($values['signatures_path'] !== '') {
+            $label = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_SIGNATURES_PATH');
+            $expandedSignaturesPath = $expandDocumentRoot($values['signatures_path']);
+
+            if (strpos($values['signatures_path'], "\0") !== false || $hasTraversal($values['signatures_path'])) {
+                $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_PATH', ['#FIELD#' => $label]);
+            } elseif (strlen($values['signatures_path']) > 4096) {
+                $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_TOO_LONG', ['#FIELD#' => $label]);
+            } elseif (!is_file($expandedSignaturesPath) || !is_readable($expandedSignaturesPath)) {
+                $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_SIGNATURES_PATH');
             }
         }
 
@@ -273,6 +292,22 @@ $tabControl->Begin();
         </td>
         <td class="adm-detail-content-cell-r">
             <input type="text" size="60" id="delement_antivirus_quarantine_path" name="quarantine_path" value="<?php echo htmlspecialcharsbx($values['quarantine_path']); ?>">
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_signatures_path"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_SIGNATURES_PATH'); ?></label>
+        </td>
+        <td class="adm-detail-content-cell-r">
+            <input type="text" size="60" id="delement_antivirus_signatures_path" name="signatures_path" value="<?php echo htmlspecialcharsbx($values['signatures_path']); ?>">
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l"></td>
+        <td class="adm-detail-content-cell-r">
+            <?php echo BeginNote(); ?>
+            <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_SIGNATURES_PATH_HINT'); ?>
+            <?php echo EndNote(); ?>
         </td>
     </tr>
     <tr>

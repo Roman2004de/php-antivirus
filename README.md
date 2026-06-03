@@ -25,6 +25,7 @@
 - D7 autoload map для классов модуля.
 - Модульный scanner engine в `lib/`.
 - Базовые правила детекта: PHP, JavaScript, HTML, Bitrix-specific.
+- Поддержка внешнего файла regex-сигнатур с добавлением к встроенным правилам.
 - AJAX actions: `ping`, `start_scan`, `scan_step`, `get_status`, `cancel_scan`.
 - Пошаговое сканирование через AJAX.
 - Файловые scan sessions в runtime-каталоге `/bitrix/tmp/delement.antivirus/sessions`.
@@ -88,6 +89,7 @@ bitrix/modules/delement.antivirus/
 
   tests/
     engine_smoke.php
+    external_signatures_smoke.php
     cancelled_report_smoke.php
     quarantine_smoke.php
     report_storage_smoke.php
@@ -118,6 +120,8 @@ bitrix/modules/delement.antivirus/
 
 Движок не пишет HTML, не вызывает `echo`/`exit` и возвращает структурированные результаты, чтобы его можно было использовать из админки, AJAX, cron runner и будущего CLI-wrapper модуля.
 
+Встроенные правила загружаются через `SignatureLoader::loadDefaultRules()`. Если в настройках указан `signatures_path`, scanner дополнительно загружает файл через `SignatureLoader::loadFromFile()` и объединяет внешние regex-сигнатуры со встроенными правилами. Формат внешнего файла: одна regex-сигнатура на строку, пустые строки и строки с `#` в начале игнорируются.
+
 ## Настройки
 
 В `options.php` доступны:
@@ -127,6 +131,7 @@ bitrix/modules/delement.antivirus/
 - действие: `report`, `quarantine`, `delete`;
 - `dry-run`;
 - путь карантина;
+- путь к внешнему файлу сигнатур;
 - размер порции сканирования;
 - максимальный размер файла;
 - список исключений.
@@ -196,6 +201,12 @@ Smoke-test engine без Bitrix:
 
 ```bash
 php bitrix/modules/delement.antivirus/tests/engine_smoke.php
+```
+
+Smoke-test внешних сигнатур:
+
+```bash
+php bitrix/modules/delement.antivirus/tests/external_signatures_smoke.php
 ```
 
 Smoke-test сохранения отчета при отмене:
