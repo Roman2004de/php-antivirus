@@ -72,6 +72,19 @@ if (!function_exists('delement_antivirus_results_action_label')) {
     }
 }
 
+if (!function_exists('delement_antivirus_results_scan_profile_label')) {
+    function delement_antivirus_results_scan_profile_label($scanProfile): string
+    {
+        $scanProfile = trim((string)$scanProfile);
+        $profileKey = strtoupper(str_replace('-', '_', $scanProfile));
+        $label = $profileKey !== ''
+            ? Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_SCAN_PROFILE_' . $profileKey)
+            : '';
+
+        return $label ?: $scanProfile;
+    }
+}
+
 if (!function_exists('delement_antivirus_report_quarantine_manager')) {
     function delement_antivirus_report_quarantine_manager(string $moduleId, string $documentRoot): QuarantineManager
     {
@@ -602,6 +615,10 @@ if (is_array($report)) {
         <tr>
             <td class="delement-antivirus-results-summary-label"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_SCAN_ID'); ?></td>
             <td><?php echo htmlspecialcharsbx((string)($summary['scan_id'] ?? '')); ?></td>
+        </tr>
+        <tr>
+            <td class="delement-antivirus-results-summary-label"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_SCAN_PROFILE'); ?></td>
+            <td><?php echo htmlspecialcharsbx(delement_antivirus_results_scan_profile_label($summary['scan_profile'] ?? '')); ?></td>
         </tr>
         <tr>
             <td class="delement-antivirus-results-summary-label"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_PATH'); ?></td>

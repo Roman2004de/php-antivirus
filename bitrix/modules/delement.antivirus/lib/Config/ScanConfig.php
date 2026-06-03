@@ -8,19 +8,21 @@ class ScanConfig
     public const PROFILE_STRICT = 'strict';
     public const PROFILE_PARANOID = 'paranoid';
 
+    public const SCAN_PROFILE_QUICK = 'quick';
+    public const SCAN_PROFILE_STANDARD = 'standard';
+    public const SCAN_PROFILE_DEEP = 'deep';
+
     public const ACTION_REPORT = 'report';
     public const ACTION_QUARANTINE = 'quarantine';
     public const ACTION_DELETE = 'delete';
 
-    private const DEFAULT_EXTENSIONS = [
+    private const STANDARD_EXTENSIONS = [
         'php',
         'js',
         'phtml',
         'phtm',
         'cgi',
         'pl',
-        'o',
-        'so',
         'py',
         'sh',
         'php3',
@@ -28,12 +30,33 @@ class ScanConfig
         'php5',
         'php6',
         'php7',
+        'php8',
         'pht',
         'shtml',
-        'susp',
-        'suspected',
-        'infected',
-        'vir',
+        'html',
+        'htm',
+        'tpl',
+        'inc',
+        'css',
+    ];
+
+    private const DEEP_EXTENSIONS = [
+        'php',
+        'js',
+        'phtml',
+        'phtm',
+        'cgi',
+        'pl',
+        'py',
+        'sh',
+        'php3',
+        'php4',
+        'php5',
+        'php6',
+        'php7',
+        'php8',
+        'pht',
+        'shtml',
         'html',
         'htm',
         'tpl',
@@ -43,6 +66,12 @@ class ScanConfig
         'sql',
         'svg',
         'htaccess',
+        'susp',
+        'suspected',
+        'infected',
+        'vir',
+        'o',
+        'so',
     ];
 
     private const THRESHOLDS = [
@@ -52,6 +81,7 @@ class ScanConfig
     ];
 
     private $path;
+    private $scanProfile;
     private $profile;
     private $action;
     private $dryRun;
@@ -67,6 +97,7 @@ class ScanConfig
     {
         $this->documentRoot = isset($options['document_root']) ? (string)$options['document_root'] : $this->detectDocumentRoot();
         $this->path = $this->expandDocumentRoot(isset($options['path']) ? (string)$options['path'] : $this->documentRoot);
+        $this->scanProfile = $this->normalizeScanProfile(isset($options['scan_profile']) ? (string)$options['scan_profile'] : self::SCAN_PROFILE_STANDARD);
         $this->profile = $this->normalizeProfile(isset($options['profile']) ? (string)$options['profile'] : self::PROFILE_BALANCED);
         $this->action = $this->normalizeAction(isset($options['action']) ? (string)$options['action'] : self::ACTION_REPORT);
         $this->dryRun = $this->normalizeBool(isset($options['dry_run']) ? $options['dry_run'] : true);
@@ -77,7 +108,7 @@ class ScanConfig
         $this->maxFileSizeBytes = isset($options['max_file_size_bytes'])
             ? $this->normalizeInt($options['max_file_size_bytes'], 1, 1024 * 1024 * 1024)
             : $this->normalizeMaxFileSize(isset($options['max_file_size_mb']) ? $options['max_file_size_mb'] : 100);
-        $this->extensions = $this->normalizeExtensions(isset($options['extensions']) ? $options['extensions'] : self::DEFAULT_EXTENSIONS);
+        $this->extensions = $this->normalizeExtensions(isset($options['extensions']) ? $options['extensions'] : $this->defaultExtensionsForScanProfile($this->scanProfile));
     }
 
     public static function fromModuleOptions(array $options, $documentRoot = null): self
@@ -85,6 +116,7 @@ class ScanConfig
         return new self([
             'document_root' => $documentRoot,
             'path' => isset($options['scan_path']) ? $options['scan_path'] : null,
+            'scan_profile' => isset($options['scan_profile']) ? $options['scan_profile'] : null,
             'profile' => isset($options['profile']) ? $options['profile'] : null,
             'action' => isset($options['action']) ? $options['action'] : null,
             'dry_run' => isset($options['dry_run']) ? $options['dry_run'] : null,
@@ -104,6 +136,37 @@ class ScanConfig
     public function getPath(): string
     {
         return $this->path;
+    }
+
+    public function getScanProfile(): string
+    {
+        return $this->scanProfile;
+    }
+
+    public function getScanPaths(): array
+    {
+        if ($this->scanProfile !== self::SCAN_PROFILE_QUICK) {
+            return $this->uniquePaths([$this->path]);
+        }
+
+        $root = $this->documentRoot !== '' ? $this->documentRoot : $this->path;
+        $root = rtrim($root, '/\\');
+
+        if ($root === '') {
+            return $this->uniquePaths([$this->path]);
+        }
+
+        return $this->uniquePaths([
+            $root . '/upload',
+            $root . '/bitrix/php_interface',
+            $root . '/local/php_interface',
+            $root . '/local/modules',
+        ]);
+    }
+
+    public function ignoresMissingScanPaths(): bool
+    {
+        return $this->scanProfile === self::SCAN_PROFILE_QUICK;
     }
 
     public function getProfile(): string
@@ -166,6 +229,8 @@ class ScanConfig
         return [
             'document_root' => $this->documentRoot,
             'path' => $this->path,
+            'scan_profile' => $this->scanProfile,
+            'scan_paths' => $this->getScanPaths(),
             'profile' => $this->profile,
             'action' => $this->action,
             'dry_run' => $this->dryRun,
@@ -199,6 +264,13 @@ class ScanConfig
     private function normalizeProfile(string $profile): string
     {
         return isset(self::THRESHOLDS[$profile]) ? $profile : self::PROFILE_BALANCED;
+    }
+
+    private function normalizeScanProfile(string $scanProfile): string
+    {
+        $allowed = [self::SCAN_PROFILE_QUICK, self::SCAN_PROFILE_STANDARD, self::SCAN_PROFILE_DEEP];
+
+        return in_array($scanProfile, $allowed, true) ? $scanProfile : self::SCAN_PROFILE_STANDARD;
     }
 
     private function normalizeAction(string $action): string
@@ -290,6 +362,38 @@ class ScanConfig
         }
 
         return array_values($normalized);
+    }
+
+    private function defaultExtensionsForScanProfile(string $scanProfile): array
+    {
+        if ($scanProfile === self::SCAN_PROFILE_DEEP) {
+            return self::DEEP_EXTENSIONS;
+        }
+
+        return self::STANDARD_EXTENSIONS;
+    }
+
+    private function uniquePaths(array $paths): array
+    {
+        $normalizedPaths = [];
+        $seen = [];
+
+        foreach ($paths as $path) {
+            $path = $this->normalizePath((string)$path);
+
+            if ($path === '') {
+                continue;
+            }
+
+            $key = strtolower($path);
+
+            if (!isset($seen[$key])) {
+                $normalizedPaths[] = $path;
+                $seen[$key] = true;
+            }
+        }
+
+        return $normalizedPaths;
     }
 
     private function normalizePath(string $path): string

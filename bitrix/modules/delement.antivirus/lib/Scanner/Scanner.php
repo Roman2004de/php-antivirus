@@ -32,7 +32,7 @@ class Scanner
         $summary = new ScanSummary($config->getPath());
 
         try {
-            foreach ($this->collector->collect($config->getPath(), $config) as $filePath) {
+            foreach ($this->collector->collectFromConfig($config) as $filePath) {
                 $summary->addResult($this->scanFile((string)$filePath, $config));
             }
         } catch (Throwable $exception) {

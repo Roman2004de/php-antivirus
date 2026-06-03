@@ -52,4 +52,42 @@ class FileCollector
             }
         }
     }
+
+    public function collectFromConfig(ScanConfig $config): iterable
+    {
+        $hasExistingPath = false;
+        $seen = [];
+
+        foreach ($config->getScanPaths() as $path) {
+            if (!file_exists($path)) {
+                if ($config->ignoresMissingScanPaths()) {
+                    continue;
+                }
+
+                throw new RuntimeException('Path does not exist: ' . $path);
+            }
+
+            $hasExistingPath = true;
+
+            foreach ($this->collect($path, $config) as $filePath) {
+                $key = $this->normalizePath((string)$filePath);
+
+                if (isset($seen[$key])) {
+                    continue;
+                }
+
+                $seen[$key] = true;
+                yield $filePath;
+            }
+        }
+
+        if (!$hasExistingPath) {
+            throw new RuntimeException('No scan paths exist');
+        }
+    }
+
+    private function normalizePath(string $path): string
+    {
+        return str_replace('\\', '/', strtolower(rtrim($path, '/\\')));
+    }
 }

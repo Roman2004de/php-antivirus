@@ -2,6 +2,7 @@
 
 $delement_antivirus_default_option = [
     'scan_path' => '#DOCUMENT_ROOT#',
+    'scan_profile' => 'standard',
     'profile' => 'balanced',
     'action' => 'report',
     'dry_run' => 'Y',

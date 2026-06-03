@@ -25,6 +25,12 @@ $profiles = [
     'paranoid' => Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PROFILE_PARANOID'),
 ];
 
+$scanProfiles = [
+    'quick' => Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_SCAN_PROFILE_QUICK'),
+    'standard' => Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_SCAN_PROFILE_STANDARD'),
+    'deep' => Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_SCAN_PROFILE_DEEP'),
+];
+
 $actions = [
     'report' => Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ACTION_REPORT'),
     'quarantine' => Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ACTION_QUARANTINE'),
@@ -33,6 +39,7 @@ $actions = [
 
 $optionNames = [
     'scan_path',
+    'scan_profile',
     'profile',
     'action',
     'dry_run',
@@ -103,6 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['save']) || isset($_P
         $values = [];
 
         $values['scan_path'] = trim((string)($_POST['scan_path'] ?? ''));
+        $values['scan_profile'] = (string)($_POST['scan_profile'] ?? '');
         $values['profile'] = (string)($_POST['profile'] ?? '');
         $values['action'] = (string)($_POST['action'] ?? '');
         $values['dry_run'] = isset($_POST['dry_run']) && $_POST['dry_run'] === 'Y' ? 'Y' : 'N';
@@ -141,6 +149,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['save']) || isset($_P
             } elseif (!is_file($expandedSignaturesPath) || !is_readable($expandedSignaturesPath)) {
                 $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_SIGNATURES_PATH');
             }
+        }
+
+        if (!isset($scanProfiles[$values['scan_profile']])) {
+            $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_SCAN_PROFILE');
         }
 
         if (!isset($profiles[$values['profile']])) {
@@ -215,6 +227,32 @@ $tabControl->Begin();
 <form method="post" action="<?php echo $APPLICATION->GetCurPage(); ?>?mid=<?php echo urlencode($moduleId); ?>&amp;lang=<?php echo LANGUAGE_ID; ?>">
     <?php echo bitrix_sessid_post(); ?>
     <?php $tabControl->BeginNextTab(); ?>
+    <tr>
+        <td width="40%" class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_scan_profile"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_SCAN_PROFILE'); ?></label>
+        </td>
+        <td width="60%" class="adm-detail-content-cell-r">
+            <select id="delement_antivirus_scan_profile" name="scan_profile">
+                <?php foreach ($scanProfiles as $value => $label): ?>
+                    <option value="<?php echo htmlspecialcharsbx($value); ?>"<?php echo $values['scan_profile'] === $value ? ' selected' : ''; ?>>
+                        <?php echo htmlspecialcharsbx($label); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l"></td>
+        <td class="adm-detail-content-cell-r">
+            <?php echo BeginNote(); ?>
+            <ul>
+                <li><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_SCAN_PROFILE_HINT_QUICK'); ?></li>
+                <li><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_SCAN_PROFILE_HINT_STANDARD'); ?></li>
+                <li><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_SCAN_PROFILE_HINT_DEEP'); ?></li>
+            </ul>
+            <?php echo EndNote(); ?>
+        </td>
+    </tr>
     <tr>
         <td width="40%" class="adm-detail-content-cell-l">
             <label for="delement_antivirus_scan_path"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_SCAN_PATH'); ?></label>

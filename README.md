@@ -26,6 +26,7 @@
 - Модульный scanner engine в `lib/`.
 - Базовые правила детекта: PHP, JavaScript, HTML, Bitrix-specific.
 - Поддержка внешнего файла regex-сигнатур с добавлением к встроенным правилам.
+- Профили сканирования Bitrix: `quick`, `standard`, `deep`.
 - AJAX actions: `ping`, `start_scan`, `scan_step`, `get_status`, `cancel_scan`.
 - Пошаговое сканирование через AJAX.
 - Защита от параллельных сканов через marker активной сессии и lock-файл.
@@ -91,6 +92,7 @@ bitrix/modules/delement.antivirus/
   tests/
     engine_smoke.php
     external_signatures_smoke.php
+    scan_profiles_smoke.php
     delete_action_smoke.php
     file_filter_smoke.php
     parallel_scan_lock_smoke.php
@@ -131,6 +133,7 @@ bitrix/modules/delement.antivirus/
 В `options.php` доступны:
 
 - путь сканирования;
+- профиль сканирования Bitrix: `quick`, `standard`, `deep`;
 - профиль чувствительности: `balanced`, `strict`, `paranoid`;
 - действие: `report`, `quarantine`, `delete`;
 - `dry-run`;
@@ -141,6 +144,12 @@ bitrix/modules/delement.antivirus/
 - список исключений.
 
 Исключения путей сравниваются как нормализованный path-prefix: путь равен исключению или начинается с `excludePath/`.
+
+Профили сканирования:
+
+- `quick`: проверяет `/upload`, `/bitrix/php_interface`, `/local/php_interface`, `/local/modules`; отсутствующие пути пропускаются;
+- `standard`: проверяет выбранный путь целиком с учетом исключений и стандартного набора исполняемых/web-расширений;
+- `deep`: проверяет выбранный путь с расширенным набором расширений, включая `.txt`, `.sql`, `.svg`, `.htaccess`, `susp`, `suspected`, `infected`, `vir`.
 
 Для destructive actions рекомендуется сначала запускать `dry-run`. При включенном `dry-run` модуль только фиксирует планируемое действие в отчете и не меняет файловую систему.
 
@@ -220,6 +229,12 @@ Smoke-test внешних сигнатур:
 
 ```bash
 php bitrix/modules/delement.antivirus/tests/external_signatures_smoke.php
+```
+
+Smoke-test профилей сканирования:
+
+```bash
+php bitrix/modules/delement.antivirus/tests/scan_profiles_smoke.php
 ```
 
 Smoke-test delete action:

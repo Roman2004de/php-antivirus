@@ -60,7 +60,7 @@ class AjaxController
     private function startScan(int $userId): array
     {
         $config = $this->createConfigFromOptions();
-        $scanPath = $this->validateScanPath($config->getPath());
+        $scanPaths = $this->validateScanPaths($config);
         $session = $this->store->createActive($config, $userId);
 
         if (!empty($session['active_conflict']) && isset($session['active_session']) && is_array($session['active_session'])) {
@@ -69,10 +69,26 @@ class AjaxController
 
         try {
             $files = [];
+            $seen = [];
             $collector = new FileCollector();
 
-            foreach ($collector->collect($scanPath, $config) as $filePath) {
-                $files[] = (string)$filePath;
+            foreach ($scanPaths as $scanPath) {
+                foreach ($collector->collect($scanPath, $config) as $filePath) {
+                    $filePath = (string)$filePath;
+                    $fileKey = $this->normalizePath($filePath);
+
+                    if (isset($seen[$fileKey])) {
+                        continue;
+                    }
+
+                    $files[] = $filePath;
+                    $seen[$fileKey] = true;
+                }
+            }
+
+            if (isset($session['config']) && is_array($session['config'])) {
+                $session['config']['scan_profile'] = $config->getScanProfile();
+                $session['config']['scan_paths'] = $scanPaths;
             }
 
             $session['files'] = $files;
@@ -97,7 +113,9 @@ class AjaxController
             'found_total' => $session['found_total'],
             'runtime_errors' => $session['runtime_errors'],
             'batch_size' => $config->getBatchSize(),
-            'path' => $scanPath,
+            'path' => count($scanPaths) === 1 ? $scanPaths[0] : implode("\n", $scanPaths),
+            'scan_paths' => $scanPaths,
+            'scan_profile' => $config->getScanProfile(),
         ];
     }
 
@@ -372,11 +390,42 @@ class AjaxController
         $normalizedPath = $this->normalizePath($realPath);
         $normalizedDocumentRoot = $this->normalizePath($realDocumentRoot);
 
-        if (strpos($normalizedPath, $normalizedDocumentRoot) !== 0) {
+        if ($normalizedPath !== $normalizedDocumentRoot && strpos($normalizedPath, $normalizedDocumentRoot . '/') !== 0) {
             throw new RuntimeException('scan_path_outside_document_root');
         }
 
         return $realPath;
+    }
+
+    private function validateScanPaths(ScanConfig $config): array
+    {
+        $paths = [];
+        $seen = [];
+
+        foreach ($config->getScanPaths() as $path) {
+            try {
+                $realPath = $this->validateScanPath($path);
+            } catch (RuntimeException $exception) {
+                if ($config->ignoresMissingScanPaths() && $exception->getMessage() === 'scan_path_not_found') {
+                    continue;
+                }
+
+                throw $exception;
+            }
+
+            $key = $this->normalizePath($realPath);
+
+            if (!isset($seen[$key])) {
+                $paths[] = $realPath;
+                $seen[$key] = true;
+            }
+        }
+
+        if (empty($paths)) {
+            throw new RuntimeException('scan_paths_not_found');
+        }
+
+        return $paths;
     }
 
     private function getScanId(array $request): string

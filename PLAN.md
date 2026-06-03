@@ -15,6 +15,7 @@
 - использовать dry-run перед destructive actions;
 - настраивать исключения;
 - подключать внешний файл сигнатур;
+- использовать профили сканирования Bitrix;
 - использовать профили чувствительности;
 - получать JSON-отчеты для аудита и автоматизации.
 
@@ -45,6 +46,7 @@ scan -> explain -> review -> quarantine -> restore/delete manually
 
 Уже есть устанавливаемый skeleton, настройки, модульный scanner engine, AJAX-пошаговое сканирование, results storage/UI, RU/EN локализация и базовый карантин с восстановлением.
 Scanner использует встроенные правила и может добавлять к ним внешний файл regex-сигнатур из настройки `signatures_path`.
+Добавлены профили сканирования Bitrix `quick`, `standard`, `deep`.
 
 ## Этапы
 
@@ -81,8 +83,9 @@ Acceptance:
 
 - форма настроек в `options.php`;
 - хранение через `Bitrix\Main\Config\Option`;
-- поля: scan path, profile, action, dry-run, quarantine path, exclusions, batch size, max file size;
+- поля: scan path, scan profile, profile, action, dry-run, quarantine path, exclusions, batch size, max file size;
 - добавлена настройка `signatures_path` для внешнего файла regex-сигнатур;
+- добавлена настройка `scan_profile`: `quick`, `standard`, `deep`;
 - дефолты в `default_option.php`;
 - проверка `sessid`;
 - базовая валидация путей, диапазонов и действия;
@@ -108,15 +111,19 @@ Acceptance:
 - создан `Delement\Antivirus\Config\ScanConfig`;
 - создан `Delement\Antivirus\Scanner\Scanner`;
 - создан файловый слой `FileCollector`, `FileFilter`, `FileReader`, `FileTypeDetector`;
+- `ScanConfig` вычисляет профильные пути и набор расширений для `quick`, `standard`, `deep`;
+- `FileCollector` умеет собирать файлы по набору путей из `ScanConfig`;
 - создан detection слой `Detector`, `RuleEngine`, `SignatureLoader`;
 - созданы DTO `ScanResult`, `ScanSummary`, `Finding`;
 - добавлены `Severity` и `Verdict`;
 - добавлены правила в `lib/Rules`: PHP, JavaScript, HTML, Bitrix-specific;
 - `Scanner` объединяет встроенные правила с внешними сигнатурами из `ScanConfig::getSignaturesPath()`;
+- `Scanner` использует профильные пути через `FileCollector::collectFromConfig()`;
 - scanner не зависит от UI;
 - scanner не вызывает `echo` и `exit`;
 - добавлен `tests/engine_smoke.php`.
 - добавлен `tests/external_signatures_smoke.php`.
+- добавлен `tests/scan_profiles_smoke.php`.
 
 Acceptance:
 
@@ -125,6 +132,7 @@ Acceptance:
 - [x] scanner не пишет HTML;
 - [x] smoke-test находит PHP-файл внутри `/upload/`;
 - [x] smoke-test подтверждает срабатывание внешней сигнатуры;
+- [x] smoke-test подтверждает поведение профилей `quick`, `standard`, `deep`;
 - [ ] нужен набор unit/integration tests для правил и false positives.
 
 ### [x] Этап 4. AJAX scan
@@ -137,6 +145,7 @@ Acceptance:
 - создан `Delement\Antivirus\Admin\AjaxController`;
 - создан `Delement\Antivirus\Scanner\ScanSessionStore`;
 - реализованы actions: `ping`, `start_scan`, `scan_step`, `get_status`, `cancel_scan`;
+- `start_scan` валидирует и собирает несколько путей для quick-профиля;
 - `delete` action выполняется через quarantine-like metadata и dry-run protection;
 - добавлена защита от параллельных сканов через active session marker и `flock`;
 - scan sessions сохраняются в writable runtime-каталог `/bitrix/tmp/delement.antivirus/sessions`;

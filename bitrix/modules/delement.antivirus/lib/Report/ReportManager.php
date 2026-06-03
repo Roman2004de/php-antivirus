@@ -96,12 +96,21 @@ class ReportManager
     private function buildReport(array $session): array
     {
         $results = isset($session['results']) && is_array($session['results']) ? $session['results'] : [];
+        $path = isset($session['config']['path']) ? (string)$session['config']['path'] : '';
+        $scanPaths = isset($session['config']['scan_paths']) && is_array($session['config']['scan_paths']) ? $session['config']['scan_paths'] : [];
+
+        if (empty($scanPaths) && $path !== '') {
+            $scanPaths = [$path];
+        }
+
         $summary = [
             'scan_id' => (string)$session['scan_id'],
             'status' => (string)$session['status'],
             'started_at' => isset($session['started_at']) ? (string)$session['started_at'] : '',
             'finished_at' => isset($session['finished_at']) ? (string)$session['finished_at'] : '',
-            'path' => isset($session['config']['path']) ? (string)$session['config']['path'] : '',
+            'path' => $path,
+            'scan_profile' => isset($session['config']['scan_profile']) ? (string)$session['config']['scan_profile'] : 'standard',
+            'scan_paths' => $scanPaths,
             'profile' => isset($session['config']['profile']) ? (string)$session['config']['profile'] : '',
             'action' => isset($session['config']['action']) ? (string)$session['config']['action'] : '',
             'dry_run' => isset($session['config']['dry_run']) ? (bool)$session['config']['dry_run'] : true,
@@ -132,6 +141,8 @@ class ReportManager
             'started_at' => isset($report['started_at']) ? (string)$report['started_at'] : '',
             'finished_at' => isset($report['finished_at']) ? (string)$report['finished_at'] : '',
             'path' => isset($report['path']) ? (string)$report['path'] : '',
+            'scan_profile' => 'standard',
+            'scan_paths' => isset($report['path']) && (string)$report['path'] !== '' ? [(string)$report['path']] : [],
             'profile' => '',
             'action' => '',
             'dry_run' => true,

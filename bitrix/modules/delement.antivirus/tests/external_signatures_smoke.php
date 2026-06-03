@@ -32,6 +32,7 @@ file_put_contents($signaturesPath, "/DELEMENT_EXTERNAL_SIGNATURE_MARKER/\n");
 
 $config = new ScanConfig([
     'path' => $fixtureRoot,
+    'scan_profile' => ScanConfig::SCAN_PROFILE_DEEP,
     'profile' => ScanConfig::PROFILE_BALANCED,
     'action' => ScanConfig::ACTION_REPORT,
     'dry_run' => true,
