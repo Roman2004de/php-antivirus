@@ -61,17 +61,32 @@ class AjaxController
     {
         $config = $this->createConfigFromOptions();
         $scanPath = $this->validateScanPath($config->getPath());
+        $session = $this->store->createActive($config, $userId);
 
-        $files = [];
-        $collector = new FileCollector();
-
-        foreach ($collector->collect($scanPath, $config) as $filePath) {
-            $files[] = (string)$filePath;
+        if (!empty($session['active_conflict']) && isset($session['active_session']) && is_array($session['active_session'])) {
+            return $this->activeScanConflictPayload($session['active_session']);
         }
 
-        $session = $this->store->create($config, $files, $userId);
-        $session['status'] = 'running';
-        $this->store->save($session);
+        try {
+            $files = [];
+            $collector = new FileCollector();
+
+            foreach ($collector->collect($scanPath, $config) as $filePath) {
+                $files[] = (string)$filePath;
+            }
+
+            $session['files'] = $files;
+            $session['total_files_estimated'] = count($files);
+            $session['status'] = 'running';
+            $this->store->saveActive($session);
+        } catch (Throwable $exception) {
+            $session['status'] = 'failed';
+            $session['finished_at'] = date('c');
+            $session['current_file'] = '';
+            $session['runtime_errors'] = isset($session['runtime_errors']) ? (int)$session['runtime_errors'] + 1 : 1;
+            $this->store->saveActive($session);
+            throw $exception;
+        }
 
         return [
             'success' => true,
@@ -88,9 +103,16 @@ class AjaxController
 
     private function scanStep(string $scanId): array
     {
+        $activeSession = $this->store->getActiveSession();
+
+        if ($activeSession !== null && (string)($activeSession['scan_id'] ?? '') !== $scanId) {
+            return $this->activeScanConflictPayload($activeSession);
+        }
+
         $session = $this->store->load($scanId);
 
         if (in_array($session['status'], ['finished', 'cancelled', 'failed'], true)) {
+            $this->store->saveActive($session);
             return $this->statusPayload($session);
         }
 
@@ -148,10 +170,16 @@ class AjaxController
             $session['status'] = 'finished';
             $session['finished_at'] = date('c');
             $session['current_file'] = '';
-            $session['report_path'] = $this->reportManager->saveFromSession($session);
+
+            try {
+                $session['report_path'] = $this->reportManager->saveFromSession($session);
+            } catch (Throwable $exception) {
+                $session['status'] = 'failed';
+                $session['runtime_errors']++;
+            }
         }
 
-        $this->store->save($session);
+        $this->store->saveActive($session);
 
         return array_merge(
             $this->statusPayload($session),
@@ -168,18 +196,36 @@ class AjaxController
 
     private function cancelScan(string $scanId): array
     {
+        $activeSession = $this->store->getActiveSession();
+
+        if ($activeSession !== null && (string)($activeSession['scan_id'] ?? '') !== $scanId) {
+            return $this->activeScanConflictPayload($activeSession);
+        }
+
         $session = $this->store->load($scanId);
 
         if (!in_array($session['status'], ['finished', 'cancelled'], true)) {
             $session['status'] = 'cancelled';
             $session['finished_at'] = date('c');
             $session['current_file'] = '';
-            $this->store->save($session);
-            $session['report_path'] = $this->reportManager->saveFromSession($session);
-            $this->store->save($session);
+
+            try {
+                $session['report_path'] = $this->reportManager->saveFromSession($session);
+            } catch (Throwable $exception) {
+                $session['status'] = 'failed';
+                $session['runtime_errors'] = isset($session['runtime_errors']) ? (int)$session['runtime_errors'] + 1 : 1;
+            }
+
+            $this->store->saveActive($session);
         } elseif ($session['status'] === 'cancelled' && empty($session['report_path'])) {
-            $session['report_path'] = $this->reportManager->saveFromSession($session);
-            $this->store->save($session);
+            try {
+                $session['report_path'] = $this->reportManager->saveFromSession($session);
+            } catch (Throwable $exception) {
+                $session['status'] = 'failed';
+                $session['runtime_errors'] = isset($session['runtime_errors']) ? (int)$session['runtime_errors'] + 1 : 1;
+            }
+
+            $this->store->saveActive($session);
         }
 
         return $this->statusPayload($session);
@@ -198,6 +244,24 @@ class AjaxController
             'current_file' => (string)$session['current_file'],
             'cursor' => (int)$session['cursor'],
             'report_path' => (string)$session['report_path'],
+        ];
+    }
+
+    private function activeScanConflictPayload(array $activeSession): array
+    {
+        $scanId = (string)($activeSession['scan_id'] ?? '');
+
+        return [
+            'success' => false,
+            'status' => (string)($activeSession['status'] ?? 'running'),
+            'error' => 'scan_already_running',
+            'scan_id' => $scanId,
+            'active_scan_id' => $scanId,
+            'processed_files' => (int)($activeSession['processed_files'] ?? 0),
+            'total_files_estimated' => (int)($activeSession['total_files_estimated'] ?? 0),
+            'found_total' => (int)($activeSession['found_total'] ?? 0),
+            'runtime_errors' => (int)($activeSession['runtime_errors'] ?? 0),
+            'current_file' => (string)($activeSession['current_file'] ?? ''),
         ];
     }
 

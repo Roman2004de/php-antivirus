@@ -28,6 +28,7 @@
 - Поддержка внешнего файла regex-сигнатур с добавлением к встроенным правилам.
 - AJAX actions: `ping`, `start_scan`, `scan_step`, `get_status`, `cancel_scan`.
 - Пошаговое сканирование через AJAX.
+- Защита от параллельных сканов через marker активной сессии и lock-файл.
 - Файловые scan sessions в runtime-каталоге `/bitrix/tmp/delement.antivirus/sessions`.
 - JSON reports в runtime-каталоге `/bitrix/tmp/delement.antivirus/reports`.
 - Частичные JSON reports для отмененных сканирований.
@@ -91,6 +92,7 @@ bitrix/modules/delement.antivirus/
     engine_smoke.php
     external_signatures_smoke.php
     delete_action_smoke.php
+    parallel_scan_lock_smoke.php
     cancelled_report_smoke.php
     quarantine_smoke.php
     report_storage_smoke.php
@@ -179,6 +181,8 @@ Actions:
 
 Каждый запрос проходит проверку авторизации, прав модуля и `bitrix_sessid`.
 
+Повторный `start_scan` при уже активной сессии не запускает второй обход файлов. Endpoint возвращает `scan_already_running` и `active_scan_id`, а активный marker снимается при статусах `finished`, `cancelled` или `failed`.
+
 ## Проверки разработки
 
 Проверить синтаксис PHP-файлов модуля:
@@ -216,6 +220,12 @@ Smoke-test delete action:
 
 ```bash
 php bitrix/modules/delement.antivirus/tests/delete_action_smoke.php
+```
+
+Smoke-test защиты от параллельных сканов:
+
+```bash
+php bitrix/modules/delement.antivirus/tests/parallel_scan_lock_smoke.php
 ```
 
 Smoke-test сохранения отчета при отмене:

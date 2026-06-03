@@ -8,6 +8,8 @@ use RuntimeException;
 
 class ScanSessionStore
 {
+    private const ACTIVE_STATUSES = ['created', 'running', 'progress'];
+
     private $sessionsPath;
 
     public function __construct(string $moduleRoot = null)
@@ -18,28 +20,35 @@ class ScanSessionStore
 
     public function create(ScanConfig $config, array $files, int $createdBy = 0): array
     {
-        $scanId = $this->createScanId();
-        $session = [
-            'scan_id' => $scanId,
-            'status' => 'created',
-            'started_at' => date('c'),
-            'finished_at' => null,
-            'created_by' => $createdBy,
-            'config' => $config->toArray(),
-            'files' => array_values($files),
-            'cursor' => 0,
-            'processed_files' => 0,
-            'total_files_estimated' => count($files),
-            'found_total' => 0,
-            'runtime_errors' => 0,
-            'current_file' => '',
-            'results' => [],
-            'report_path' => '',
-        ];
+        $session = $this->buildSession($config, $files, $createdBy);
 
         $this->save($session);
 
         return $session;
+    }
+
+    public function createActive(ScanConfig $config, int $createdBy = 0): array
+    {
+        if (!$this->hasSessionStorage()) {
+            return $this->create($config, [], $createdBy);
+        }
+
+        return $this->withActiveLock(function () use ($config, $createdBy) {
+            $activeSession = $this->readActiveSessionUnsafe();
+
+            if ($activeSession !== null) {
+                return [
+                    'active_conflict' => true,
+                    'active_session' => $activeSession,
+                ];
+            }
+
+            $session = $this->buildSession($config, [], $createdBy);
+            $this->save($session);
+            $this->writeActiveMarkerUnsafe($session);
+
+            return $session;
+        });
     }
 
     public function load(string $scanId): array
@@ -80,6 +89,195 @@ class ScanSessionStore
         }
     }
 
+    public function saveActive(array $session): void
+    {
+        $this->save($session);
+
+        if (!$this->hasSessionStorage()) {
+            return;
+        }
+
+        $this->syncActiveMarker($session);
+    }
+
+    public function getActiveSession(): ?array
+    {
+        if (!$this->hasSessionStorage()) {
+            return null;
+        }
+
+        return $this->withActiveLock(function () {
+            return $this->readActiveSessionUnsafe();
+        });
+    }
+
+    public function releaseActive(string $scanId): void
+    {
+        if (!$this->hasSessionStorage()) {
+            return;
+        }
+
+        $this->withActiveLock(function () use ($scanId) {
+            $marker = $this->readActiveMarkerUnsafe();
+
+            if ((string)($marker['scan_id'] ?? '') === $scanId) {
+                @unlink($this->getActiveMarkerPath());
+            }
+        });
+    }
+
+    private function buildSession(ScanConfig $config, array $files, int $createdBy): array
+    {
+        return [
+            'scan_id' => $this->createScanId(),
+            'status' => 'created',
+            'started_at' => date('c'),
+            'finished_at' => null,
+            'created_by' => $createdBy,
+            'config' => $config->toArray(),
+            'files' => array_values($files),
+            'cursor' => 0,
+            'processed_files' => 0,
+            'total_files_estimated' => count($files),
+            'found_total' => 0,
+            'runtime_errors' => 0,
+            'current_file' => '',
+            'results' => [],
+            'report_path' => '',
+        ];
+    }
+
+    private function syncActiveMarker(array $session): void
+    {
+        $this->withActiveLock(function () use ($session) {
+            $scanId = isset($session['scan_id']) ? (string)$session['scan_id'] : '';
+            $marker = $this->readActiveMarkerUnsafe();
+            $markerScanId = (string)($marker['scan_id'] ?? '');
+
+            if ($scanId === '') {
+                return;
+            }
+
+            if ($this->isActiveStatus((string)($session['status'] ?? ''))) {
+                if ($markerScanId === '' || $markerScanId === $scanId) {
+                    $this->writeActiveMarkerUnsafe($session);
+                }
+
+                return;
+            }
+
+            if ($markerScanId === $scanId) {
+                @unlink($this->getActiveMarkerPath());
+            }
+        });
+    }
+
+    private function readActiveSessionUnsafe(): ?array
+    {
+        $marker = $this->readActiveMarkerUnsafe();
+        $scanId = (string)($marker['scan_id'] ?? '');
+
+        if ($scanId === '') {
+            return null;
+        }
+
+        try {
+            $session = $this->load($scanId);
+        } catch (RuntimeException $exception) {
+            @unlink($this->getActiveMarkerPath());
+            return null;
+        }
+
+        if (!$this->isActiveStatus((string)($session['status'] ?? ''))) {
+            @unlink($this->getActiveMarkerPath());
+            return null;
+        }
+
+        $this->writeActiveMarkerUnsafe($session);
+
+        return $this->activePayload($session);
+    }
+
+    private function readActiveMarkerUnsafe(): array
+    {
+        $path = $this->getActiveMarkerPath();
+
+        if (!is_file($path) || !is_readable($path)) {
+            return [];
+        }
+
+        $data = json_decode((string)file_get_contents($path), true);
+
+        return is_array($data) ? $data : [];
+    }
+
+    private function writeActiveMarkerUnsafe(array $session): void
+    {
+        $payload = $this->activePayload($session);
+        $payload['updated_at'] = date('c');
+        $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        if ($json === false) {
+            throw new RuntimeException('Cannot encode active scan marker');
+        }
+
+        if (file_put_contents($this->getActiveMarkerPath(), $json, LOCK_EX) === false) {
+            throw new RuntimeException('Cannot save active scan marker');
+        }
+    }
+
+    private function activePayload(array $session): array
+    {
+        return [
+            'scan_id' => isset($session['scan_id']) ? (string)$session['scan_id'] : '',
+            'status' => isset($session['status']) ? (string)$session['status'] : '',
+            'started_at' => isset($session['started_at']) ? (string)$session['started_at'] : '',
+            'created_by' => isset($session['created_by']) ? (int)$session['created_by'] : 0,
+            'processed_files' => isset($session['processed_files']) ? (int)$session['processed_files'] : 0,
+            'total_files_estimated' => isset($session['total_files_estimated']) ? (int)$session['total_files_estimated'] : 0,
+            'found_total' => isset($session['found_total']) ? (int)$session['found_total'] : 0,
+            'runtime_errors' => isset($session['runtime_errors']) ? (int)$session['runtime_errors'] : 0,
+            'current_file' => isset($session['current_file']) ? (string)$session['current_file'] : '',
+        ];
+    }
+
+    private function withActiveLock(callable $callback)
+    {
+        if (!$this->hasSessionStorage()) {
+            return $callback();
+        }
+
+        $this->ensureDirectory($this->sessionsPath);
+        $lockPath = $this->getActiveLockPath();
+        $handle = @fopen($lockPath, 'c+');
+
+        if ($handle === false) {
+            throw new RuntimeException('Cannot open active scan lock');
+        }
+
+        if (!flock($handle, LOCK_EX)) {
+            fclose($handle);
+            throw new RuntimeException('Cannot acquire active scan lock');
+        }
+
+        try {
+            return $callback();
+        } finally {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+        }
+    }
+
+    private function isActiveStatus(string $status): bool
+    {
+        return in_array($status, self::ACTIVE_STATUSES, true);
+    }
+
+    private function hasSessionStorage(): bool
+    {
+        return is_string($this->sessionsPath) && $this->sessionsPath !== '';
+    }
+
     private function createScanId(): string
     {
         return date('Ymd_His') . '_' . bin2hex(random_bytes(6));
@@ -88,6 +286,16 @@ class ScanSessionStore
     private function getSessionPath(string $scanId): string
     {
         return $this->sessionsPath . '/' . $this->sanitizeScanId($scanId) . '.json';
+    }
+
+    private function getActiveMarkerPath(): string
+    {
+        return $this->sessionsPath . '/active.json';
+    }
+
+    private function getActiveLockPath(): string
+    {
+        return $this->sessionsPath . '/active.lock';
     }
 
     private function sanitizeScanId(string $scanId): string

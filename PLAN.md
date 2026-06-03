@@ -136,11 +136,13 @@ Acceptance:
 - создан `Delement\Antivirus\Scanner\ScanSessionStore`;
 - реализованы actions: `ping`, `start_scan`, `scan_step`, `get_status`, `cancel_scan`;
 - `delete` action выполняется через quarantine-like metadata и dry-run protection;
+- добавлена защита от параллельных сканов через active session marker и `flock`;
 - scan sessions сохраняются в writable runtime-каталог `/bitrix/tmp/delement.antivirus/sessions`;
 - JSON reports сохраняются в writable runtime-каталог `/bitrix/tmp/delement.antivirus/reports`;
 - отмененное сканирование сохраняет частичный JSON report со статусом `cancelled`;
 - UI страницы сканирования показывает прогресс, статус, счетчики и текущий файл;
 - JS крутит `scan_step` до `finished` или `cancelled`.
+- добавлен `tests/parallel_scan_lock_smoke.php`.
 
 Acceptance:
 
@@ -149,6 +151,7 @@ Acceptance:
 - [x] есть cancel;
 - [x] есть JSON report;
 - [x] `delete` не выполняется при включенном `dry-run`;
+- [x] повторный `start_scan` не запускает второй параллельный scan;
 - [x] при cancel сохраняется частичный report;
 - [ ] сценарий проверен в браузере на живом Bitrix-стенде;
 - [ ] нужно добавить обработку больших объемов результатов без раздувания session JSON.

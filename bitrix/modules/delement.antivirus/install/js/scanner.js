@@ -207,6 +207,15 @@
 
             request('start_scan', null, function (response) {
                 if (!response.success) {
+                    if (response.error === 'scan_already_running' && response.active_scan_id) {
+                        activeScanId = response.active_scan_id;
+                        updateProgress(response);
+                        show(response);
+                        setButtonDisabled(startButton, false);
+                        setButtonDisabled(cancelButton, false);
+                        return;
+                    }
+
                     finish(response);
                     return;
                 }
