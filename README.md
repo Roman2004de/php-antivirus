@@ -92,6 +92,7 @@ bitrix/modules/delement.antivirus/
     engine_smoke.php
     external_signatures_smoke.php
     delete_action_smoke.php
+    file_filter_smoke.php
     parallel_scan_lock_smoke.php
     cancelled_report_smoke.php
     quarantine_smoke.php
@@ -138,6 +139,8 @@ bitrix/modules/delement.antivirus/
 - размер порции сканирования;
 - максимальный размер файла;
 - список исключений.
+
+Исключения путей сравниваются как нормализованный path-prefix: путь равен исключению или начинается с `excludePath/`.
 
 Для destructive actions рекомендуется сначала запускать `dry-run`. При включенном `dry-run` модуль только фиксирует планируемое действие в отчете и не меняет файловую систему.
 
@@ -223,6 +226,12 @@ Smoke-test delete action:
 
 ```bash
 php bitrix/modules/delement.antivirus/tests/delete_action_smoke.php
+```
+
+Smoke-test исключений путей:
+
+```bash
+php bitrix/modules/delement.antivirus/tests/file_filter_smoke.php
 ```
 
 Smoke-test защиты от параллельных сканов:

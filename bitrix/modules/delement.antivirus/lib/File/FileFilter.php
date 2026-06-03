@@ -47,7 +47,7 @@ class FileFilter
                 continue;
             }
 
-            if (strpos($path, $excludePath) !== false) {
+            if ($path === $excludePath || strpos($path, $excludePath . '/') === 0) {
                 return true;
             }
         }
