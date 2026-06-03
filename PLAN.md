@@ -208,11 +208,16 @@ Acceptance:
 - файлы переносятся в защищенное хранилище как `payload.bin`;
 - рядом сохраняется `meta.json`;
 - сохраняются SHA256, исходный путь, scan id, verdict, score, severity и findings;
+- checksum проверяется до и после перемещения файла;
+- директории карантина закрываются правами `0700`, payload и metadata правами `0600`;
 - restore не перезаписывает существующий файл;
+- restore в критичные системные пути требует отдельного подтверждения;
 - поддержан restore;
 - поддержано удаление payload из карантина;
+- restore/delete пишут события в журнал metadata;
 - добавлен рабочий `admin/quarantine.php`;
 - destructive actions требуют права `W`, POST, `sessid` и подтверждение для удаления;
+- restore/delete в карантине требуют пользователя Bitrix admin и права `W` на модуль;
 - `dry-run` не меняет файловую систему и сохраняет только планируемое действие;
 - `delete` сначала создает metadata-запись и quarantine payload, затем удаляет payload, оставляя audit metadata;
 - добавлен `tests/quarantine_smoke.php`.
@@ -228,9 +233,13 @@ Acceptance:
 
 - [x] файлы не перезаписываются;
 - [x] metadata создается;
+- [x] checksum до/после перемещения проверяется;
 - [x] restore работает;
+- [x] restore критичных системных файлов блокируется без подтверждения;
+- [x] restore/delete пишут журнал событий;
 - [x] dry-run не меняет файловую систему;
 - [x] delete action оставляет metadata со статусом `deleted`;
+- [x] restore/delete payload из карантина доступны только Bitrix admin с правом `W`;
 - [x] destructive actions требуют права уровня `W`, `sessid` и подтверждение удаления.
 
 ### [x] Этап 7. Whitelist
