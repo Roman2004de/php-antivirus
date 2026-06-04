@@ -44,6 +44,10 @@
     transition: width 0.2s ease !important;
 }
 
+.delement-antivirus-progress-native {
+    display: none !important;
+}
+
 .delement-antivirus-stats {
     display: flex !important;
     flex-wrap: wrap !important;

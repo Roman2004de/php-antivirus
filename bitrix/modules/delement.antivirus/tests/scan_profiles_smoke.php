@@ -61,6 +61,33 @@ function delement_antivirus_scan_profiles_collect(ScanConfig $config): array
     return $files;
 }
 
+function delement_antivirus_scan_profiles_collect_incremental(ScanConfig $config, int $batchSize): array
+{
+    $collector = new FileCollector();
+    $state = $collector->createDiscoveryState($config->getScanPaths());
+    $files = [];
+    $guard = 0;
+
+    do {
+        $step = $collector->collectStep($state, $config, $batchSize);
+        $state = $step['state'];
+
+        foreach ($step['files'] as $filePath) {
+            $files[] = delement_antivirus_scan_profiles_normalize((string)$filePath);
+        }
+
+        $guard++;
+    } while (empty($step['complete']) && $guard < 100);
+
+    if ($guard >= 100) {
+        throw new RuntimeException('Incremental discovery did not finish');
+    }
+
+    sort($files);
+
+    return $files;
+}
+
 function delement_antivirus_scan_profiles_assert_contains(array $files, string $path): void
 {
     $path = delement_antivirus_scan_profiles_normalize($path);
@@ -131,6 +158,9 @@ try {
     $deepFiles = delement_antivirus_scan_profiles_collect(new ScanConfig($baseOptions + [
         'scan_profile' => ScanConfig::SCAN_PROFILE_DEEP,
     ]));
+    $deepFilesIncremental = delement_antivirus_scan_profiles_collect_incremental(new ScanConfig($baseOptions + [
+        'scan_profile' => ScanConfig::SCAN_PROFILE_DEEP,
+    ]), 2);
 
     delement_antivirus_scan_profiles_assert_contains($deepFiles, $fixtureRoot . '/notes.txt');
     delement_antivirus_scan_profiles_assert_contains($deepFiles, $fixtureRoot . '/dump.sql');
@@ -138,11 +168,16 @@ try {
     delement_antivirus_scan_profiles_assert_contains($deepFiles, $fixtureRoot . '/.htaccess');
     delement_antivirus_scan_profiles_assert_contains($deepFiles, $fixtureRoot . '/payload.susp');
 
+    if ($deepFilesIncremental !== $deepFiles) {
+        throw new RuntimeException('Incremental discovery result differs from full collection');
+    }
+
     echo json_encode(
         [
             'quick_count' => count($quickFiles),
             'standard_count' => count($standardFiles),
             'deep_count' => count($deepFiles),
+            'incremental_deep_count' => count($deepFilesIncremental),
         ],
         JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
     ) . PHP_EOL;

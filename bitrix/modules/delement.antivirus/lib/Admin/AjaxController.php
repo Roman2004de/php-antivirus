@@ -61,6 +61,7 @@ class AjaxController
     {
         $config = $this->createConfigFromOptions();
         $scanPaths = $this->validateScanPaths($config);
+        $collector = new FileCollector();
         $session = $this->store->createActive($config, $userId);
 
         if (!empty($session['active_conflict']) && isset($session['active_session']) && is_array($session['active_session'])) {
@@ -68,31 +69,15 @@ class AjaxController
         }
 
         try {
-            $files = [];
-            $seen = [];
-            $collector = new FileCollector();
-
-            foreach ($scanPaths as $scanPath) {
-                foreach ($collector->collect($scanPath, $config) as $filePath) {
-                    $filePath = (string)$filePath;
-                    $fileKey = $this->normalizePath($filePath);
-
-                    if (isset($seen[$fileKey])) {
-                        continue;
-                    }
-
-                    $files[] = $filePath;
-                    $seen[$fileKey] = true;
-                }
-            }
-
             if (isset($session['config']) && is_array($session['config'])) {
                 $session['config']['scan_profile'] = $config->getScanProfile();
                 $session['config']['scan_paths'] = $scanPaths;
             }
 
-            $session['files'] = $files;
-            $session['total_files_estimated'] = count($files);
+            $session['files'] = [];
+            $session['discovery_state'] = $collector->createDiscoveryState($scanPaths);
+            $session['discovery_done'] = empty($session['discovery_state']['pending']);
+            $session['total_files_estimated'] = 0;
             $session['status'] = 'running';
             $this->store->saveActive($session);
         } catch (Throwable $exception) {
@@ -136,6 +121,7 @@ class AjaxController
 
         $session['status'] = 'running';
         $config = ScanConfig::fromArray($session['config']);
+        $session = $this->discoverFilesForStep($session, $config);
         $scanner = new Scanner();
         $files = isset($session['files']) && is_array($session['files']) ? $session['files'] : [];
         $cursor = isset($session['cursor']) ? (int)$session['cursor'] : 0;
@@ -184,7 +170,7 @@ class AjaxController
 
         $session['cursor'] = $limit;
 
-        if ($session['cursor'] >= count($files)) {
+        if ($session['cursor'] >= count($files) && !empty($session['discovery_done'])) {
             $session['status'] = 'finished';
             $session['finished_at'] = date('c');
             $session['current_file'] = '';
@@ -249,6 +235,86 @@ class AjaxController
         return $this->statusPayload($session);
     }
 
+    private function discoverFilesForStep(array $session, ScanConfig $config): array
+    {
+        $files = isset($session['files']) && is_array($session['files']) ? array_values($session['files']) : [];
+        $cursor = isset($session['cursor']) ? (int)$session['cursor'] : 0;
+        $batchSize = $config->getBatchSize();
+        $queuedFiles = max(0, count($files) - $cursor);
+
+        if (!empty($session['discovery_done']) || $queuedFiles >= $batchSize) {
+            $session['files'] = $files;
+            $session['total_files_estimated'] = count($files);
+            return $session;
+        }
+
+        $collector = new FileCollector();
+        $state = isset($session['discovery_state']) && is_array($session['discovery_state'])
+            ? $session['discovery_state']
+            : $this->createDiscoveryStateFromSession($session, $config);
+        $limit = max(1, $batchSize - $queuedFiles);
+        $step = $collector->collectStep($state, $config, $limit);
+        $seen = [];
+
+        foreach ($files as $filePath) {
+            $seen[$this->normalizePath((string)$filePath)] = true;
+        }
+
+        foreach ($step['files'] as $filePath) {
+            $filePath = (string)$filePath;
+            $key = $this->normalizePath($filePath);
+
+            if (isset($seen[$key])) {
+                continue;
+            }
+
+            $files[] = $filePath;
+            $seen[$key] = true;
+        }
+
+        $session['files'] = $files;
+        $session['discovery_state'] = $step['state'];
+        $session['discovery_done'] = !empty($step['complete']);
+        $session['total_files_estimated'] = count($files);
+
+        return $session;
+    }
+
+    private function createDiscoveryStateFromSession(array $session, ScanConfig $config): array
+    {
+        $files = isset($session['files']) && is_array($session['files']) ? $session['files'] : [];
+
+        if (!empty($files)) {
+            return [
+                'pending' => [],
+                'done' => true,
+            ];
+        }
+
+        return (new FileCollector())->createDiscoveryState($this->getSessionScanPaths($session, $config));
+    }
+
+    private function getSessionScanPaths(array $session, ScanConfig $config): array
+    {
+        if (isset($session['config']['scan_paths']) && is_array($session['config']['scan_paths'])) {
+            $paths = [];
+
+            foreach ($session['config']['scan_paths'] as $path) {
+                $path = (string)$path;
+
+                if ($path !== '') {
+                    $paths[] = $path;
+                }
+            }
+
+            if (!empty($paths)) {
+                return $paths;
+            }
+        }
+
+        return $config->getScanPaths();
+    }
+
     private function statusPayload(array $session): array
     {
         return [
@@ -262,6 +328,7 @@ class AjaxController
             'current_file' => (string)$session['current_file'],
             'cursor' => (int)$session['cursor'],
             'report_path' => (string)$session['report_path'],
+            'discovery_done' => !empty($session['discovery_done']),
         ];
     }
 

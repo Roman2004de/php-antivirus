@@ -85,6 +85,7 @@
         var cancelButton = document.getElementById('delement-antivirus-cancel');
         var output = document.getElementById('delement-antivirus-output');
         var progressBar = document.getElementById('delement-antivirus-progress-bar');
+        var progressNative = document.getElementById('delement-antivirus-progress-native');
         var statusNode = document.getElementById('delement-antivirus-status');
         var processedNode = document.getElementById('delement-antivirus-processed');
         var totalNode = document.getElementById('delement-antivirus-total');
@@ -156,6 +157,11 @@
             if (progressBar) {
                 progressBar.style.width = percent + '%';
             }
+
+            if (progressNative) {
+                progressNative.value = percent;
+                progressNative.textContent = percent + '%';
+            }
         }
 
         function show(data) {
@@ -203,6 +209,11 @@
 
             if (progressBar) {
                 progressBar.style.width = '0';
+            }
+
+            if (progressNative) {
+                progressNative.value = 0;
+                progressNative.textContent = '0%';
             }
 
             request('start_scan', null, function (response) {
