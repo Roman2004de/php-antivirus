@@ -77,6 +77,7 @@ class AjaxController
             $session['files'] = [];
             $session['discovery_state'] = $collector->createDiscoveryState($scanPaths);
             $session['discovery_done'] = empty($session['discovery_state']['pending']);
+            $session['files_discovered'] = 0;
             $session['total_files_estimated'] = 0;
             $session['status'] = 'running';
             $this->store->saveActive($session);
@@ -94,6 +95,7 @@ class AjaxController
             'status' => $session['status'],
             'scan_id' => $session['scan_id'],
             'total_files_estimated' => $session['total_files_estimated'],
+            'files_discovered' => $session['files_discovered'],
             'processed_files' => $session['processed_files'],
             'found_total' => $session['found_total'],
             'runtime_errors' => $session['runtime_errors'],
@@ -244,7 +246,7 @@ class AjaxController
 
         if (!empty($session['discovery_done']) || $queuedFiles >= $batchSize) {
             $session['files'] = $files;
-            $session['total_files_estimated'] = count($files);
+            $session = $this->updateDiscoveryTotals($session, count($files));
             return $session;
         }
 
@@ -275,7 +277,15 @@ class AjaxController
         $session['files'] = $files;
         $session['discovery_state'] = $step['state'];
         $session['discovery_done'] = !empty($step['complete']);
-        $session['total_files_estimated'] = count($files);
+        $session = $this->updateDiscoveryTotals($session, count($files));
+
+        return $session;
+    }
+
+    private function updateDiscoveryTotals(array $session, int $filesDiscovered): array
+    {
+        $session['files_discovered'] = $filesDiscovered;
+        $session['total_files_estimated'] = !empty($session['discovery_done']) ? $filesDiscovered : 0;
 
         return $session;
     }
@@ -317,24 +327,31 @@ class AjaxController
 
     private function statusPayload(array $session): array
     {
+        $status = (string)$session['status'];
+        $discoveryDone = !empty($session['discovery_done']) || in_array($status, ['finished', 'cancelled', 'failed'], true);
+
         return [
             'success' => true,
-            'status' => $session['status'],
+            'status' => $status,
             'scan_id' => $session['scan_id'],
             'processed_files' => (int)$session['processed_files'],
-            'total_files_estimated' => (int)$session['total_files_estimated'],
+            'total_files_estimated' => $discoveryDone ? (int)$session['total_files_estimated'] : 0,
+            'files_discovered' => isset($session['files_discovered'])
+                ? (int)$session['files_discovered']
+                : (isset($session['files']) && is_array($session['files']) ? count($session['files']) : 0),
             'found_total' => (int)$session['found_total'],
             'runtime_errors' => (int)$session['runtime_errors'],
             'current_file' => (string)$session['current_file'],
             'cursor' => (int)$session['cursor'],
             'report_path' => (string)$session['report_path'],
-            'discovery_done' => !empty($session['discovery_done']),
+            'discovery_done' => $discoveryDone,
         ];
     }
 
     private function activeScanConflictPayload(array $activeSession): array
     {
         $scanId = (string)($activeSession['scan_id'] ?? '');
+        $discoveryDone = !empty($activeSession['discovery_done']);
 
         return [
             'success' => false,
@@ -343,10 +360,12 @@ class AjaxController
             'scan_id' => $scanId,
             'active_scan_id' => $scanId,
             'processed_files' => (int)($activeSession['processed_files'] ?? 0),
-            'total_files_estimated' => (int)($activeSession['total_files_estimated'] ?? 0),
+            'total_files_estimated' => $discoveryDone ? (int)($activeSession['total_files_estimated'] ?? 0) : 0,
+            'files_discovered' => (int)($activeSession['files_discovered'] ?? 0),
             'found_total' => (int)($activeSession['found_total'] ?? 0),
             'runtime_errors' => (int)($activeSession['runtime_errors'] ?? 0),
             'current_file' => (string)($activeSession['current_file'] ?? ''),
+            'discovery_done' => $discoveryDone,
         ];
     }
 

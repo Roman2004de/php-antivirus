@@ -1,7 +1,6 @@
 <?php
 
 use Bitrix\Main\Localization\Loc;
-use Bitrix\Main\Page\Asset;
 
 require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_admin_before.php';
 
@@ -23,18 +22,27 @@ $moduleJsPath = '/bitrix/modules/' . $moduleId . '/install/js/scanner.js';
 $installedCssPath = $documentRoot . $cssPath;
 $installedJsPath = $documentRoot . $jsPath;
 $installedCssIsCurrent = is_readable($installedCssPath)
-    && strpos((string)file_get_contents($installedCssPath), 'delement-antivirus-progress-native') !== false;
+    && strpos((string)file_get_contents($installedCssPath), 'delement-antivirus-progress-value') !== false;
 $installedJsIsCurrent = is_readable($installedJsPath)
-    && strpos((string)file_get_contents($installedJsPath), 'delement-antivirus-progress-native') !== false;
+    && strpos((string)file_get_contents($installedJsPath), 'delement-antivirus-progress-value') !== false;
 
-$asset = Asset::getInstance();
-$asset->addCss($installedCssIsCurrent || !is_file($documentRoot . $moduleCssPath) ? $cssPath : $moduleCssPath);
-$asset->addJs($installedJsIsCurrent || !is_file($documentRoot . $moduleJsPath) ? $jsPath : $moduleJsPath);
+$cssAssetPath = $installedCssIsCurrent || !is_file($documentRoot . $moduleCssPath) ? $cssPath : $moduleCssPath;
+$jsAssetPath = $installedJsIsCurrent || !is_file($documentRoot . $moduleJsPath) ? $jsPath : $moduleJsPath;
+$versionAsset = static function (string $path) use ($documentRoot): string {
+    $pathWithoutQuery = explode('?', $path, 2)[0];
+    $filePath = $documentRoot . $pathWithoutQuery;
+
+    return is_file($filePath) ? $path . '?v=' . filemtime($filePath) : $path;
+};
+
+$APPLICATION->SetAdditionalCSS($versionAsset($cssAssetPath));
+$APPLICATION->AddHeadScript($versionAsset($jsAssetPath));
 
 require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_admin_after.php';
 
 $scannerMessages = [
     'starting' => Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_JS_STARTING'),
+    'discovering' => Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_JS_DISCOVERING'),
     'request_failed' => Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_JS_REQUEST_FAILED'),
     'statuses' => [
         'idle' => Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS_IDLE'),
@@ -81,11 +89,13 @@ $tabControl->Begin();
     <tr>
         <td colspan="2">
             <div class="delement-antivirus-panel">
-                <div class="delement-antivirus-title">
-                    <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_MODULE_NAME'); ?>
-                </div>
-                <div class="delement-antivirus-muted">
-                    <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_ENGINE_TEXT'); ?>
+                <div class="delement-antivirus-header">
+                    <div class="delement-antivirus-title">
+                        <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_MODULE_NAME'); ?>
+                    </div>
+                    <div class="delement-antivirus-muted">
+                        <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_ENGINE_TEXT'); ?>
+                    </div>
                 </div>
                 <div class="delement-antivirus-actions">
                     <button type="button" class="adm-btn adm-btn-save" id="delement-antivirus-start">
@@ -95,17 +105,24 @@ $tabControl->Begin();
                         <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_CANCEL'); ?>
                     </button>
                 </div>
-                <div class="delement-antivirus-progress">
-                    <div class="delement-antivirus-progress-bar" id="delement-antivirus-progress-bar"></div>
+                <div class="delement-antivirus-progress-wrap">
+                    <div class="delement-antivirus-progress-head">
+                        <span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_PROGRESS'); ?></span>
+                        <b class="delement-antivirus-progress-value" id="delement-antivirus-progress-value">0%</b>
+                    </div>
+                    <div class="delement-antivirus-progress" id="delement-antivirus-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                        <div class="delement-antivirus-progress-bar" id="delement-antivirus-progress-bar"></div>
+                    </div>
+                    <progress class="delement-antivirus-progress-native" id="delement-antivirus-progress-native" value="0" max="100">0%</progress>
                 </div>
-                <progress class="delement-antivirus-progress-native" id="delement-antivirus-progress-native" value="0" max="100">0%</progress>
                 <div class="delement-antivirus-stats">
-                    <span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS'); ?>: <b id="delement-antivirus-status"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS_IDLE'); ?></b></span>
-                    <span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_PROCESSED'); ?>: <b id="delement-antivirus-processed">0</b>/<b id="delement-antivirus-total">0</b></span>
-                    <span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_FOUND'); ?>: <b id="delement-antivirus-found">0</b></span>
-                    <span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_ERRORS'); ?>: <b id="delement-antivirus-errors">0</b></span>
+                    <span class="delement-antivirus-stat"><span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS'); ?></span><b id="delement-antivirus-status"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_STATUS_IDLE'); ?></b></span>
+                    <span class="delement-antivirus-stat"><span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_PROCESSED'); ?></span><b><span id="delement-antivirus-processed">0</span>/<span id="delement-antivirus-total">0</span></b></span>
+                    <span class="delement-antivirus-stat"><span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_FOUND'); ?></span><b id="delement-antivirus-found">0</b></span>
+                    <span class="delement-antivirus-stat"><span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_ERRORS'); ?></span><b id="delement-antivirus-errors">0</b></span>
                 </div>
                 <div class="delement-antivirus-current" id="delement-antivirus-current"></div>
+                <div class="delement-antivirus-log-title"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_LOG_TITLE'); ?></div>
                 <pre class="delement-antivirus-output" id="delement-antivirus-output"><?php echo htmlspecialcharsbx((string)Loc::getMessage('DELEMENT_ANTIVIRUS_SCAN_LOG_IDLE')); ?></pre>
             </div>
         </td>

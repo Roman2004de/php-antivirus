@@ -235,9 +235,11 @@ class ScanSessionStore
             'created_by' => isset($session['created_by']) ? (int)$session['created_by'] : 0,
             'processed_files' => isset($session['processed_files']) ? (int)$session['processed_files'] : 0,
             'total_files_estimated' => isset($session['total_files_estimated']) ? (int)$session['total_files_estimated'] : 0,
+            'files_discovered' => isset($session['files_discovered']) ? (int)$session['files_discovered'] : 0,
             'found_total' => isset($session['found_total']) ? (int)$session['found_total'] : 0,
             'runtime_errors' => isset($session['runtime_errors']) ? (int)$session['runtime_errors'] : 0,
             'current_file' => isset($session['current_file']) ? (string)$session['current_file'] : '',
+            'discovery_done' => !empty($session['discovery_done']),
         ];
     }
 

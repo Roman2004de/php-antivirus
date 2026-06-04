@@ -89,11 +89,20 @@ try {
             'status' => $response['status'],
             'processed' => $response['processed_files'],
             'total' => $response['total_files_estimated'],
+            'discovered' => $response['files_discovered'],
             'discovery_done' => $response['discovery_done'],
         ];
     } while (($response['status'] ?? '') === 'running' && count($responses) < 10);
 
-    if (($response['status'] ?? '') !== 'finished' || ($response['processed_files'] ?? 0) !== 2 || count($responses) < 2) {
+    if (
+        ($responses[0]['status'] ?? '') !== 'running'
+        || ($responses[0]['total'] ?? -1) !== 0
+        || ($responses[0]['discovered'] ?? 0) < 1
+        || ($response['status'] ?? '') !== 'finished'
+        || ($response['processed_files'] ?? 0) !== 2
+        || ($response['total_files_estimated'] ?? 0) !== 2
+        || count($responses) < 2
+    ) {
         throw new RuntimeException('AJAX step scanning did not finish incrementally');
     }
 

@@ -262,6 +262,20 @@ $tabControl->Begin();
         </td>
     </tr>
     <tr>
+        <td class="adm-detail-content-cell-l"></td>
+        <td class="adm-detail-content-cell-r">
+            <?php echo BeginNote(); ?>
+            <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_NOTE', [
+                '#DOCUMENT_ROOT_VALUE#' => htmlspecialcharsbx((string)$_SERVER['DOCUMENT_ROOT']),
+            ]); ?>
+            <br>
+            <a href="/bitrix/admin/delement_antivirus_scan.php?lang=<?php echo LANGUAGE_ID; ?>">
+                <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_OPEN_SCAN'); ?>
+            </a>
+            <?php echo EndNote(); ?>
+        </td>
+    </tr>
+    <tr>
         <td class="adm-detail-content-cell-l">
             <label for="delement_antivirus_profile"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PROFILE'); ?></label>
         </td>
@@ -366,19 +380,6 @@ $tabControl->Begin();
         </td>
         <td class="adm-detail-content-cell-r">
             <textarea id="delement_antivirus_exclude_paths" name="exclude_paths" rows="9" cols="70"><?php echo htmlspecialcharsbx($values['exclude_paths']); ?></textarea>
-        </td>
-    </tr>
-    <tr>
-        <td colspan="2">
-            <?php echo BeginNote(); ?>
-            <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_NOTE', [
-                '#DOCUMENT_ROOT_VALUE#' => htmlspecialcharsbx((string)$_SERVER['DOCUMENT_ROOT']),
-            ]); ?>
-            <br>
-            <a href="/bitrix/admin/delement_antivirus_scan.php?lang=<?php echo LANGUAGE_ID; ?>">
-                <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_OPEN_SCAN'); ?>
-            </a>
-            <?php echo EndNote(); ?>
         </td>
     </tr>
     <?php $tabControl->Buttons(); ?>

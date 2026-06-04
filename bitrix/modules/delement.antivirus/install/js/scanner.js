@@ -79,12 +79,24 @@
         }
     }
 
+    function isDiscoveryDone(data) {
+        var status = String(data.status || '').toLowerCase();
+
+        if (data.discovery_done === true || data.discovery_done === 'true' || data.discovery_done === '1') {
+            return true;
+        }
+
+        return status === 'finished' || status === 'failed' || status === 'cancelled' || status === 'canceled';
+    }
+
     ready(function () {
         var form = document.getElementById('delement-antivirus-scan-form');
         var startButton = document.getElementById('delement-antivirus-start');
         var cancelButton = document.getElementById('delement-antivirus-cancel');
         var output = document.getElementById('delement-antivirus-output');
+        var progressNode = document.getElementById('delement-antivirus-progress');
         var progressBar = document.getElementById('delement-antivirus-progress-bar');
+        var progressValue = document.getElementById('delement-antivirus-progress-value');
         var progressNative = document.getElementById('delement-antivirus-progress-native');
         var statusNode = document.getElementById('delement-antivirus-status');
         var processedNode = document.getElementById('delement-antivirus-processed');
@@ -144,12 +156,14 @@
         function updateProgress(data) {
             var total = parseInt(data.total_files_estimated || 0, 10);
             var processed = parseInt(data.processed_files || 0, 10);
-            var percent = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
+            var discoveryDone = isDiscoveryDone(data);
+            var percent = discoveryDone && total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
             var status = data.status || (data.success === false ? 'failed' : 'unknown');
+            var progressText = discoveryDone ? percent + '%' : (getMessage('discovering') || '');
 
             setText(statusNode, statusLabel(status));
             setText(processedNode, processed);
-            setText(totalNode, total);
+            setText(totalNode, discoveryDone ? total : '...');
             setText(foundNode, data.found_total || 0);
             setText(errorsNode, data.runtime_errors || 0);
             setText(currentNode, data.current_file || '');
@@ -158,9 +172,27 @@
                 progressBar.style.width = percent + '%';
             }
 
+            if (progressNode) {
+                progressNode.setAttribute('aria-valuenow', String(percent));
+                if (progressNode.classList) {
+                    if (discoveryDone) {
+                        progressNode.classList.remove('delement-antivirus-progress-discovering');
+                    } else {
+                        progressNode.classList.add('delement-antivirus-progress-discovering');
+                    }
+                }
+            }
+
+            setText(progressValue, progressText);
+
             if (progressNative) {
-                progressNative.value = percent;
-                progressNative.textContent = percent + '%';
+                if (discoveryDone) {
+                    progressNative.value = percent;
+                } else {
+                    progressNative.removeAttribute('value');
+                }
+
+                progressNative.textContent = progressText;
             }
         }
 
@@ -211,6 +243,15 @@
                 progressBar.style.width = '0';
             }
 
+            if (progressNode) {
+                progressNode.setAttribute('aria-valuenow', '0');
+                if (progressNode.classList) {
+                    progressNode.classList.remove('delement-antivirus-progress-discovering');
+                }
+            }
+
+            setText(progressValue, '0%');
+
             if (progressNative) {
                 progressNative.value = 0;
                 progressNative.textContent = '0%';
@@ -222,8 +263,9 @@
                         activeScanId = response.active_scan_id;
                         updateProgress(response);
                         show(response);
-                        setButtonDisabled(startButton, false);
+                        setButtonDisabled(startButton, true);
                         setButtonDisabled(cancelButton, false);
+                        window.setTimeout(step, 200);
                         return;
                     }
 
