@@ -234,6 +234,42 @@ if (!function_exists('delement_antivirus_report_display_rows')) {
     }
 }
 
+if (!function_exists('delement_antivirus_report_path_view_mode')) {
+    function delement_antivirus_report_path_view_mode($value): string
+    {
+        return (string)$value === 'full' ? 'full' : 'relative';
+    }
+}
+
+if (!function_exists('delement_antivirus_report_format_file_path')) {
+    function delement_antivirus_report_format_file_path(string $filePath, string $documentRoot, string $mode): string
+    {
+        if ($mode === 'full' || $filePath === '') {
+            return $filePath;
+        }
+
+        $normalizedFilePath = str_replace('\\', '/', $filePath);
+        $normalizedDocumentRoot = rtrim(str_replace('\\', '/', $documentRoot), '/');
+
+        if ($normalizedDocumentRoot === '') {
+            return $filePath;
+        }
+
+        $filePathKey = strtolower($normalizedFilePath);
+        $documentRootKey = strtolower($normalizedDocumentRoot);
+
+        if ($filePathKey === $documentRootKey) {
+            return '/';
+        }
+
+        if (strpos($filePathKey, $documentRootKey . '/') !== 0) {
+            return $filePath;
+        }
+
+        return '/' . ltrim(substr($normalizedFilePath, strlen($normalizedDocumentRoot)), '/');
+    }
+}
+
 $reportManager = new ReportManager();
 $whitelistManager = null;
 $quarantineManager = null;
@@ -244,6 +280,7 @@ $report = null;
 $reportError = '';
 $findingRows = [];
 $findingRowMap = [];
+$pathViewMode = delement_antivirus_report_path_view_mode($_REQUEST['path_view'] ?? 'relative');
 $sTableID = 'tbl_delement_antivirus_report_findings';
 $oSort = new CAdminSorting($sTableID, 'score', 'desc');
 $lAdmin = new CAdminList($sTableID, $oSort);
@@ -481,7 +518,12 @@ while ($rowData = $rsData->NavNext(true, 'f_')) {
     }
 
     $row = $lAdmin->AddRow($rowId, $rowData);
-    $row->AddViewField('FILE_PATH', htmlspecialcharsbx((string)($rowData['file_path'] ?? '')));
+    $filePath = (string)($rowData['file_path'] ?? '');
+    $displayFilePath = delement_antivirus_report_format_file_path($filePath, (string)$_SERVER['DOCUMENT_ROOT'], $pathViewMode);
+    $row->AddViewField(
+        'FILE_PATH',
+        '<span class="delement-antivirus-report-file-path" title="' . htmlspecialcharsbx($filePath) . '">' . htmlspecialcharsbx($displayFilePath) . '</span>'
+    );
     $row->AddViewField('STATUS', htmlspecialcharsbx(delement_antivirus_results_status_label($rowData['status'] ?? '')));
     $row->AddViewField('SCORE', (int)($rowData['score'] ?? 0));
     $row->AddViewField('SEVERITY', htmlspecialcharsbx((string)($rowData['severity'] ?? '')));
@@ -568,6 +610,40 @@ require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_ad
         width: 220px !important;
         font-weight: bold !important;
         white-space: nowrap !important;
+    }
+
+    .delement-antivirus-report-table-head {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 16px !important;
+        margin: 18px 0 10px !important;
+    }
+
+    .delement-antivirus-report-table-head h2 {
+        margin: 0 !important;
+    }
+
+    .delement-antivirus-path-switcher {
+        display: flex !important;
+        align-items: center !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        color: #555 !important;
+        line-height: 1.4 !important;
+    }
+
+    .delement-antivirus-path-switcher .adm-btn {
+        margin: 0 !important;
+    }
+
+    .delement-antivirus-path-switcher-active {
+        font-weight: bold !important;
+        cursor: default !important;
+    }
+
+    .delement-antivirus-report-file-path {
+        word-break: break-all !important;
     }
 </style>
 <?php
@@ -656,7 +732,26 @@ if (is_array($report)) {
         <?php echo EndNote(); ?>
     <?php endif; ?>
 
-    <h2><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_FINDINGS_TITLE'); ?></h2>
+    <?php
+    $relativePathUrl = $APPLICATION->GetCurPageParam('path_view=relative', ['path_view', 'export']);
+    $fullPathUrl = $APPLICATION->GetCurPageParam('path_view=full', ['path_view', 'export']);
+    ?>
+    <div class="delement-antivirus-report-table-head">
+        <h2><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_FINDINGS_TITLE'); ?></h2>
+        <div class="delement-antivirus-path-switcher">
+            <span><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_PATH_VIEW'); ?></span>
+            <?php if ($pathViewMode === 'relative'): ?>
+                <span class="adm-btn delement-antivirus-path-switcher-active"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_PATH_VIEW_RELATIVE'); ?></span>
+            <?php else: ?>
+                <a class="adm-btn" href="<?php echo htmlspecialcharsbx($relativePathUrl); ?>"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_PATH_VIEW_RELATIVE'); ?></a>
+            <?php endif; ?>
+            <?php if ($pathViewMode === 'full'): ?>
+                <span class="adm-btn delement-antivirus-path-switcher-active"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_PATH_VIEW_FULL'); ?></span>
+            <?php else: ?>
+                <a class="adm-btn" href="<?php echo htmlspecialcharsbx($fullPathUrl); ?>"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_PATH_VIEW_FULL'); ?></a>
+            <?php endif; ?>
+        </div>
+    </div>
     <?php $lAdmin->DisplayList(); ?>
     <?php
 }
