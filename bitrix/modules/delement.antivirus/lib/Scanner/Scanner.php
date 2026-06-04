@@ -53,7 +53,7 @@ class Scanner
         } catch (RuntimeException $exception) {
             return ScanResult::error($filePath, $exception->getMessage());
         } catch (Throwable $exception) {
-            return ScanResult::error($filePath, 'Unexpected scan error: ' . $exception->getMessage());
+            return ScanResult::error($filePath, 'unexpected_scan_error');
         }
     }
 

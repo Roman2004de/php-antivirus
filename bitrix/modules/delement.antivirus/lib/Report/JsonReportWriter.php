@@ -11,24 +11,24 @@ class JsonReportWriter
         $json = json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         if ($json === false) {
-            throw new RuntimeException('Cannot encode scan report');
+            throw new RuntimeException('scan_report_encode_failed');
         }
 
         if (file_put_contents($path, $json, LOCK_EX) === false) {
-            throw new RuntimeException('Cannot save scan report to ' . $path);
+            throw new RuntimeException('scan_report_save_failed');
         }
     }
 
     public function read(string $path): array
     {
         if (!is_file($path) || !is_readable($path)) {
-            throw new RuntimeException('Scan report not found');
+            throw new RuntimeException('scan_report_not_found');
         }
 
         $data = json_decode((string)file_get_contents($path), true);
 
         if (!is_array($data)) {
-            throw new RuntimeException('Scan report is corrupted');
+            throw new RuntimeException('scan_report_corrupted');
         }
 
         return $data;

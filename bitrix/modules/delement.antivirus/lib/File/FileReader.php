@@ -20,14 +20,14 @@ class FileReader
         $size = @filesize($filePath);
 
         if ($size === false) {
-            throw new RuntimeException('Cannot determine file size');
+            throw new RuntimeException('file_size_unavailable');
         }
 
         if ($size <= $maxFileSizeBytes) {
             $content = @file_get_contents($filePath);
 
             if ($content === false) {
-                throw new RuntimeException('Cannot read file');
+                throw new RuntimeException('file_read_failed');
             }
 
             yield $content;
@@ -37,7 +37,7 @@ class FileReader
         $handle = @fopen($filePath, 'rb');
 
         if ($handle === false) {
-            throw new RuntimeException('Cannot open large file');
+            throw new RuntimeException('large_file_open_failed');
         }
 
         $buffer = '';
@@ -47,7 +47,7 @@ class FileReader
                 $chunk = fread($handle, $this->blockSize);
 
                 if ($chunk === false) {
-                    throw new RuntimeException('Cannot read large file chunk');
+                    throw new RuntimeException('large_file_chunk_read_failed');
                 }
 
                 if ($chunk === '') {

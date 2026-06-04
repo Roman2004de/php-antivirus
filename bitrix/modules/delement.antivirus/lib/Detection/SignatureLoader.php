@@ -73,7 +73,6 @@ class SignatureLoader
 
             $rules[] = [
                 'id' => 'external_signature_' . $index,
-                'name' => 'External signature #' . $index,
                 'category' => 'external',
                 'severity' => Severity::MEDIUM,
                 'score' => 3,

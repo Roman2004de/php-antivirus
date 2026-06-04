@@ -60,7 +60,7 @@ if (!function_exists('delement_antivirus_results_status_label')) {
         ];
 
         $label = isset($labels[$statusKey]) ? (string)$labels[$statusKey] : '';
-        $unknown = isset($labels['unknown']) ? (string)$labels['unknown'] : 'unknown';
+        $unknown = isset($labels['unknown']) ? (string)$labels['unknown'] : '';
 
         return $label !== '' ? $label : ($status !== '' ? $status : $unknown);
     }

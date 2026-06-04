@@ -11,7 +11,7 @@ class RuntimeDirectory
         $name = trim($name, '/\\');
 
         if ($name === '' || !preg_match('/^[a-zA-Z0-9_.-]+$/', $name)) {
-            throw new RuntimeException('Invalid runtime directory name');
+            throw new RuntimeException('runtime_directory_name_invalid');
         }
 
         foreach (self::getCandidates($moduleRoot, $name) as $path) {
@@ -20,7 +20,7 @@ class RuntimeDirectory
             }
         }
 
-        throw new RuntimeException('Cannot prepare writable runtime directory for ' . $name);
+        throw new RuntimeException('runtime_directory_prepare_failed');
     }
 
     private static function getCandidates(string $moduleRoot, string $name): array

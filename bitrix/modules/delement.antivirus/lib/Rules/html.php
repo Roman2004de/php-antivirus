@@ -5,7 +5,6 @@ use Delement\Antivirus\Detection\Severity;
 return [
     [
         'id' => 'html_iframe',
-        'name' => 'Embedded iframe',
         'category' => 'javascript_injection',
         'severity' => Severity::LOW,
         'score' => 2,
@@ -14,7 +13,6 @@ return [
     ],
     [
         'id' => 'html_object_embed',
-        'name' => 'Object or embed tag',
         'category' => 'javascript_injection',
         'severity' => Severity::LOW,
         'score' => 2,
@@ -23,7 +21,6 @@ return [
     ],
     [
         'id' => 'html_phishing_form',
-        'name' => 'Login-like external form',
         'category' => 'phishing_markup',
         'severity' => Severity::MEDIUM,
         'score' => 4,

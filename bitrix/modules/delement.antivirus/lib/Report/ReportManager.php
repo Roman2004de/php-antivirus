@@ -20,7 +20,7 @@ class ReportManager
     public function saveFromSession(array $session): string
     {
         if (empty($session['scan_id'])) {
-            throw new RuntimeException('Scan session id is empty');
+            throw new RuntimeException('scan_session_id_empty');
         }
 
         $scanId = (string)$session['scan_id'];
@@ -87,7 +87,7 @@ class ReportManager
         }
 
         if (!unlink($path)) {
-            throw new RuntimeException('Cannot delete report');
+            throw new RuntimeException('scan_report_delete_failed');
         }
 
         return true;
@@ -175,7 +175,7 @@ class ReportManager
     private function sanitizeScanId(string $scanId): string
     {
         if (!preg_match('/^[a-zA-Z0-9_.-]+$/', $scanId)) {
-            throw new RuntimeException('Invalid scan id');
+            throw new RuntimeException('scan_id_invalid');
         }
 
         return $scanId;

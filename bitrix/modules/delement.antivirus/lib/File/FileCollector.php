@@ -20,7 +20,7 @@ class FileCollector
     public function collect(string $path, ScanConfig $config): iterable
     {
         if (!file_exists($path)) {
-            throw new RuntimeException('Path does not exist: ' . $path);
+            throw new RuntimeException('scan_path_not_found');
         }
 
         if (is_file($path)) {
@@ -32,7 +32,7 @@ class FileCollector
         }
 
         if (!is_dir($path)) {
-            throw new RuntimeException('Path is not a regular file or directory: ' . $path);
+            throw new RuntimeException('scan_path_not_regular_file_or_directory');
         }
 
         $iterator = new RecursiveIteratorIterator(
@@ -64,7 +64,7 @@ class FileCollector
                     continue;
                 }
 
-                throw new RuntimeException('Path does not exist: ' . $path);
+                throw new RuntimeException('scan_path_not_found');
             }
 
             $hasExistingPath = true;
@@ -82,7 +82,7 @@ class FileCollector
         }
 
         if (!$hasExistingPath) {
-            throw new RuntimeException('No scan paths exist');
+            throw new RuntimeException('scan_paths_not_found');
         }
     }
 

@@ -1,6 +1,7 @@
 <?php
 
 use Bitrix\Main\Loader;
+use Bitrix\Main\Localization\Loc;
 use Delement\Antivirus\Admin\AjaxController;
 
 define('NO_KEEP_STATISTIC', true);
@@ -10,6 +11,8 @@ define('DisableEventsCheck', true);
 require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_before.php';
 
 $moduleId = 'delement.antivirus';
+
+Loc::loadMessages(__FILE__);
 
 $sendJson = static function (array $payload, $status = 200) {
     if (!headers_sent()) {
@@ -37,12 +40,12 @@ $logException = static function ($error, Throwable $exception = null) use ($modu
     }
 
     $message = implode("\n", [
-        'AJAX error: ' . (string)$error,
-        'Exception: ' . get_class($exception),
-        'Message: ' . $exception->getMessage(),
-        'File: ' . $exception->getFile(),
-        'Line: ' . $exception->getLine(),
-        'Trace: ' . $exception->getTraceAsString(),
+        Loc::getMessage('DELEMENT_ANTIVIRUS_AJAX_LOG_ERROR', ['#ERROR#' => (string)$error]),
+        Loc::getMessage('DELEMENT_ANTIVIRUS_AJAX_LOG_EXCEPTION', ['#EXCEPTION#' => get_class($exception)]),
+        Loc::getMessage('DELEMENT_ANTIVIRUS_AJAX_LOG_MESSAGE', ['#MESSAGE#' => $exception->getMessage()]),
+        Loc::getMessage('DELEMENT_ANTIVIRUS_AJAX_LOG_FILE', ['#FILE#' => $exception->getFile()]),
+        Loc::getMessage('DELEMENT_ANTIVIRUS_AJAX_LOG_LINE', ['#LINE#' => (string)$exception->getLine()]),
+        Loc::getMessage('DELEMENT_ANTIVIRUS_AJAX_LOG_TRACE', ['#TRACE#' => $exception->getTraceAsString()]),
     ]);
 
     if (function_exists('AddMessage2Log')) {

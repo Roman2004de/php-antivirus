@@ -5,7 +5,6 @@ use Delement\Antivirus\Detection\Severity;
 return [
     [
         'id' => 'php_eval',
-        'name' => 'Dynamic code execution via eval',
         'category' => 'php_code_execution',
         'severity' => Severity::HIGH,
         'score' => 5,
@@ -14,7 +13,6 @@ return [
     ],
     [
         'id' => 'php_assert',
-        'name' => 'Dynamic code execution via assert',
         'category' => 'php_code_execution',
         'severity' => Severity::HIGH,
         'score' => 4,
@@ -23,7 +21,6 @@ return [
     ],
     [
         'id' => 'php_create_function',
-        'name' => 'Deprecated dynamic function creation',
         'category' => 'php_code_execution',
         'severity' => Severity::HIGH,
         'score' => 4,
@@ -32,7 +29,6 @@ return [
     ],
     [
         'id' => 'php_shell_exec',
-        'name' => 'Shell command execution',
         'category' => 'php_code_execution',
         'severity' => Severity::HIGH,
         'score' => 5,
@@ -41,7 +37,6 @@ return [
     ],
     [
         'id' => 'php_base64_decode',
-        'name' => 'Base64 decode usage',
         'category' => 'php_obfuscation',
         'severity' => Severity::MEDIUM,
         'score' => 2,
@@ -50,7 +45,6 @@ return [
     ],
     [
         'id' => 'php_obfuscation_helpers',
-        'name' => 'Common PHP obfuscation helpers',
         'category' => 'php_obfuscation',
         'severity' => Severity::MEDIUM,
         'score' => 2,
@@ -59,7 +53,6 @@ return [
     ],
     [
         'id' => 'php_hex_pack',
-        'name' => 'Hex payload assembly',
         'category' => 'php_obfuscation',
         'severity' => Severity::MEDIUM,
         'score' => 3,
@@ -68,7 +61,6 @@ return [
     ],
     [
         'id' => 'php_request_callable',
-        'name' => 'Request data used as callable',
         'category' => 'webshell_behavior',
         'severity' => Severity::HIGH,
         'score' => 6,
@@ -77,7 +69,6 @@ return [
     ],
     [
         'id' => 'php_dangerous_include_from_request',
-        'name' => 'Include or require from request input',
         'category' => 'filesystem_abuse',
         'severity' => Severity::HIGH,
         'score' => 6,
@@ -86,7 +77,6 @@ return [
     ],
     [
         'id' => 'php_input_write',
-        'name' => 'Writes raw php://input',
         'category' => 'webshell_behavior',
         'severity' => Severity::HIGH,
         'score' => 6,
@@ -95,7 +85,6 @@ return [
     ],
     [
         'id' => 'php_wrapper_filter',
-        'name' => 'php://filter wrapper usage',
         'category' => 'filesystem_abuse',
         'severity' => Severity::HIGH,
         'score' => 5,
@@ -104,7 +93,6 @@ return [
     ],
     [
         'id' => 'php_preg_replace_eval',
-        'name' => 'preg_replace eval modifier',
         'category' => 'php_code_execution',
         'severity' => Severity::HIGH,
         'score' => 5,
@@ -113,7 +101,6 @@ return [
     ],
     [
         'id' => 'php_long_base64',
-        'name' => 'Long base64-like payload',
         'category' => 'php_obfuscation',
         'severity' => Severity::MEDIUM,
         'score' => 3,

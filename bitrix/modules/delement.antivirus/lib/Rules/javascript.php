@@ -5,7 +5,6 @@ use Delement\Antivirus\Detection\Severity;
 return [
     [
         'id' => 'js_from_char_code',
-        'name' => 'JavaScript payload assembly',
         'category' => 'javascript_injection',
         'severity' => Severity::MEDIUM,
         'score' => 3,
@@ -14,7 +13,6 @@ return [
     ],
     [
         'id' => 'js_legacy_unescape',
-        'name' => 'Legacy JavaScript unescape payload',
         'category' => 'javascript_injection',
         'severity' => Severity::MEDIUM,
         'score' => 3,
@@ -23,7 +21,6 @@ return [
     ],
     [
         'id' => 'js_atob_payload',
-        'name' => 'Base64 decode in JavaScript',
         'category' => 'javascript_injection',
         'severity' => Severity::LOW,
         'score' => 2,
@@ -32,7 +29,6 @@ return [
     ],
     [
         'id' => 'js_timer_code',
-        'name' => 'Suspicious timer-based JavaScript execution',
         'category' => 'javascript_injection',
         'severity' => Severity::LOW,
         'score' => 2,

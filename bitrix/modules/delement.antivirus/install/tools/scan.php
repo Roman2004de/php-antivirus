@@ -2,14 +2,14 @@
 
 if (PHP_SAPI !== 'cli') {
     http_response_code(403);
-    echo 'CLI only' . PHP_EOL;
+    echo 'cli_only' . PHP_EOL;
     exit(1);
 }
 
 $_SERVER['DOCUMENT_ROOT'] = realpath(__DIR__ . '/../../..');
 
 if ($_SERVER['DOCUMENT_ROOT'] === false) {
-    fwrite(STDERR, 'Cannot resolve Bitrix document root' . PHP_EOL);
+    fwrite(STDERR, 'document_root_not_found' . PHP_EOL);
     exit(1);
 }
 

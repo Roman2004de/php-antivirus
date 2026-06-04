@@ -56,13 +56,13 @@ class ScanSessionStore
         $path = $this->getSessionPath($scanId);
 
         if (!is_file($path) || !is_readable($path)) {
-            throw new RuntimeException('Scan session not found');
+            throw new RuntimeException('scan_session_not_found');
         }
 
         $data = json_decode((string)file_get_contents($path), true);
 
         if (!is_array($data)) {
-            throw new RuntimeException('Scan session is corrupted');
+            throw new RuntimeException('scan_session_corrupted');
         }
 
         return $data;
@@ -73,19 +73,19 @@ class ScanSessionStore
         $this->ensureDirectory($this->sessionsPath);
 
         if (empty($session['scan_id'])) {
-            throw new RuntimeException('Scan session id is empty');
+            throw new RuntimeException('scan_session_id_empty');
         }
 
         $json = json_encode($session, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         if ($json === false) {
-            throw new RuntimeException('Cannot encode scan session');
+            throw new RuntimeException('scan_session_encode_failed');
         }
 
         $path = $this->getSessionPath((string)$session['scan_id']);
 
         if (file_put_contents($path, $json, LOCK_EX) === false) {
-            throw new RuntimeException('Cannot save scan session to ' . $path);
+            throw new RuntimeException('scan_session_save_failed');
         }
     }
 
@@ -218,11 +218,11 @@ class ScanSessionStore
         $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         if ($json === false) {
-            throw new RuntimeException('Cannot encode active scan marker');
+            throw new RuntimeException('active_scan_marker_encode_failed');
         }
 
         if (file_put_contents($this->getActiveMarkerPath(), $json, LOCK_EX) === false) {
-            throw new RuntimeException('Cannot save active scan marker');
+            throw new RuntimeException('active_scan_marker_save_failed');
         }
     }
 
@@ -252,12 +252,12 @@ class ScanSessionStore
         $handle = @fopen($lockPath, 'c+');
 
         if ($handle === false) {
-            throw new RuntimeException('Cannot open active scan lock');
+            throw new RuntimeException('active_scan_lock_open_failed');
         }
 
         if (!flock($handle, LOCK_EX)) {
             fclose($handle);
-            throw new RuntimeException('Cannot acquire active scan lock');
+            throw new RuntimeException('active_scan_lock_acquire_failed');
         }
 
         try {
@@ -301,7 +301,7 @@ class ScanSessionStore
     private function sanitizeScanId(string $scanId): string
     {
         if (!preg_match('/^[a-zA-Z0-9_.-]+$/', $scanId)) {
-            throw new RuntimeException('Invalid scan id');
+            throw new RuntimeException('scan_id_invalid');
         }
 
         return $scanId;
@@ -310,11 +310,11 @@ class ScanSessionStore
     private function ensureDirectory(string $path): void
     {
         if (!is_dir($path) && !@mkdir($path, 0755, true) && !is_dir($path)) {
-            throw new RuntimeException('Cannot create scan session directory: ' . $path);
+            throw new RuntimeException('scan_session_directory_create_failed');
         }
 
         if (!is_writable($path)) {
-            throw new RuntimeException('Scan session directory is not writable: ' . $path);
+            throw new RuntimeException('scan_session_directory_not_writable');
         }
     }
 }

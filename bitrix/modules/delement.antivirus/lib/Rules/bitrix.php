@@ -5,7 +5,6 @@ use Delement\Antivirus\Detection\Severity;
 return [
     [
         'id' => 'bitrix_php_in_upload',
-        'name' => 'PHP file inside upload directory',
         'category' => 'bitrix_specific',
         'severity' => Severity::HIGH,
         'score' => 8,
@@ -14,7 +13,6 @@ return [
     ],
     [
         'id' => 'bitrix_authorize_hardcoded_id',
-        'name' => 'Bitrix user authorization by hardcoded ID',
         'category' => 'bitrix_specific',
         'severity' => Severity::HIGH,
         'score' => 8,
@@ -23,7 +21,6 @@ return [
     ],
     [
         'id' => 'bitrix_init_dynamic_execution',
-        'name' => 'Dynamic execution inside Bitrix init.php',
         'category' => 'bitrix_specific',
         'severity' => Severity::HIGH,
         'score' => 7,
@@ -33,7 +30,6 @@ return [
     ],
     [
         'id' => 'bitrix_include_from_upload',
-        'name' => 'Include or require from upload directory',
         'category' => 'bitrix_specific',
         'severity' => Severity::HIGH,
         'score' => 7,
@@ -42,7 +38,6 @@ return [
     ],
     [
         'id' => 'bitrix_suspicious_access_php',
-        'name' => 'Suspicious .access.php code',
         'category' => 'bitrix_specific',
         'severity' => Severity::MEDIUM,
         'score' => 4,
@@ -52,7 +47,6 @@ return [
     ],
     [
         'id' => 'bitrix_event_handler_dynamic_exec',
-        'name' => 'Suspicious Bitrix event handler',
         'category' => 'bitrix_specific',
         'severity' => Severity::HIGH,
         'score' => 6,
@@ -61,7 +55,6 @@ return [
     ],
     [
         'id' => 'bitrix_upload_to_executable',
-        'name' => 'Uploaded file moved to executable extension',
         'category' => 'bitrix_specific',
         'severity' => Severity::HIGH,
         'score' => 6,

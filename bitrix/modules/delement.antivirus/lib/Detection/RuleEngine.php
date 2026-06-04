@@ -104,7 +104,7 @@ class RuleEngine
     {
         return new Finding([
             'signature_id' => isset($rule['id']) ? $rule['id'] : '',
-            'name' => isset($rule['name']) ? $rule['name'] : '',
+            'name' => isset($rule['name']) ? $rule['name'] : (isset($rule['id']) ? $rule['id'] : ''),
             'category' => isset($rule['category']) ? $rule['category'] : 'generic',
             'severity' => isset($rule['severity']) ? $rule['severity'] : Severity::LOW,
             'score' => isset($rule['score']) ? $rule['score'] : 1,
