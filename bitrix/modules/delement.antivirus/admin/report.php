@@ -270,6 +270,16 @@ if (!function_exists('delement_antivirus_report_format_file_path')) {
     }
 }
 
+if (!function_exists('delement_antivirus_report_document_root')) {
+    function delement_antivirus_report_document_root(array $report): string
+    {
+        $config = isset($report['config']) && is_array($report['config']) ? $report['config'] : [];
+        $documentRoot = trim((string)($config['document_root'] ?? ''));
+
+        return $documentRoot !== '' ? $documentRoot : (string)($_SERVER['DOCUMENT_ROOT'] ?? '');
+    }
+}
+
 $reportManager = new ReportManager();
 $whitelistManager = null;
 $quarantineManager = null;
@@ -278,6 +288,7 @@ $errors = [];
 $scanId = isset($_GET['scan_id']) ? (string)$_GET['scan_id'] : '';
 $report = null;
 $reportError = '';
+$reportDocumentRoot = (string)($_SERVER['DOCUMENT_ROOT'] ?? '');
 $findingRows = [];
 $findingRowMap = [];
 $pathViewMode = delement_antivirus_report_path_view_mode($_REQUEST['path_view'] ?? 'relative');
@@ -306,6 +317,7 @@ if ($scanId === '') {
 } else {
     try {
         $report = $reportManager->load($scanId);
+        $reportDocumentRoot = delement_antivirus_report_document_root($report);
         $findingRows = delement_antivirus_report_finding_rows($report);
         $findingRowMap = delement_antivirus_report_finding_row_map($findingRows);
     } catch (Throwable $exception) {
@@ -519,7 +531,7 @@ while ($rowData = $rsData->NavNext(true, 'f_')) {
 
     $row = $lAdmin->AddRow($rowId, $rowData);
     $filePath = (string)($rowData['file_path'] ?? '');
-    $displayFilePath = delement_antivirus_report_format_file_path($filePath, (string)$_SERVER['DOCUMENT_ROOT'], $pathViewMode);
+    $displayFilePath = delement_antivirus_report_format_file_path($filePath, $reportDocumentRoot, $pathViewMode);
     $row->AddViewField(
         'FILE_PATH',
         '<span class="delement-antivirus-report-file-path" title="' . htmlspecialcharsbx($filePath) . '">' . htmlspecialcharsbx($displayFilePath) . '</span>'
