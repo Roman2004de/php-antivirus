@@ -8,7 +8,7 @@
 
 - `MODULE_ID`: `delement.antivirus`
 - Псевдоним: `antivirus`
-- Версия: `0.0.1`
+- Версия: `0.0.4`
 - Партнер: `Цифровой Элемент`
 - Сайт партнера: `https://d-element.ru`
 - Язык интерфейса: русский и английский
@@ -29,6 +29,7 @@
 - Профили сканирования Bitrix: `quick`, `standard`, `deep`.
 - AJAX actions: `ping`, `start_scan`, `scan_step`, `get_status`, `cancel_scan`.
 - Пошаговое сканирование через AJAX.
+- CLI-сканирование через `install/tools/scan.php` с `--help`, `--json`, `dry-run` и корректными exit codes.
 - Защита от параллельных сканов через marker активной сессии и lock-файл.
 - Файловые scan sessions в runtime-каталоге `/bitrix/tmp/delement.antivirus/sessions`.
 - JSON reports в runtime-каталоге `/bitrix/tmp/delement.antivirus/reports`.
@@ -101,6 +102,7 @@ bitrix/modules/delement.antivirus/
     report_storage_smoke.php
     session_storage_smoke.php
     whitelist_smoke.php
+    cli_scan_smoke.php
 
   var/
     reports/
@@ -198,6 +200,51 @@ Actions:
 
 Повторный `start_scan` при уже активной сессии не запускает второй обход файлов. Endpoint возвращает `scan_already_running` и `active_scan_id`, а активный marker снимается при статусах `finished`, `cancelled` или `failed`.
 
+## CLI-сканирование
+
+CLI entrypoint устанавливается в:
+
+```text
+/bitrix/tools/delement.antivirus/scan.php
+```
+
+Пример запуска:
+
+```bash
+php /home/site/public_html/bitrix/tools/delement.antivirus/scan.php --path=/home/site/public_html --scan-profile=deep --profile=strict --action=report --dry-run --json
+```
+
+Основные параметры:
+
+- `--path=PATH`: путь сканирования внутри `DOCUMENT_ROOT`;
+- `--document-root=PATH`: корневая директория сайта, если ее нужно указать явно;
+- `--scan-profile=quick|standard|deep`: профиль обхода файлов;
+- `--profile=balanced|strict|paranoid`: профиль чувствительности;
+- `--action=report|quarantine|delete`: действие для подозрительных файлов;
+- `--dry-run`: не менять файловую систему, только показать планируемые действия;
+- `--no-dry-run`: разрешить реальные изменения для `quarantine` или `delete`;
+- `--force`: обязательный флаг для `quarantine`/`delete` вместе с `--no-dry-run`;
+- `--json`: вывести итоговый JSON в `STDOUT`;
+- `--signatures=PATH`: подключить внешний файл regex-сигнатур;
+- `--exclude=PATH`: добавить исключение, можно указывать несколько раз;
+- `--batch-size=N`: размер порции сканирования от 1 до 1000;
+- `--max-file-size-mb=N`: максимальный размер файла от 1 до 1024 МБ;
+- `--quarantine-path=PATH`: путь карантина;
+- `--help`: вывести справку без запуска сканирования.
+- `--version`: вывести версию модуля из `install/version.php`.
+
+По умолчанию CLI использует настройки модуля из Bitrix Option, а переданные аргументы переопределяют их только для текущего запуска. `dry-run` остается безопасным режимом по умолчанию. Для реального карантина или удаления нужно явно указать `--no-dry-run --force`.
+
+Exit codes:
+
+- `0`: сканирование завершено, подозрительные файлы не найдены;
+- `1`: сканирование завершено, есть подозрительные файлы;
+- `2`: ошибка аргументов или конфигурации;
+- `3`: runtime-ошибка во время сканирования;
+- `4`: уже запущено другое сканирование.
+
+При `--json` в `STDOUT` выводится только итоговый machine-readable JSON. Полный отчет сохраняется через `ReportManager`, путь к нему возвращается в поле `report_path`.
+
 ## Проверки разработки
 
 Проверить синтаксис PHP-файлов модуля:
@@ -277,6 +324,12 @@ Smoke-test whitelist:
 
 ```bash
 php bitrix/modules/delement.antivirus/tests/whitelist_smoke.php
+```
+
+Smoke-test CLI-режима:
+
+```bash
+php bitrix/modules/delement.antivirus/tests/cli_scan_smoke.php
 ```
 
 ## Важные ограничения

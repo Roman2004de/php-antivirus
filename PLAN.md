@@ -33,7 +33,7 @@ scan -> explain -> review -> quarantine -> restore/delete manually
 
 - `MODULE_ID`: `delement.antivirus`
 - Псевдоним: `antivirus`
-- Версия: `0.0.1`
+- Версия: `0.0.4`
 - Партнер: `Цифровой Элемент`
 - URI партнера: `https://d-element.ru`
 - Namespace: `Delement\Antivirus`
@@ -42,7 +42,7 @@ scan -> explain -> review -> quarantine -> restore/delete manually
 
 ## Текущий статус
 
-Стадия: MVP с работающим сканированием, отчетами и карантином.
+Стадия: MVP с работающим сканированием, отчетами, карантином и CLI runner.
 
 Уже есть устанавливаемый skeleton, настройки, модульный scanner engine, AJAX-пошаговое сканирование, results storage/UI, RU/EN локализация и базовый карантин с восстановлением.
 Scanner использует встроенные правила и может добавлять к ним внешний файл regex-сигнатур из настройки `signatures_path`.
@@ -288,7 +288,7 @@ Acceptance:
 - [x] whitelist учитывается при scan;
 - [x] пользовательские regex валидируются перед сохранением.
 
-### [ ] Этап 8. CLI scan runner
+### [x] Этап 8. CLI scan runner
 
 Цель: заменить заглушку `install/tools/scan.php` на реальный CLI-режим сканирования, пригодный для ручного запуска и cron.
 
@@ -300,38 +300,44 @@ php scan.php --path=/home/site/public_html --scan-profile=deep --profile=strict 
 
 Задачи:
 
-- не трогать UI: не менять `admin/*`, `options.php`, JS/CSS админки и визуальные тексты;
-- доработать `install/tools/scan.php` как тонкий CLI entrypoint;
-- подключить Bitrix prolog и модуль через штатный bootstrap;
-- добавить backend-only CLI слой, например `lib/Cli/ScanCommand.php`;
-- добавить парсинг CLI args: `--path`, `--scan-profile`, `--profile`, `--action`, `--dry-run`, `--no-dry-run`, `--json`, `--help`;
-- поддержать дополнительные полезные args: `--document-root`, `--signatures`, `--exclude`, `--batch-size`, `--max-file-size-mb`, `--force`;
-- реализовать режим `--help` с кратким описанием параметров, примерами и exit codes;
-- запускать scanner engine через общий service-слой, чтобы CLI не дублировал логику AJAX;
-- применять whitelist до выполнения action;
-- поддержать действия `report`, `quarantine`, `delete`;
-- оставить `dry-run` включенным по умолчанию;
-- требовать `--force` для `quarantine` и `delete` при выключенном `dry-run`;
-- использовать защиту от параллельных сканов через active session/lock;
-- сохранять JSON report через `ReportManager`;
-- возвращать machine-readable JSON при `--json`;
-- не выводить debug-информацию, stack trace, file/line наружу;
-- возвращать корректный exit code;
-- добавить описание CLI-режима в `README.md`;
-- добавить smoke-test CLI-режима.
+Сделано:
+
+- UI не изменялся: `admin/*`, `options.php`, JS/CSS админки не трогались;
+- `install/tools/scan.php` заменен на тонкий CLI entrypoint;
+- entrypoint подключает Bitrix prolog и модуль через штатный bootstrap;
+- добавлен backend-only CLI слой: `lib/Cli/ArgvParser.php`, `lib/Cli/ScanCommand.php`;
+- добавлен общий backend runner: `lib/Scanner/ScanRunService.php`;
+- action-логика вынесена в `lib/Scanner/ScanActionApplier.php`;
+- CLI поддерживает args: `--path`, `--scan-profile`, `--profile`, `--action`, `--dry-run`, `--no-dry-run`, `--json`, `--help`, `--version`;
+- CLI поддерживает дополнительные args: `--document-root`, `--signatures`, `--exclude`, `--batch-size`, `--max-file-size-mb`, `--force`, `--quarantine-path`;
+- реализован режим `--help` с параметрами, примером и exit codes;
+- реализован режим `--version`, который берет версию из `install/version.php`;
+- scanner engine запускается через общий service-слой;
+- whitelist применяется до выполнения action;
+- поддержаны действия `report`, `quarantine`, `delete`;
+- `dry-run` остается безопасным режимом по умолчанию;
+- `--force` обязателен для `quarantine` и `delete` при выключенном `dry-run`;
+- защита от параллельных сканов использует active session/lock;
+- JSON report сохраняется через `ReportManager`;
+- при `--json` возвращается machine-readable JSON;
+- наружу не выводятся stack trace, file/line и debug-информация;
+- реализованы exit codes `0`, `1`, `2`, `3`, `4`;
+- описание CLI-режима добавлено в `README.md`;
+- добавлен `tests/cli_scan_smoke.php`.
 
 Acceptance:
 
-- [ ] scan запускается из CLI;
-- [ ] `--help` выводит справку без запуска сканирования;
-- [ ] CLI поддерживает целевой пример запуска;
-- [ ] report сохраняется;
-- [ ] whitelist применяется;
-- [ ] `quarantine` и `delete` защищены `dry-run` и `--force`;
-- [ ] параллельный CLI/AJAX scan не стартует вторую активную сессию;
-- [ ] exit code корректный;
-- [ ] вывод JSON не ломается логами.
-- [ ] README содержит описание CLI-режима и примеры использования.
+- [x] scan запускается из CLI command layer;
+- [x] `--help` выводит справку без запуска сканирования;
+- [x] `--version` выводит версию из `install/version.php`;
+- [x] CLI поддерживает целевой пример запуска;
+- [x] report сохраняется;
+- [x] whitelist применяется;
+- [x] `quarantine` и `delete` защищены `dry-run` и `--force`;
+- [x] параллельный CLI/AJAX scan не стартует вторую активную сессию;
+- [x] exit code корректный;
+- [x] вывод JSON не ломается логами.
+- [x] README содержит описание CLI-режима и примеры использования.
 
 ### [ ] Этап 9. Marketplace polish
 
@@ -373,7 +379,7 @@ MVP считается готовым, когда:
 - [x] quarantine работает;
 - [x] dry-run работает для quarantine action;
 - [x] dry-run работает для delete action;
-- [ ] CLI scan runner работает;
+- [x] CLI scan runner работает;
 - [x] базовые права и `sessid` проверяются в AJAX;
 - [ ] права уровней `D/R/W/X` реализованы полностью;
 - [ ] uninstall проверен на стенде;
@@ -392,6 +398,6 @@ MVP считается готовым, когда:
 
 ## Ближайший следующий шаг
 
-Этап 8: `CLI scan runner`.
+Этап 9: `Marketplace polish`.
 
-Начать с доработки `install/tools/scan.php`: CLI bootstrap, `--help`, парсинг аргументов, запуск scanner engine через общий service-слой, сохранение отчета, JSON output и корректные exit codes.
+Начать с финальной проверки install/uninstall, прав, локализации, документации, changelog и совместимости с требованиями 1С-Битрикс Marketplace.

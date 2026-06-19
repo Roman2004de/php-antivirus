@@ -14,6 +14,8 @@ Loader::registerAutoLoadClasses(
     DELEMENT_ANTIVIRUS_MODULE_ID,
     [
         'Delement\\Antivirus\\Admin\\AjaxController' => 'lib/Admin/AjaxController.php',
+        'Delement\\Antivirus\\Cli\\ArgvParser' => 'lib/Cli/ArgvParser.php',
+        'Delement\\Antivirus\\Cli\\ScanCommand' => 'lib/Cli/ScanCommand.php',
         'Delement\\Antivirus\\Config\\ScanConfig' => 'lib/Config/ScanConfig.php',
         'Delement\\Antivirus\\Detection\\Detector' => 'lib/Detection/Detector.php',
         'Delement\\Antivirus\\Detection\\Finding' => 'lib/Detection/Finding.php',
@@ -28,11 +30,14 @@ Loader::registerAutoLoadClasses(
         'Delement\\Antivirus\\Quarantine\\QuarantineManager' => 'lib/Quarantine/QuarantineManager.php',
         'Delement\\Antivirus\\Report\\JsonReportWriter' => 'lib/Report/JsonReportWriter.php',
         'Delement\\Antivirus\\Report\\ReportManager' => 'lib/Report/ReportManager.php',
+        'Delement\\Antivirus\\Scanner\\ScanActionApplier' => 'lib/Scanner/ScanActionApplier.php',
         'Delement\\Antivirus\\Scanner\\Scanner' => 'lib/Scanner/Scanner.php',
         'Delement\\Antivirus\\Scanner\\ScanResult' => 'lib/Scanner/ScanResult.php',
+        'Delement\\Antivirus\\Scanner\\ScanRunService' => 'lib/Scanner/ScanRunService.php',
         'Delement\\Antivirus\\Scanner\\ScanSessionStore' => 'lib/Scanner/ScanSessionStore.php',
         'Delement\\Antivirus\\Scanner\\ScanSummary' => 'lib/Scanner/ScanSummary.php',
         'Delement\\Antivirus\\Storage\\RuntimeDirectory' => 'lib/Storage/RuntimeDirectory.php',
+        'Delement\\Antivirus\\Support\\ModuleVersion' => 'lib/Support/ModuleVersion.php',
         'Delement\\Antivirus\\Whitelist\\WhitelistManager' => 'lib/Whitelist/WhitelistManager.php',
     ]
 );

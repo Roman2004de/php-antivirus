@@ -17,7 +17,7 @@ class delement_antivirus extends CModule
         include __DIR__ . '/version.php';
 
         $this->MODULE_ID = 'delement.antivirus';
-        $this->MODULE_VERSION = isset($arModuleVersion['VERSION']) ? $arModuleVersion['VERSION'] : '0.0.1';
+        $this->MODULE_VERSION = isset($arModuleVersion['VERSION']) ? $arModuleVersion['VERSION'] : '0.0.0';
         $this->MODULE_VERSION_DATE = isset($arModuleVersion['VERSION_DATE']) ? $arModuleVersion['VERSION_DATE'] : '2026-05-29 00:00:00';
         $this->MODULE_NAME = Loc::getMessage('DELEMENT_ANTIVIRUS_MODULE_NAME');
         $this->MODULE_DESCRIPTION = Loc::getMessage('DELEMENT_ANTIVIRUS_MODULE_DESCRIPTION');

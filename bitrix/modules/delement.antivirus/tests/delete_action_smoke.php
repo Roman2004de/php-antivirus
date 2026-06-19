@@ -8,10 +8,22 @@ use Delement\Antivirus\Scanner\ScanSessionStore;
 
 require_once __DIR__ . '/../lib/Storage/RuntimeDirectory.php';
 require_once __DIR__ . '/../lib/Config/ScanConfig.php';
+require_once __DIR__ . '/../lib/File/FileTypeDetector.php';
+require_once __DIR__ . '/../lib/File/FileFilter.php';
+require_once __DIR__ . '/../lib/File/FileCollector.php';
+require_once __DIR__ . '/../lib/File/FileReader.php';
+require_once __DIR__ . '/../lib/Detection/RuleEngine.php';
+require_once __DIR__ . '/../lib/Detection/Detector.php';
+require_once __DIR__ . '/../lib/Detection/SignatureLoader.php';
+require_once __DIR__ . '/../lib/Scanner/ScanResult.php';
+require_once __DIR__ . '/../lib/Scanner/Scanner.php';
+require_once __DIR__ . '/../lib/Scanner/ScanActionApplier.php';
 require_once __DIR__ . '/../lib/Quarantine/QuarantineManager.php';
 require_once __DIR__ . '/../lib/Report/JsonReportWriter.php';
 require_once __DIR__ . '/../lib/Report/ReportManager.php';
 require_once __DIR__ . '/../lib/Scanner/ScanSessionStore.php';
+require_once __DIR__ . '/../lib/Whitelist/WhitelistManager.php';
+require_once __DIR__ . '/../lib/Scanner/ScanRunService.php';
 require_once __DIR__ . '/../lib/Admin/AjaxController.php';
 
 function delement_antivirus_delete_smoke_remove_tree(string $path): void
@@ -58,7 +70,8 @@ $controller = new AjaxController(
     'delement.antivirus',
     $documentRoot,
     new ScanSessionStore($moduleRoot),
-    new ReportManager($moduleRoot)
+    new ReportManager($moduleRoot),
+    $moduleRoot
 );
 $method = new ReflectionMethod($controller, 'applyConfiguredAction');
 $method->setAccessible(true);

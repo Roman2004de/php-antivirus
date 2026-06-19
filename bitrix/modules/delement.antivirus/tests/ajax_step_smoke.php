@@ -12,12 +12,17 @@ require_once __DIR__ . '/../lib/File/FileTypeDetector.php';
 require_once __DIR__ . '/../lib/File/FileFilter.php';
 require_once __DIR__ . '/../lib/File/FileCollector.php';
 require_once __DIR__ . '/../lib/File/FileReader.php';
+require_once __DIR__ . '/../lib/Detection/Severity.php';
+require_once __DIR__ . '/../lib/Detection/Verdict.php';
+require_once __DIR__ . '/../lib/Detection/Finding.php';
 require_once __DIR__ . '/../lib/Detection/RuleEngine.php';
 require_once __DIR__ . '/../lib/Detection/Detector.php';
 require_once __DIR__ . '/../lib/Detection/SignatureLoader.php';
 require_once __DIR__ . '/../lib/Scanner/ScanResult.php';
 require_once __DIR__ . '/../lib/Scanner/Scanner.php';
+require_once __DIR__ . '/../lib/Scanner/ScanActionApplier.php';
 require_once __DIR__ . '/../lib/Scanner/ScanSessionStore.php';
+require_once __DIR__ . '/../lib/Scanner/ScanRunService.php';
 require_once __DIR__ . '/../lib/Report/JsonReportWriter.php';
 require_once __DIR__ . '/../lib/Report/ReportManager.php';
 require_once __DIR__ . '/../lib/Whitelist/WhitelistManager.php';
@@ -80,7 +85,7 @@ try {
     $session['total_files_estimated'] = 0;
     $store->saveActive($session);
 
-    $controller = new AjaxController('delement.antivirus', $documentRoot, $store, new ReportManager($moduleRoot));
+    $controller = new AjaxController('delement.antivirus', $documentRoot, $store, new ReportManager($moduleRoot), $moduleRoot);
     $responses = [];
 
     do {
