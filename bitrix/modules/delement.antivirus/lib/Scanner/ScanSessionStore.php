@@ -9,6 +9,8 @@ use RuntimeException;
 class ScanSessionStore
 {
     private const ACTIVE_STATUSES = ['created', 'running', 'progress'];
+    private const DIRECTORY_MODE = 0700;
+    private const FILE_MODE = 0600;
 
     private $sessionsPath;
 
@@ -87,6 +89,8 @@ class ScanSessionStore
         if (file_put_contents($path, $json, LOCK_EX) === false) {
             throw new RuntimeException('scan_session_save_failed');
         }
+
+        @chmod($path, self::FILE_MODE);
     }
 
     public function saveActive(array $session): void
@@ -224,6 +228,8 @@ class ScanSessionStore
         if (file_put_contents($this->getActiveMarkerPath(), $json, LOCK_EX) === false) {
             throw new RuntimeException('active_scan_marker_save_failed');
         }
+
+        @chmod($this->getActiveMarkerPath(), self::FILE_MODE);
     }
 
     private function activePayload(array $session): array
@@ -256,6 +262,8 @@ class ScanSessionStore
         if ($handle === false) {
             throw new RuntimeException('active_scan_lock_open_failed');
         }
+
+        @chmod($lockPath, self::FILE_MODE);
 
         if (!flock($handle, LOCK_EX)) {
             fclose($handle);
@@ -311,12 +319,14 @@ class ScanSessionStore
 
     private function ensureDirectory(string $path): void
     {
-        if (!is_dir($path) && !@mkdir($path, 0755, true) && !is_dir($path)) {
+        if (!is_dir($path) && !@mkdir($path, self::DIRECTORY_MODE, true) && !is_dir($path)) {
             throw new RuntimeException('scan_session_directory_create_failed');
         }
 
         if (!is_writable($path)) {
             throw new RuntimeException('scan_session_directory_not_writable');
         }
+
+        @chmod($path, self::DIRECTORY_MODE);
     }
 }
