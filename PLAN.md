@@ -309,7 +309,7 @@ php scan.php --path=/home/site/public_html --scan-profile=deep --profile=strict 
 - добавлен общий backend runner: `lib/Scanner/ScanRunService.php`;
 - action-логика вынесена в `lib/Scanner/ScanActionApplier.php`;
 - CLI поддерживает args: `--path`, `--scan-profile`, `--profile`, `--action`, `--dry-run`, `--no-dry-run`, `--json`, `--help`, `--version`;
-- CLI поддерживает дополнительные args: `--document-root`, `--signatures`, `--exclude`, `--batch-size`, `--max-file-size-mb`, `--force`, `--quarantine-path`;
+- CLI поддерживает дополнительные args: `--document-root`, `--signatures`, `--report`, `--exclude`, `--batch-size`, `--max-file-size-mb`, `--force`, `--quarantine-path`;
 - реализован режим `--help` с параметрами, примером и exit codes;
 - реализован режим `--version`, который берет версию из `install/version.php`;
 - scanner engine запускается через общий service-слой;
@@ -319,6 +319,7 @@ php scan.php --path=/home/site/public_html --scan-profile=deep --profile=strict 
 - `--force` обязателен для `quarantine` и `delete` при выключенном `dry-run`;
 - защита от параллельных сканов использует active session/lock;
 - JSON report сохраняется через `ReportManager`;
+- `--report=/path/report.json` сохраняет копию итогового JSON-отчета в заданный путь для cron/CI/CD/DevOps;
 - при `--json` возвращается machine-readable JSON;
 - наружу не выводятся stack trace, file/line и debug-информация;
 - реализованы exit codes `0`, `1`, `2`, `3`, `4`;
@@ -332,6 +333,7 @@ Acceptance:
 - [x] `--version` выводит версию из `install/version.php`;
 - [x] CLI поддерживает целевой пример запуска;
 - [x] report сохраняется;
+- [x] report можно экспортировать в заданный CLI-путь через `--report`;
 - [x] whitelist применяется;
 - [x] `quarantine` и `delete` защищены `dry-run` и `--force`;
 - [x] параллельный CLI/AJAX scan не стартует вторую активную сессию;

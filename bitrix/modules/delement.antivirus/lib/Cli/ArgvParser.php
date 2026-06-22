@@ -23,6 +23,7 @@ class ArgvParser
         'action' => true,
         'signatures' => true,
         'exclude' => true,
+        'report' => true,
         'batch-size' => true,
         'max-file-size-mb' => true,
         'quarantine-path' => true,

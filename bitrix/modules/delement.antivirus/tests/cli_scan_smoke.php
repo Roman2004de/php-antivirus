@@ -67,6 +67,7 @@ $documentRoot = $root . DIRECTORY_SEPARATOR . 'site';
 $moduleRoot = $root . DIRECTORY_SEPARATOR . 'module';
 $uploadPath = $documentRoot . DIRECTORY_SEPARATOR . 'upload';
 $quarantinePath = $root . DIRECTORY_SEPARATOR . 'quarantine';
+$exportReportPath = $root . DIRECTORY_SEPARATOR . 'exports' . DIRECTORY_SEPARATOR . 'report.json';
 
 delement_antivirus_cli_smoke_remove_tree($root);
 
@@ -104,7 +105,11 @@ try {
 
     $help = $command->execute(['scan.php', '--help']);
 
-    if (($help['exit_code'] ?? null) !== ScanCommand::EXIT_OK || strpos((string)$help['stdout'], '--path=PATH') === false) {
+    if (
+        ($help['exit_code'] ?? null) !== ScanCommand::EXIT_OK
+        || strpos((string)$help['stdout'], '--path=PATH') === false
+        || strpos((string)$help['stdout'], '--report=PATH') === false
+    ) {
         delement_antivirus_cli_smoke_fail('CLI help failed', ['help' => $help]);
     }
 
@@ -122,6 +127,7 @@ try {
         '--action=report',
         '--dry-run',
         '--json',
+        '--report=' . $exportReportPath,
         '--batch-size=1',
     ]);
     $scanPayload = json_decode((string)$scan['stdout'], true);
@@ -132,8 +138,10 @@ try {
         || empty($scanPayload['success'])
         || ($scanPayload['status'] ?? '') !== 'finished'
         || ($scanPayload['found_total'] ?? 0) < 1
-        || empty($scanPayload['report_path'])
-        || !is_file((string)$scanPayload['report_path'])
+        || (($scanPayload['report_path'] ?? '') !== $exportReportPath)
+        || !is_file($exportReportPath)
+        || empty($scanPayload['runtime_report_path'])
+        || !is_file((string)$scanPayload['runtime_report_path'])
     ) {
         delement_antivirus_cli_smoke_fail('CLI JSON scan failed', [
             'result' => $scan,
@@ -196,6 +204,7 @@ try {
         'version' => trim((string)$version['stdout']),
         'scan_exit_code' => $scan['exit_code'],
         'found_total' => $scanPayload['found_total'],
+        'report_path' => $scanPayload['report_path'],
         'force_guard' => $unsafeDeletePayload['error'],
         'conflict_guard' => $conflictPayload['error'],
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;

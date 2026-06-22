@@ -64,6 +64,7 @@ class ScanCommand
             $runner = $this->runner ?: new ScanRunService($documentRoot, null, null, $this->moduleRoot);
             $response = $runner->runToCompletion($config, 0);
             $payload = $this->buildPayload($response, $config);
+            $this->exportReportIfRequested($payload, $parsed['options']);
             $exitCode = $this->exitCode($payload);
 
             return $this->result(
@@ -257,6 +258,7 @@ class ScanCommand
             'found_total' => (int)($response['found_total'] ?? 0),
             'runtime_errors' => (int)($response['runtime_errors'] ?? 0),
             'report_path' => (string)($response['report_path'] ?? ''),
+            'runtime_report_path' => '',
             'path' => $config->getPath(),
             'scan_profile' => $config->getScanProfile(),
             'profile' => $config->getProfile(),
@@ -280,6 +282,71 @@ class ScanCommand
         }
 
         return self::EXIT_OK;
+    }
+
+    private function exportReportIfRequested(array &$payload, array $cliOptions): void
+    {
+        if (!isset($cliOptions['report'])) {
+            return;
+        }
+
+        if (empty($payload['success'])) {
+            return;
+        }
+
+        $sourcePath = (string)($payload['report_path'] ?? '');
+
+        if ($sourcePath === '' || !is_file($sourcePath)) {
+            throw new RuntimeException('cli_report_source_not_found');
+        }
+
+        $targetPath = $this->normalizeReportPath((string)$cliOptions['report']);
+        $targetDirectory = dirname($targetPath);
+
+        if (!is_dir($targetDirectory) && !@mkdir($targetDirectory, 0700, true) && !is_dir($targetDirectory)) {
+            throw new RuntimeException('cli_report_directory_create_failed');
+        }
+
+        if (!is_writable($targetDirectory)) {
+            throw new RuntimeException('cli_report_directory_not_writable');
+        }
+
+        if (!@copy($sourcePath, $targetPath)) {
+            throw new RuntimeException('cli_report_save_failed');
+        }
+
+        @chmod($targetPath, 0600);
+
+        $payload['runtime_report_path'] = $sourcePath;
+        $payload['report_path'] = $targetPath;
+    }
+
+    private function normalizeReportPath(string $path): string
+    {
+        $path = trim($path);
+
+        if ($path === '' || strpos($path, "\0") !== false || is_dir($path)) {
+            throw new InvalidArgumentException('cli_report_path_invalid');
+        }
+
+        if (!$this->isAbsolutePath($path)) {
+            $cwd = getcwd();
+
+            if ($cwd === false || $cwd === '') {
+                throw new RuntimeException('cli_report_path_resolve_failed');
+            }
+
+            $path = rtrim($cwd, '/\\') . DIRECTORY_SEPARATOR . $path;
+        }
+
+        return rtrim($path, '/\\');
+    }
+
+    private function isAbsolutePath(string $path): bool
+    {
+        return strpos($path, '/') === 0
+            || strpos($path, '\\') === 0
+            || preg_match('/^[a-zA-Z]:[\/\\\\]/', $path) === 1;
     }
 
     private function humanSummary(array $payload): string
@@ -358,6 +425,7 @@ Options:
   --force                  Required with --no-dry-run and action quarantine/delete.
   --json                   Print final machine-readable JSON to STDOUT.
   --signatures=PATH        External regex signatures file.
+  --report=PATH            Save a copy of the final JSON report to this path.
   --exclude=PATH           Add excluded path. Can be repeated.
   --batch-size=N           Files per scanner batch, 1..1000.
   --max-file-size-mb=N     Maximum file size, 1..1024 MB.
