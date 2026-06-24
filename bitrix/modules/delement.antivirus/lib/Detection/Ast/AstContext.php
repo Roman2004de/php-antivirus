@@ -53,6 +53,10 @@ class AstContext
             return $node->toString();
         }
 
+        if ($node instanceof Node\Expr\ConstFetch) {
+            return $node->name->toString();
+        }
+
         if ($node instanceof Node\Expr\BinaryOp\Concat) {
             $left = $this->resolveString($node->left, $depth + 1);
             $right = $this->resolveString($node->right, $depth + 1);
@@ -149,6 +153,10 @@ class AstContext
 
         if ($node instanceof Node\Expr\PropertyFetch) {
             return $this->expressionLabel($node->var) . '->...';
+        }
+
+        if ($node instanceof Node\Expr\ConstFetch) {
+            return $node->name->toString();
         }
 
         $resolved = $this->resolveString($node);

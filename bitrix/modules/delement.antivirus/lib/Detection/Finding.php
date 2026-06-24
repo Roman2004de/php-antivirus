@@ -13,6 +13,7 @@ class Finding
     private $excerpt;
     private $target;
     private $ruleType;
+    private $trace;
 
     public function __construct(array $data)
     {
@@ -25,6 +26,7 @@ class Finding
         $this->excerpt = isset($data['excerpt']) ? (string)$data['excerpt'] : '';
         $this->target = isset($data['target']) ? (string)$data['target'] : 'content';
         $this->ruleType = isset($data['rule_type']) ? (string)$data['rule_type'] : 'regex';
+        $this->trace = isset($data['trace']) && is_array($data['trace']) ? $data['trace'] : [];
     }
 
     public function getSignatureId(): string
@@ -44,7 +46,7 @@ class Finding
 
     public function toArray(): array
     {
-        return [
+        $result = [
             'signature_id' => $this->signatureId,
             'name' => $this->name,
             'category' => $this->category,
@@ -55,5 +57,11 @@ class Finding
             'target' => $this->target,
             'rule_type' => $this->ruleType,
         ];
+
+        if (!empty($this->trace)) {
+            $result['trace'] = $this->trace;
+        }
+
+        return $result;
     }
 }

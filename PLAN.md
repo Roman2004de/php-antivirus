@@ -42,12 +42,13 @@ scan -> explain -> review -> quarantine -> restore/delete manually
 
 ## Текущий статус
 
-Стадия: MVP с работающим сканированием, отчетами, карантином, CLI runner и AST-анализом PHP.
+Стадия: MVP с работающим сканированием, отчетами, карантином, CLI runner, AST-анализом PHP и taint-анализом request-to-sink.
 
 Уже есть устанавливаемый skeleton, настройки, модульный scanner engine, AJAX-пошаговое сканирование, results storage/UI, RU/EN локализация и базовый карантин с восстановлением.
 Scanner использует встроенные правила и может добавлять к ним внешний файл regex-сигнатур из настройки `signatures_path`.
 Добавлены профили сканирования Bitrix `quick`, `standard`, `deep`.
 Поверх regex-правил добавлен AST-анализ PHP через `nikic/php-parser`.
+Внутри AST-прохода добавлен taint-анализ цепочек от request/php://input/filter_input к dangerous sink.
 
 ## Этапы
 
@@ -118,11 +119,14 @@ Acceptance:
 - `FileCollector` умеет собирать файлы по набору путей из `ScanConfig`;
 - создан detection слой `Detector`, `RuleEngine`, `SignatureLoader`;
 - создан AST detection слой `Detection/Ast`: parser wrapper, context collector и детекторы dangerous/dynamic/encoded chains;
+- создан taint detection слой `Detection/Taint`: source detector, propagator, sink detector, trace и finding factory;
 - созданы DTO `ScanResult`, `ScanSummary`, `Finding`;
+- `Finding` поддерживает необязательное поле `trace` для taint-срабатываний;
 - добавлены `Severity` и `Verdict`;
 - добавлены правила в `lib/Rules`: PHP, JavaScript, HTML, Bitrix-specific;
 - `Scanner` объединяет встроенные правила с внешними сигнатурами из `ScanConfig::getSignaturesPath()`;
 - `Detector` выполняет AST-анализ PHP поверх regex-анализа для `.php`, `.php5`, `.php7`, `.phtml`, `.module`, `.include`;
+- `AstAnalyzer` выполняет taint-анализ request -> dangerous sink в том же AST-проходе;
 - `Scanner` использует профильные пути через `FileCollector::collectFromConfig()`;
 - scanner не зависит от UI;
 - scanner не вызывает `echo` и `exit`;
@@ -130,6 +134,7 @@ Acceptance:
 - добавлен `tests/external_signatures_smoke.php`.
 - добавлен `tests/scan_profiles_smoke.php`.
 - добавлен `tests/ast_analysis_smoke.php`.
+- добавлен `tests/taint_analysis_smoke.php`.
 
 Acceptance:
 
@@ -140,6 +145,7 @@ Acceptance:
 - [x] smoke-test подтверждает срабатывание внешней сигнатуры;
 - [x] smoke-test подтверждает поведение профилей `quick`, `standard`, `deep`;
 - [x] smoke-test подтверждает AST-срабатывания для `eval`, `system`, dynamic call, encoded chain и `include` из request;
+- [x] smoke-test подтверждает taint-цепочки `eval($_GET)`, `$_POST -> shell_exec`, `$_REQUEST -> include`, dynamic callable, `php://input -> file_put_contents`, `filter_input -> curl_setopt(CURLOPT_URL)`;
 - [ ] нужен набор unit/integration tests для правил и false positives.
 
 ### [x] Этап 4. AJAX scan

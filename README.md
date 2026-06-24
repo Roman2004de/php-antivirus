@@ -27,6 +27,7 @@
 - Базовые правила детекта: PHP, JavaScript, HTML, Bitrix-specific.
 - Поддержка внешнего файла regex-сигнатур с добавлением к встроенным правилам.
 - AST-анализ PHP поверх regex-слоя: опасные вызовы, динамические вызовы, include/require и encoded execution chains.
+- Taint-анализ PHP: request/php://input/filter_input -> переменные/трансформеры -> dangerous sink с сохранением trace.
 - Профили сканирования Bitrix: `quick`, `standard`, `deep`.
 - AJAX actions: `ping`, `start_scan`, `scan_step`, `get_status`, `cancel_scan`.
 - Пошаговое сканирование через AJAX.
@@ -80,6 +81,7 @@ bitrix/modules/delement.antivirus/
     Config/
     Detection/
       Ast/
+      Taint/
     File/
     Quarantine/
     Report/
@@ -127,6 +129,9 @@ bitrix/modules/delement.antivirus/
 - `Delement\Antivirus\Detection\Ast\AstAnalyzer`
 - `Delement\Antivirus\Detection\Ast\PhpAstParser`
 - `Delement\Antivirus\Detection\Ast\NodeCollector`
+- `Delement\Antivirus\Detection\Taint\TaintAnalyzer`
+- `Delement\Antivirus\Detection\Taint\TaintPropagator`
+- `Delement\Antivirus\Detection\Taint\TaintSinkDetector`
 - `Delement\Antivirus\File\FileCollector`
 - `Delement\Antivirus\File\FileFilter`
 - `Delement\Antivirus\File\FileReader`
@@ -136,6 +141,8 @@ bitrix/modules/delement.antivirus/
 Встроенные правила загружаются через `SignatureLoader::loadDefaultRules()`. Если в настройках указан `signatures_path`, scanner дополнительно загружает файл через `SignatureLoader::loadFromFile()` и объединяет внешние regex-сигнатуры со встроенными правилами. Формат внешнего файла: одна regex-сигнатура на строку, пустые строки и строки с `#` в начале игнорируются.
 
 Для PHP-файлов дополнительно включается AST-слой на базе `nikic/php-parser`. Он применяется только к расширениям `.php`, `.php5`, `.php7`, `.phtml`, `.module`, `.include` и только в пределах настройки `ast_max_file_size`. При отсутствии Composer-зависимости AST-слой не останавливает сканирование, но regex-правила продолжают работать.
+
+Taint-слой работает внутри AST-прохода и ищет цепочки от пользовательских источников (`$_GET`, `$_POST`, `$_REQUEST`, `$_COOKIE`, `$_FILES`, `$_SERVER` кроме `DOCUMENT_ROOT`, `php://input`, `filter_input`) к опасным sink-вызовам (`eval`, `assert`, shell-команды, include/require, file write, `curl_setopt(CURLOPT_URL)`, `mail`, callback-вызовы). Findings категории `php_taint` содержат поле `trace` с source, transforms, sink и расчетом риска.
 
 ## Настройки
 
@@ -305,6 +312,12 @@ Smoke-test AST-анализа PHP:
 
 ```bash
 php bitrix/modules/delement.antivirus/tests/ast_analysis_smoke.php
+```
+
+Smoke-test taint-анализа PHP:
+
+```bash
+php bitrix/modules/delement.antivirus/tests/taint_analysis_smoke.php
 ```
 
 Smoke-test профилей сканирования:

@@ -2,6 +2,8 @@
 
 namespace Delement\Antivirus\Detection\Ast;
 
+use Delement\Antivirus\Detection\Taint\TaintAnalyzer;
+
 class AstAnalyzer
 {
     private $parser;
@@ -9,13 +11,15 @@ class AstAnalyzer
     private $dangerousCallDetector;
     private $dynamicCallDetector;
     private $encodedPayloadDetector;
+    private $taintAnalyzer;
 
     public function __construct(
         PhpAstParser $parser = null,
         NodeCollector $collector = null,
         DangerousCallDetector $dangerousCallDetector = null,
         DynamicCallDetector $dynamicCallDetector = null,
-        EncodedPayloadDetector $encodedPayloadDetector = null
+        EncodedPayloadDetector $encodedPayloadDetector = null,
+        TaintAnalyzer $taintAnalyzer = null
     ) {
         $factory = new AstFindingFactory();
         $this->parser = $parser ?: new PhpAstParser();
@@ -23,6 +27,7 @@ class AstAnalyzer
         $this->dangerousCallDetector = $dangerousCallDetector ?: new DangerousCallDetector($factory);
         $this->dynamicCallDetector = $dynamicCallDetector ?: new DynamicCallDetector($factory);
         $this->encodedPayloadDetector = $encodedPayloadDetector ?: new EncodedPayloadDetector($factory);
+        $this->taintAnalyzer = $taintAnalyzer ?: new TaintAnalyzer();
     }
 
     public function analyze(string $content): array
@@ -38,7 +43,8 @@ class AstAnalyzer
         return array_merge(
             $this->dangerousCallDetector->detect($context),
             $this->dynamicCallDetector->detect($context),
-            $this->encodedPayloadDetector->detect($context)
+            $this->encodedPayloadDetector->detect($context),
+            $this->taintAnalyzer->analyze($context)
         );
     }
 }
