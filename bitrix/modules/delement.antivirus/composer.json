@@ -1,0 +1,15 @@
+{
+    "name": "delement/bitrix-antivirus",
+    "description": "Bitrix module for intelligent malware and trojan scanning.",
+    "type": "bitrix-module",
+    "license": "proprietary",
+    "require": {
+        "php": ">=7.4",
+        "nikic/php-parser": "^4.18"
+    },
+    "autoload": {
+        "psr-4": {
+            "Delement\\Antivirus\\": "lib/"
+        }
+    }
+}

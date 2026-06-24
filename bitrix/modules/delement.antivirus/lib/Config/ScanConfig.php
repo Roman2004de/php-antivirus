@@ -20,6 +20,8 @@ class ScanConfig
         'php',
         'js',
         'phtml',
+        'module',
+        'include',
         'phtm',
         'cgi',
         'pl',
@@ -44,6 +46,8 @@ class ScanConfig
         'php',
         'js',
         'phtml',
+        'module',
+        'include',
         'phtm',
         'cgi',
         'pl',
@@ -90,6 +94,8 @@ class ScanConfig
     private $excludePaths;
     private $batchSize;
     private $maxFileSizeBytes;
+    private $enableAstAnalysis;
+    private $astMaxFileSize;
     private $extensions;
     private $documentRoot;
 
@@ -108,6 +114,8 @@ class ScanConfig
         $this->maxFileSizeBytes = isset($options['max_file_size_bytes'])
             ? $this->normalizeInt($options['max_file_size_bytes'], 1, 1024 * 1024 * 1024)
             : $this->normalizeMaxFileSize(isset($options['max_file_size_mb']) ? $options['max_file_size_mb'] : 100);
+        $this->enableAstAnalysis = $this->normalizeBool(isset($options['enable_ast_analysis']) ? $options['enable_ast_analysis'] : true);
+        $this->astMaxFileSize = $this->normalizeInt(isset($options['ast_max_file_size']) ? $options['ast_max_file_size'] : 1048576, 1, 100 * 1024 * 1024);
         $this->extensions = $this->normalizeExtensions(isset($options['extensions']) ? $options['extensions'] : $this->defaultExtensionsForScanProfile($this->scanProfile));
     }
 
@@ -125,6 +133,8 @@ class ScanConfig
             'exclude_paths' => isset($options['exclude_paths']) ? $options['exclude_paths'] : [],
             'batch_size' => isset($options['batch_size']) ? $options['batch_size'] : null,
             'max_file_size_mb' => isset($options['max_file_size_mb']) ? $options['max_file_size_mb'] : null,
+            'enable_ast_analysis' => isset($options['enable_ast_analysis']) ? $options['enable_ast_analysis'] : null,
+            'ast_max_file_size' => isset($options['ast_max_file_size']) ? $options['ast_max_file_size'] : null,
         ]);
     }
 
@@ -209,6 +219,16 @@ class ScanConfig
         return $this->maxFileSizeBytes;
     }
 
+    public function isAstAnalysisEnabled(): bool
+    {
+        return $this->enableAstAnalysis;
+    }
+
+    public function getAstMaxFileSize(): int
+    {
+        return $this->astMaxFileSize;
+    }
+
     public function getExtensions(): array
     {
         return $this->extensions;
@@ -239,6 +259,8 @@ class ScanConfig
             'exclude_paths' => $this->excludePaths,
             'batch_size' => $this->batchSize,
             'max_file_size_bytes' => $this->maxFileSizeBytes,
+            'enable_ast_analysis' => $this->enableAstAnalysis,
+            'ast_max_file_size' => $this->astMaxFileSize,
             'extensions' => $this->extensions,
         ];
     }

@@ -13,6 +13,8 @@ class ArgvParser
         'help' => true,
         'version' => true,
         'force' => true,
+        'enable-ast' => true,
+        'disable-ast' => true,
     ];
 
     private const VALUE_OPTIONS = [
@@ -26,6 +28,7 @@ class ArgvParser
         'report' => true,
         'batch-size' => true,
         'max-file-size-mb' => true,
+        'ast-max-file-size' => true,
         'quarantine-path' => true,
     ];
 

@@ -128,6 +128,16 @@ class ScanCommand
             $options['dry_run'] = 'N';
         }
 
+        if (!empty($flags['enable-ast']) && !empty($flags['disable-ast'])) {
+            throw new InvalidArgumentException('cli_ast_flags_conflict');
+        }
+
+        if (!empty($flags['enable-ast'])) {
+            $options['enable_ast_analysis'] = 'Y';
+        } elseif (!empty($flags['disable-ast'])) {
+            $options['enable_ast_analysis'] = 'N';
+        }
+
         if (isset($cliOptions['quarantine-path'])) {
             $options['quarantine_path'] = (string)$cliOptions['quarantine-path'];
         }
@@ -144,6 +154,11 @@ class ScanCommand
         if (isset($cliOptions['max-file-size-mb'])) {
             $this->assertIntegerRange('max-file-size-mb', (string)$cliOptions['max-file-size-mb'], 1, 1024);
             $options['max_file_size_mb'] = (string)$cliOptions['max-file-size-mb'];
+        }
+
+        if (isset($cliOptions['ast-max-file-size'])) {
+            $this->assertIntegerRange('ast-max-file-size', (string)$cliOptions['ast-max-file-size'], 1, 104857600);
+            $options['ast_max_file_size'] = (string)$cliOptions['ast-max-file-size'];
         }
 
         if (isset($cliOptions['exclude']) && is_array($cliOptions['exclude'])) {
@@ -264,6 +279,8 @@ class ScanCommand
             'profile' => $config->getProfile(),
             'action' => $config->getAction(),
             'dry_run' => $config->isDryRun(),
+            'enable_ast_analysis' => $config->isAstAnalysisEnabled(),
+            'ast_max_file_size' => $config->getAstMaxFileSize(),
         ];
     }
 
@@ -426,6 +443,9 @@ Options:
   --json                   Print final machine-readable JSON to STDOUT.
   --signatures=PATH        External regex signatures file.
   --report=PATH            Save a copy of the final JSON report to this path.
+  --enable-ast             Enable PHP AST analysis.
+  --disable-ast            Disable PHP AST analysis.
+  --ast-max-file-size=N    Maximum PHP file size for AST analysis, bytes.
   --exclude=PATH           Add excluded path. Can be repeated.
   --batch-size=N           Files per scanner batch, 1..1000.
   --max-file-size-mb=N     Maximum file size, 1..1024 MB.

@@ -11,4 +11,6 @@ $delement_antivirus_default_option = [
     'exclude_paths' => "/bitrix/cache/\n/bitrix/managed_cache/\n/bitrix/stack_cache/\n/bitrix/html_pages/\n/upload/resize_cache/\n/bitrix/tmp/delement.antivirus/\n/bitrix/modules/delement.antivirus/",
     'batch_size' => '50',
     'max_file_size_mb' => '100',
+    'enable_ast_analysis' => 'Y',
+    'ast_max_file_size' => '1048576',
 ];

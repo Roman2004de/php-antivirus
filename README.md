@@ -13,7 +13,7 @@
 - Сайт партнера: `https://d-element.ru`
 - Язык интерфейса: русский и английский
 - Минимальная цель совместимости: PHP 7.4+, с обязательной проверкой на актуальной версии PHP, поддерживаемой Bitrix
-- Composer на первом этапе не используется
+- Composer-зависимость: `nikic/php-parser:^4.18` для AST-анализа PHP
 
 ## Что уже реализовано
 
@@ -26,6 +26,7 @@
 - Модульный scanner engine в `lib/`.
 - Базовые правила детекта: PHP, JavaScript, HTML, Bitrix-specific.
 - Поддержка внешнего файла regex-сигнатур с добавлением к встроенным правилам.
+- AST-анализ PHP поверх regex-слоя: опасные вызовы, динамические вызовы, include/require и encoded execution chains.
 - Профили сканирования Bitrix: `quick`, `standard`, `deep`.
 - AJAX actions: `ping`, `start_scan`, `scan_step`, `get_status`, `cancel_scan`.
 - Пошаговое сканирование через AJAX.
@@ -78,6 +79,7 @@ bitrix/modules/delement.antivirus/
     Admin/
     Config/
     Detection/
+      Ast/
     File/
     Quarantine/
     Report/
@@ -122,6 +124,9 @@ bitrix/modules/delement.antivirus/
 - `Delement\Antivirus\Scanner\ScanSummary`
 - `Delement\Antivirus\Detection\RuleEngine`
 - `Delement\Antivirus\Detection\Detector`
+- `Delement\Antivirus\Detection\Ast\AstAnalyzer`
+- `Delement\Antivirus\Detection\Ast\PhpAstParser`
+- `Delement\Antivirus\Detection\Ast\NodeCollector`
 - `Delement\Antivirus\File\FileCollector`
 - `Delement\Antivirus\File\FileFilter`
 - `Delement\Antivirus\File\FileReader`
@@ -129,6 +134,8 @@ bitrix/modules/delement.antivirus/
 Движок не пишет HTML, не вызывает `echo`/`exit` и возвращает структурированные результаты, чтобы его можно было использовать из админки, AJAX, cron runner и будущего CLI-wrapper модуля.
 
 Встроенные правила загружаются через `SignatureLoader::loadDefaultRules()`. Если в настройках указан `signatures_path`, scanner дополнительно загружает файл через `SignatureLoader::loadFromFile()` и объединяет внешние regex-сигнатуры со встроенными правилами. Формат внешнего файла: одна regex-сигнатура на строку, пустые строки и строки с `#` в начале игнорируются.
+
+Для PHP-файлов дополнительно включается AST-слой на базе `nikic/php-parser`. Он применяется только к расширениям `.php`, `.php5`, `.php7`, `.phtml`, `.module`, `.include` и только в пределах настройки `ast_max_file_size`. При отсутствии Composer-зависимости AST-слой не останавливает сканирование, но regex-правила продолжают работать.
 
 ## Настройки
 
@@ -143,6 +150,8 @@ bitrix/modules/delement.antivirus/
 - путь к внешнему файлу сигнатур;
 - размер порции сканирования;
 - максимальный размер файла;
+- включение AST-анализа PHP;
+- максимальный размер PHP-файла для AST-анализа;
 - список исключений.
 
 Исключения путей сравниваются как нормализованный path-prefix: путь равен исключению или начинается с `excludePath/`.
@@ -227,6 +236,9 @@ php /home/site/public_html/bitrix/tools/delement.antivirus/scan.php --path=/home
 - `--json`: вывести итоговый JSON в `STDOUT`;
 - `--signatures=PATH`: подключить внешний файл regex-сигнатур;
 - `--report=PATH`: сохранить копию итогового JSON-отчета в заданный файл;
+- `--enable-ast`: включить PHP AST-анализ;
+- `--disable-ast`: выключить PHP AST-анализ;
+- `--ast-max-file-size=N`: лимит размера PHP-файла для AST-анализа в байтах;
 - `--exclude=PATH`: добавить исключение, можно указывать несколько раз;
 - `--batch-size=N`: размер порции сканирования от 1 до 1000;
 - `--max-file-size-mb=N`: максимальный размер файла от 1 до 1024 МБ;
@@ -287,6 +299,12 @@ Smoke-test внешних сигнатур:
 
 ```bash
 php bitrix/modules/delement.antivirus/tests/external_signatures_smoke.php
+```
+
+Smoke-test AST-анализа PHP:
+
+```bash
+php bitrix/modules/delement.antivirus/tests/ast_analysis_smoke.php
 ```
 
 Smoke-test профилей сканирования:

@@ -10,6 +10,12 @@ if (!defined('DELEMENT_ANTIVIRUS_MODULE_ID')) {
     define('DELEMENT_ANTIVIRUS_MODULE_ID', 'delement.antivirus');
 }
 
+$vendorAutoload = __DIR__ . '/vendor/autoload.php';
+
+if (is_file($vendorAutoload)) {
+    require_once $vendorAutoload;
+}
+
 Loader::registerAutoLoadClasses(
     DELEMENT_ANTIVIRUS_MODULE_ID,
     [
@@ -18,6 +24,15 @@ Loader::registerAutoLoadClasses(
         'Delement\\Antivirus\\Cli\\ScanCommand' => 'lib/Cli/ScanCommand.php',
         'Delement\\Antivirus\\Config\\ScanConfig' => 'lib/Config/ScanConfig.php',
         'Delement\\Antivirus\\Detection\\Detector' => 'lib/Detection/Detector.php',
+        'Delement\\Antivirus\\Detection\\Ast\\AstAnalyzer' => 'lib/Detection/Ast/AstAnalyzer.php',
+        'Delement\\Antivirus\\Detection\\Ast\\AstContext' => 'lib/Detection/Ast/AstContext.php',
+        'Delement\\Antivirus\\Detection\\Ast\\AstFindingFactory' => 'lib/Detection/Ast/AstFindingFactory.php',
+        'Delement\\Antivirus\\Detection\\Ast\\AstParseResult' => 'lib/Detection/Ast/AstParseResult.php',
+        'Delement\\Antivirus\\Detection\\Ast\\DangerousCallDetector' => 'lib/Detection/Ast/DangerousCallDetector.php',
+        'Delement\\Antivirus\\Detection\\Ast\\DynamicCallDetector' => 'lib/Detection/Ast/DynamicCallDetector.php',
+        'Delement\\Antivirus\\Detection\\Ast\\EncodedPayloadDetector' => 'lib/Detection/Ast/EncodedPayloadDetector.php',
+        'Delement\\Antivirus\\Detection\\Ast\\NodeCollector' => 'lib/Detection/Ast/NodeCollector.php',
+        'Delement\\Antivirus\\Detection\\Ast\\PhpAstParser' => 'lib/Detection/Ast/PhpAstParser.php',
         'Delement\\Antivirus\\Detection\\Finding' => 'lib/Detection/Finding.php',
         'Delement\\Antivirus\\Detection\\RuleEngine' => 'lib/Detection/RuleEngine.php',
         'Delement\\Antivirus\\Detection\\Severity' => 'lib/Detection/Severity.php',

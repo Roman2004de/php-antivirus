@@ -48,6 +48,8 @@ $optionNames = [
     'exclude_paths',
     'batch_size',
     'max_file_size_mb',
+    'enable_ast_analysis',
+    'ast_max_file_size',
 ];
 
 $getDefault = static function ($name) use ($defaults) {
@@ -118,6 +120,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['save']) || isset($_P
         $values['signatures_path'] = trim((string)($_POST['signatures_path'] ?? ''));
         $values['batch_size'] = trim((string)($_POST['batch_size'] ?? ''));
         $values['max_file_size_mb'] = trim((string)($_POST['max_file_size_mb'] ?? ''));
+        $values['enable_ast_analysis'] = isset($_POST['enable_ast_analysis']) && $_POST['enable_ast_analysis'] === 'Y' ? 'Y' : 'N';
+        $values['ast_max_file_size'] = trim((string)($_POST['ast_max_file_size'] ?? ''));
 
         $pathFields = [
             'scan_path' => Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_SCAN_PATH'),
@@ -169,6 +173,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['save']) || isset($_P
 
         if (!preg_match('/^\d+$/', $values['max_file_size_mb']) || (int)$values['max_file_size_mb'] < 1 || (int)$values['max_file_size_mb'] > 1024) {
             $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_MAX_FILE_SIZE');
+        }
+
+        if (!preg_match('/^\d+$/', $values['ast_max_file_size']) || (int)$values['ast_max_file_size'] < 1 || (int)$values['ast_max_file_size'] > 104857600) {
+            $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_AST_MAX_FILE_SIZE');
         }
 
         [$excludePaths, $excludeErrors] = $normalizeLines($_POST['exclude_paths'] ?? '');
@@ -372,6 +380,30 @@ $tabControl->Begin();
         </td>
         <td class="adm-detail-content-cell-r">
             <input type="number" min="1" max="1024" id="delement_antivirus_max_file_size_mb" name="max_file_size_mb" value="<?php echo htmlspecialcharsbx($values['max_file_size_mb']); ?>">
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_enable_ast_analysis"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ENABLE_AST_ANALYSIS'); ?></label>
+        </td>
+        <td class="adm-detail-content-cell-r">
+            <input type="checkbox" id="delement_antivirus_enable_ast_analysis" name="enable_ast_analysis" value="Y"<?php echo $values['enable_ast_analysis'] === 'Y' ? ' checked' : ''; ?>>
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l"></td>
+        <td class="adm-detail-content-cell-r">
+            <?php echo BeginNote(); ?>
+            <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ENABLE_AST_ANALYSIS_HINT'); ?>
+            <?php echo EndNote(); ?>
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_ast_max_file_size"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_AST_MAX_FILE_SIZE'); ?></label>
+        </td>
+        <td class="adm-detail-content-cell-r">
+            <input type="number" min="1" max="104857600" id="delement_antivirus_ast_max_file_size" name="ast_max_file_size" value="<?php echo htmlspecialcharsbx($values['ast_max_file_size']); ?>">
         </td>
     </tr>
     <tr>
