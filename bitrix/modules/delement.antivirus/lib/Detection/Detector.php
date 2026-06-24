@@ -9,6 +9,7 @@ class Detector
 {
     private $ruleEngine;
     private $astAnalyzer;
+    private $htaccessAnalyzer;
 
     private const AST_EXTENSIONS = [
         'php' => true,
@@ -19,14 +20,20 @@ class Detector
         'include' => true,
     ];
 
-    public function __construct(RuleEngine $ruleEngine, $astAnalyzer = null)
+    public function __construct(RuleEngine $ruleEngine, $astAnalyzer = null, $htaccessAnalyzer = null)
     {
         $this->ruleEngine = $ruleEngine;
         $this->astAnalyzer = $astAnalyzer;
+        $this->htaccessAnalyzer = $htaccessAnalyzer;
 
         if ($this->astAnalyzer === null && class_exists('Delement\\Antivirus\\Detection\\Ast\\AstAnalyzer')) {
             $className = 'Delement\\Antivirus\\Detection\\Ast\\AstAnalyzer';
             $this->astAnalyzer = new $className();
+        }
+
+        if ($this->htaccessAnalyzer === null && class_exists('Delement\\Antivirus\\Detection\\Htaccess\\HtaccessAnalyzer')) {
+            $className = 'Delement\\Antivirus\\Detection\\Htaccess\\HtaccessAnalyzer';
+            $this->htaccessAnalyzer = new $className();
         }
     }
 
@@ -37,6 +44,8 @@ class Detector
         $astContent = '';
         $astTooLarge = false;
         $useAst = $this->shouldAnalyzeAst($filePath, $config);
+        $htaccessContent = '';
+        $useHtaccess = $this->shouldAnalyzeHtaccess($filePath);
 
         foreach ($this->ruleEngine->analyzePath($filePath, $config) as $finding) {
             $this->addFinding($findings, $seen, $finding);
@@ -57,10 +66,20 @@ class Detector
                     $astContent = '';
                 }
             }
+
+            if ($useHtaccess) {
+                $htaccessContent .= $chunk;
+            }
         }
 
         if ($useAst && !$astTooLarge && $astContent !== '' && $this->astAnalyzer !== null) {
             foreach ($this->astAnalyzer->analyze($astContent) as $finding) {
+                $this->addFinding($findings, $seen, $finding);
+            }
+        }
+
+        if ($useHtaccess && $htaccessContent !== '' && $this->htaccessAnalyzer !== null) {
+            foreach ($this->htaccessAnalyzer->analyze($htaccessContent, $filePath) as $finding) {
                 $this->addFinding($findings, $seen, $finding);
             }
         }
@@ -102,5 +121,10 @@ class Detector
         $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
 
         return isset(self::AST_EXTENSIONS[$extension]);
+    }
+
+    private function shouldAnalyzeHtaccess(string $filePath): bool
+    {
+        return basename($filePath) === '.htaccess' && $this->htaccessAnalyzer !== null;
     }
 }

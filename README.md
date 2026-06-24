@@ -28,6 +28,7 @@
 - Поддержка внешнего файла regex-сигнатур с добавлением к встроенным правилам.
 - AST-анализ PHP поверх regex-слоя: опасные вызовы, динамические вызовы, include/require и encoded execution chains.
 - Taint-анализ PHP: request/php://input/filter_input -> переменные/трансформеры -> dangerous sink с сохранением trace.
+- Усиленный анализ `.htaccess`: PHP handlers для статических расширений, auto_prepend/append, embedded code, suspicious rewrite, WordPress-маркеры и access bypass.
 - Профили сканирования Bitrix: `quick`, `standard`, `deep`.
 - AJAX actions: `ping`, `start_scan`, `scan_step`, `get_status`, `cancel_scan`.
 - Пошаговое сканирование через AJAX.
@@ -81,6 +82,7 @@ bitrix/modules/delement.antivirus/
     Config/
     Detection/
       Ast/
+      Htaccess/
       Taint/
     File/
     Quarantine/
@@ -129,6 +131,7 @@ bitrix/modules/delement.antivirus/
 - `Delement\Antivirus\Detection\Ast\AstAnalyzer`
 - `Delement\Antivirus\Detection\Ast\PhpAstParser`
 - `Delement\Antivirus\Detection\Ast\NodeCollector`
+- `Delement\Antivirus\Detection\Htaccess\HtaccessAnalyzer`
 - `Delement\Antivirus\Detection\Taint\TaintAnalyzer`
 - `Delement\Antivirus\Detection\Taint\TaintPropagator`
 - `Delement\Antivirus\Detection\Taint\TaintSinkDetector`
@@ -143,6 +146,8 @@ bitrix/modules/delement.antivirus/
 Для PHP-файлов дополнительно включается AST-слой на базе `nikic/php-parser`. Он применяется только к расширениям `.php`, `.php5`, `.php7`, `.phtml`, `.module`, `.include` и только в пределах настройки `ast_max_file_size`. При отсутствии Composer-зависимости AST-слой не останавливает сканирование, но regex-правила продолжают работать.
 
 Taint-слой работает внутри AST-прохода и ищет цепочки от пользовательских источников (`$_GET`, `$_POST`, `$_REQUEST`, `$_COOKIE`, `$_FILES`, `$_SERVER` кроме `DOCUMENT_ROOT`, `php://input`, `filter_input`) к опасным sink-вызовам (`eval`, `assert`, shell-команды, include/require, file write, `curl_setopt(CURLOPT_URL)`, `mail`, callback-вызовы). Findings категории `php_taint` содержат поле `trace` с source, transforms, sink и расчетом риска.
+
+Файлы `.htaccess` анализируются отдельным слоем `HtaccessAnalyzer`. Он ищет попытки включить PHP-исполнение для статических расширений, `auto_prepend_file`/`auto_append_file`, PHP/JS-код внутри `.htaccess`, подозрительные rewrite-правила, WordPress-маркеры внутри Bitrix-проекта и директивы обхода доступа в чувствительных каталогах.
 
 ## Настройки
 
@@ -318,6 +323,12 @@ Smoke-test taint-анализа PHP:
 
 ```bash
 php bitrix/modules/delement.antivirus/tests/taint_analysis_smoke.php
+```
+
+Smoke-test `.htaccess`-анализа:
+
+```bash
+php bitrix/modules/delement.antivirus/tests/htaccess_analysis_smoke.php
 ```
 
 Smoke-test профилей сканирования:

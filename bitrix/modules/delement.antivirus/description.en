@@ -1,3 +1,13 @@
-﻿<ul>
-  <li>Security updates.</li>
+﻿<p>
+Added advanced PHP code analysis based on AST and taint tracking from user-controlled input to dangerous sinks.
+</p>
+<ul>
+<li>AST analysis is powered by nikic/php-parser and runs on top of the existing regex rules.</li>
+<li>Detects dangerous calls such as eval, assert, shell functions, include/require, dynamic function calls and variable method calls.</li>
+<li>Added detection for obfuscated execution chains like eval(gzinflate(base64_decode(...))).</li>
+<li>Added taint analysis: tracks data from $_GET, $_POST, $_REQUEST, $_COOKIE, $_FILES, $_SERVER, php://input, and filter_input() to dangerous sink calls.</li>
+<li>Taint findings include a trace with source, intermediate transforms, sink, and risk calculation.</li>
+<li>Added settings to enable AST analysis and limit the maximum PHP file size for AST processing.</li>
+<li>CLI now supports --enable-ast, --disable-ast, and --ast-max-file-size.</li>
+<li>Added smoke tests for AST and taint analysis.</li>
 </ul>
