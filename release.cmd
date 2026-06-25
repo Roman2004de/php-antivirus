@@ -82,7 +82,35 @@ set "RELEASE_STAGE_DIR=%STAGE_DIR%"
 set "RELEASE_STAGE_ROOT=%STAGE_ROOT%"
 set "RELEASE_ZIP_PATH=%ZIP_PATH%"
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $version=$env:RELEASE_VERSION; $stageDir=$env:RELEASE_STAGE_DIR; $stageRoot=$env:RELEASE_STAGE_ROOT; $zipPath=$env:RELEASE_ZIP_PATH; $versionFile=Join-Path $stageDir 'install\version.php'; if (-not (Test-Path -LiteralPath $versionFile)) { throw 'install/version.php was not found in staged module'; }; $text=[System.IO.File]::ReadAllText($versionFile); $date=(Get-Date).ToString('yyyy-MM-dd 00:00:00'); $text=[regex]::Replace($text, '''VERSION''\s*=>\s*''[^'']*''', '''VERSION'' => ''' + $version + ''''); $text=[regex]::Replace($text, '''VERSION_DATE''\s*=>\s*''[^'']*''', '''VERSION_DATE'' => ''' + $date + ''''); $encoding=New-Object System.Text.UTF8Encoding $false; [System.IO.File]::WriteAllText($versionFile, $text, $encoding); if (Test-Path -LiteralPath $zipPath) { Remove-Item -LiteralPath $zipPath -Force; }; Compress-Archive -Path (Join-Path $stageRoot '*') -DestinationPath $zipPath -Force; if (-not (Test-Path -LiteralPath $zipPath)) { throw 'zip_not_created'; }"
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+    "$ErrorActionPreference='Stop';" ^
+    "$version=$env:RELEASE_VERSION;" ^
+    "$stageDir=$env:RELEASE_STAGE_DIR;" ^
+    "$stageRoot=$env:RELEASE_STAGE_ROOT;" ^
+    "$zipPath=$env:RELEASE_ZIP_PATH;" ^
+    "$versionFile=Join-Path $stageDir 'install\version.php';" ^
+    "if (-not (Test-Path -LiteralPath $versionFile)) { throw 'install/version.php was not found in staged module'; }" ^
+    "$text=[System.IO.File]::ReadAllText($versionFile);" ^
+    "$date=(Get-Date).ToString('yyyy-MM-dd 00:00:00');" ^
+    "$text=[regex]::Replace($text, '''VERSION''\s*=>\s*''[^'']*''', '''VERSION'' => ''' + $version + '''');" ^
+    "$text=[regex]::Replace($text, '''VERSION_DATE''\s*=>\s*''[^'']*''', '''VERSION_DATE'' => ''' + $date + '''');" ^
+    "$encoding=New-Object System.Text.UTF8Encoding $false;" ^
+    "[System.IO.File]::WriteAllText($versionFile, $text, $encoding);" ^
+    "if (Test-Path -LiteralPath $zipPath) { Remove-Item -LiteralPath $zipPath -Force; }" ^
+    "Add-Type -AssemblyName System.IO.Compression;" ^
+    "Add-Type -AssemblyName System.IO.Compression.FileSystem;" ^
+    "$zipStream=[System.IO.File]::Open($zipPath, [System.IO.FileMode]::CreateNew);" ^
+    "$archive=New-Object System.IO.Compression.ZipArchive($zipStream, [System.IO.Compression.ZipArchiveMode]::Create);" ^
+    "try {" ^
+    "  $rootFull=[System.IO.Path]::GetFullPath($stageRoot).TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar);" ^
+    "  Get-ChildItem -LiteralPath $stageRoot -Recurse -File | ForEach-Object {" ^
+    "    $fileFull=[System.IO.Path]::GetFullPath($_.FullName);" ^
+    "    $relative=$fileFull.Substring($rootFull.Length).TrimStart([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar);" ^
+    "    $entryName=$relative.Replace('\', '/');" ^
+    "    [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive, $_.FullName, $entryName, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null;" ^
+    "  }" ^
+    "} finally { $archive.Dispose(); $zipStream.Dispose(); }" ^
+    "if (-not (Test-Path -LiteralPath $zipPath)) { throw 'zip_not_created'; }"
 
 if errorlevel 1 goto :cleanup_error
 

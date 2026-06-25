@@ -1,13 +1,10 @@
-﻿<p>
-Добавлен расширенный анализ PHP-кода на основе AST и taint-анализ цепочек от пользовательского ввода к опасным вызовам.
-</p>
+﻿<p>Добавлен отдельный механизм анализа файлов .htaccess.</p>
 <ul>
-<li>AST-анализ использует nikic/php-parser и работает поверх существующих regex-правил.</li>
-<li>Обнаруживаются опасные вызовы eval, assert, shell-функции, include/require, динамические вызовы функций и методов.</li>
-<li>Добавлено обнаружение цепочек обфускации вида eval(gzinflate(base64_decode(...))).</li>
-<li>Добавлен taint-анализ: отслеживание данных из $_GET, $_POST, $_REQUEST, $_COOKIE, $_FILES, $_SERVER, php://input, filter_input() до опасных sink-вызовов.</li>
-<li>Для taint-срабатываний сохраняется trace: источник, промежуточные преобразования, опасный вызов и расчет риска.</li>
-<li>Добавлены настройки включения AST-анализа и ограничения максимального размера PHP-файла для AST.</li>
-<li>CLI получил параметры --enable-ast, --disable-ast, --ast-max-file-size.</li>
-<li>Добавлены smoke-тесты для AST и taint-анализа.</li>
+  <li>Обнаружение PHP-обработчиков для статических расширений, например .jpg, .png, .gif, .txt.</li>
+  <li>Обнаружение директив auto_prepend_file и auto_append_file.</li>
+  <li>Обнаружение PHP/JS-маркеров внутри .htaccess, включая &lt;?php, &lt;script, eval( и base64_decode(.</li>
+  <li>Обнаружение подозрительных RewriteRule и RewriteCond, включая редиректы на wp-login.php, cache.php, shell/tmp-файлы и index.php с параметрами.</li>
+  <li>Обнаружение WordPress-маркеров внутри Bitrix-проекта: wp-config.php, wp-login.php, wp-admin, wp-content, wp-includes.</li>
+  <li>Обнаружение директив обхода доступа в чувствительных каталогах: /upload, /bitrix/modules, /bitrix/php_interface.</li>
+  <li>Добавлены отдельные сигнатуры htaccess_* и smoke-тесты для проверки .htaccess-анализатора.</li>
 </ul>
