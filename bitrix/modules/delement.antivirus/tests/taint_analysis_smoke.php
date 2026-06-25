@@ -92,6 +92,14 @@ try {
         'transform_eval.php' => "<?php\n\$a = \$_POST['x'];\n\$b = base64_decode(\$a);\neval(\$b);\n",
         'php_input_write.php' => "<?php\n\$body = file_get_contents('php://input');\nfile_put_contents('/tmp/payload.php', \$body);\n",
         'curl_url.php' => "<?php\n\$url = filter_input(INPUT_GET, 'url');\ncurl_setopt(\$ch, CURLOPT_URL, \$url);\n",
+        'function_param.php' => "<?php\nfunction include_page(\$page) {\n    include \$page;\n}\ninclude_page(\$_GET['page']);\n",
+        'function_return.php' => "<?php\nfunction decode_payload(\$payload) {\n    return base64_decode(\$payload);\n}\neval(decode_payload(\$_POST['x']));\n",
+        'return_assignment.php' => "<?php\nfunction read_cmd() {\n    return \$_GET['cmd'];\n}\n\$cmd = read_cmd();\nshell_exec(\$cmd);\n",
+        'foreach_value.php' => "<?php\nforeach (\$_REQUEST['cmd'] as \$cmd) {\n    system(\$cmd);\n}\n",
+        'array_value.php' => "<?php\n\$bag = ['cmd' => \$_POST['cmd']];\nshell_exec(\$bag['cmd']);\n",
+        'method_sink.php' => "<?php\n\$runner->exec(\$_GET['cmd']);\n",
+        'static_sink.php' => "<?php\nRunner::exec(\$_GET['cmd']);\n",
+        'sanitized_system.php' => "<?php\n\$id = intval(\$_GET['id']);\nsystem(\$id);\n",
     ];
 
     foreach ($fixtures as $name => $contents) {
@@ -112,6 +120,7 @@ try {
     $summary = (new Scanner())->scan($config)->toArray();
     $byFile = [];
     $signatures = [];
+    $metadataErrors = [];
 
     foreach ($summary['results'] as $result) {
         $name = basename((string)($result['file_path'] ?? ''));
@@ -123,6 +132,19 @@ try {
             if (strpos($id, 'taint_') === 0) {
                 $byFile[$name][$id] = $finding;
                 $signatures[$id] = true;
+
+                if (
+                    (string)($finding['file'] ?? '') !== (string)($result['file_path'] ?? '')
+                    || (int)($finding['line'] ?? 0) < 1
+                    || (string)($finding['type'] ?? '') !== 'taint'
+                    || (string)($finding['source'] ?? '') === ''
+                    || empty($finding['trace'])
+                ) {
+                    $metadataErrors[] = [
+                        'file' => $result['file_path'] ?? '',
+                        'finding' => $finding,
+                    ];
+                }
             }
         }
     }
@@ -135,6 +157,13 @@ try {
         'transform_eval.php' => 'taint_request_to_eval',
         'php_input_write.php' => 'taint_request_to_file_put_contents',
         'curl_url.php' => 'taint_request_to_curl_setopt_url',
+        'function_param.php' => 'taint_request_to_include',
+        'function_return.php' => 'taint_request_to_eval',
+        'return_assignment.php' => 'taint_request_to_shell_exec',
+        'foreach_value.php' => 'taint_request_to_system',
+        'array_value.php' => 'taint_request_to_shell_exec',
+        'method_sink.php' => 'taint_request_to_method_exec',
+        'static_sink.php' => 'taint_request_to_static_exec',
     ];
     $missing = [];
 
@@ -151,9 +180,19 @@ try {
         $transformNames[] = (string)($transform['name'] ?? '');
     }
 
-    if (!empty($missing) || !in_array('base64_decode', $transformNames, true) || (($transformTrace['risk']['score'] ?? 0) !== 10)) {
+    $sanitizedHasTaint = false;
+
+    foreach (array_keys($byFile['sanitized_system.php'] ?? []) as $signatureId) {
+        if (strpos($signatureId, 'taint_') === 0) {
+            $sanitizedHasTaint = true;
+        }
+    }
+
+    if (!empty($missing) || !empty($metadataErrors) || $sanitizedHasTaint || !in_array('base64_decode', $transformNames, true) || (($transformTrace['risk']['score'] ?? 0) !== 10)) {
         delement_antivirus_taint_smoke_fail('Taint findings are missing or incomplete', [
             'missing' => $missing,
+            'metadata_errors' => $metadataErrors,
+            'sanitized_has_taint' => $sanitizedHasTaint,
             'signatures' => array_keys($signatures),
             'transform_trace' => $transformTrace,
             'summary' => $summary,

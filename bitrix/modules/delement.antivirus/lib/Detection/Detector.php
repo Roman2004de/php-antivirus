@@ -73,7 +73,7 @@ class Detector
         }
 
         if ($useAst && !$astTooLarge && $astContent !== '' && $this->astAnalyzer !== null) {
-            foreach ($this->astAnalyzer->analyze($astContent) as $finding) {
+            foreach ($this->astAnalyzer->analyze($astContent, $filePath) as $finding) {
                 $this->addFinding($findings, $seen, $finding);
             }
         }
@@ -99,17 +99,41 @@ class Detector
 
     private function addFinding(array &$findings, array &$seen, Finding $finding): void
     {
-        $id = $finding->getSignatureId();
+        $key = $this->findingKey($finding);
 
-        if ($id !== '' && isset($seen[$id])) {
+        if ($key !== '' && isset($seen[$key])) {
             return;
         }
 
         $findings[] = $finding;
 
-        if ($id !== '') {
-            $seen[$id] = true;
+        if ($key !== '') {
+            $seen[$key] = true;
         }
+    }
+
+    private function findingKey(Finding $finding): string
+    {
+        $id = $finding->getSignatureId();
+
+        if ($id === '') {
+            return '';
+        }
+
+        $offset = $finding->getOffset();
+        $excerpt = $finding->getExcerpt();
+
+        if ($offset === null && $excerpt === '') {
+            return $id;
+        }
+
+        return implode(':', [
+            $id,
+            $finding->getTarget(),
+            $finding->getRuleType(),
+            $offset === null ? '-' : (string)$offset,
+            sha1($excerpt),
+        ]);
     }
 
     private function shouldAnalyzeAst(string $filePath, ScanConfig $config): bool

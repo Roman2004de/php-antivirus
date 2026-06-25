@@ -6,6 +6,7 @@ use PhpParser\Node;
 
 class AstContext
 {
+    public $nodes = [];
     public $calls = [];
     public $assignments = [];
     public $dangerousCalls = [];
@@ -20,6 +21,9 @@ class AstContext
     public $arrayAccess = [];
     public $variableFunctionCalls = [];
     public $assignmentValues = [];
+    public $functions = [];
+    public $foreachNodes = [];
+    public $returns = [];
 
     private const SUPERGLOBALS = [
         '_GET' => true,

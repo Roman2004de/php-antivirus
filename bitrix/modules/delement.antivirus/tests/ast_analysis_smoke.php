@@ -105,6 +105,7 @@ try {
     ]);
     $summary = (new Scanner())->scan($config)->toArray();
     $signatures = [];
+    $metadataErrors = [];
 
     foreach ($summary['results'] as $result) {
         foreach ($result['findings'] as $finding) {
@@ -112,6 +113,18 @@ try {
 
             if (strpos($id, 'php_ast_') === 0) {
                 $signatures[$id] = true;
+
+                if (
+                    (string)($finding['file'] ?? '') !== (string)($result['file_path'] ?? '')
+                    || (int)($finding['line'] ?? 0) < 1
+                    || (string)($finding['type'] ?? '') !== 'ast'
+                    || (string)($finding['source'] ?? '') !== 'ast'
+                ) {
+                    $metadataErrors[] = [
+                        'file' => $result['file_path'] ?? '',
+                        'finding' => $finding,
+                    ];
+                }
             }
         }
     }
@@ -132,9 +145,10 @@ try {
         }
     }
 
-    if (!empty($missing)) {
+    if (!empty($missing) || !empty($metadataErrors)) {
         delement_antivirus_ast_smoke_fail('AST findings are missing', [
             'missing' => $missing,
+            'metadata_errors' => $metadataErrors,
             'signatures' => array_keys($signatures),
             'summary' => $summary,
         ]);

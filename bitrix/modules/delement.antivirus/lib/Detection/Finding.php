@@ -14,6 +14,10 @@ class Finding
     private $target;
     private $ruleType;
     private $trace;
+    private $file;
+    private $line;
+    private $type;
+    private $source;
 
     public function __construct(array $data)
     {
@@ -27,6 +31,10 @@ class Finding
         $this->target = isset($data['target']) ? (string)$data['target'] : 'content';
         $this->ruleType = isset($data['rule_type']) ? (string)$data['rule_type'] : 'regex';
         $this->trace = isset($data['trace']) && is_array($data['trace']) ? $data['trace'] : [];
+        $this->file = isset($data['file']) ? (string)$data['file'] : '';
+        $this->line = isset($data['line']) ? (int)$data['line'] : null;
+        $this->type = isset($data['type']) ? (string)$data['type'] : '';
+        $this->source = isset($data['source']) ? (string)$data['source'] : '';
     }
 
     public function getSignatureId(): string
@@ -42,6 +50,26 @@ class Finding
     public function getScore(): int
     {
         return $this->score;
+    }
+
+    public function getOffset()
+    {
+        return $this->offset;
+    }
+
+    public function getExcerpt(): string
+    {
+        return $this->excerpt;
+    }
+
+    public function getTarget(): string
+    {
+        return $this->target;
+    }
+
+    public function getRuleType(): string
+    {
+        return $this->ruleType;
     }
 
     public function toArray(): array
@@ -60,6 +88,22 @@ class Finding
 
         if (!empty($this->trace)) {
             $result['trace'] = $this->trace;
+        }
+
+        if ($this->file !== '') {
+            $result['file'] = $this->file;
+        }
+
+        if ($this->line !== null) {
+            $result['line'] = $this->line;
+        }
+
+        if ($this->type !== '') {
+            $result['type'] = $this->type;
+        }
+
+        if ($this->source !== '') {
+            $result['source'] = $this->source;
         }
 
         return $result;

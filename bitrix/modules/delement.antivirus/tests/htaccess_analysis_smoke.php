@@ -66,6 +66,7 @@ try {
 
     file_put_contents($fixtureRoot . DIRECTORY_SEPARATOR . '.htaccess', implode("\n", [
         'AddHandler application/x-httpd-php .jpg',
+        'AddType application/x-httpd-php .png',
         'php_value auto_prepend_file /upload/shell.php',
         'RewriteRule ^.*$ wp-login.php [L]',
         '<?php eval(base64_decode($x));',
@@ -87,6 +88,7 @@ try {
     ]);
     $summary = (new Scanner())->scan($config)->toArray();
     $signatures = [];
+    $counts = [];
 
     foreach ($summary['results'] as $result) {
         foreach ($result['findings'] as $finding) {
@@ -94,6 +96,7 @@ try {
 
             if (strpos($id, 'htaccess_') === 0) {
                 $signatures[$id] = $finding;
+                $counts[$id] = isset($counts[$id]) ? $counts[$id] + 1 : 1;
             }
         }
     }
@@ -114,9 +117,10 @@ try {
         }
     }
 
-    if (!empty($missing)) {
+    if (!empty($missing) || (($counts['htaccess_php_handler_for_static_ext'] ?? 0) < 2)) {
         delement_antivirus_htaccess_smoke_fail('Htaccess findings are missing', [
             'missing' => $missing,
+            'counts' => $counts,
             'signatures' => array_keys($signatures),
             'summary' => $summary,
         ]);

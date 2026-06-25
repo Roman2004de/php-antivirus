@@ -9,6 +9,7 @@ class NodeCollector
     public function collect(array $nodes): AstContext
     {
         $context = new AstContext();
+        $context->nodes = $nodes;
 
         foreach ($nodes as $node) {
             $this->walk($node, $context);
@@ -40,6 +41,17 @@ class NodeCollector
 
     private function collectNode(Node $node, AstContext $context): void
     {
+        if ($node instanceof Node\Stmt\Function_) {
+            $name = strtolower($node->name->toString());
+            $context->functions[$name] = [
+                'node' => $node,
+                'name' => $name,
+                'line' => $this->line($node),
+                'params' => $node->params,
+                'stmts' => $node->stmts,
+            ];
+        }
+
         if ($node instanceof Node\Expr\Assign || $node instanceof Node\Expr\AssignOp) {
             $assignment = [
                 'node' => $node,
@@ -137,6 +149,24 @@ class NodeCollector
                 'line' => $this->line($node),
                 'var' => $node->var,
                 'dim' => $node->dim,
+            ];
+        }
+
+        if ($node instanceof Node\Stmt\Foreach_) {
+            $context->foreachNodes[] = [
+                'node' => $node,
+                'line' => $this->line($node),
+                'expr' => $node->expr,
+                'key_var' => $node->keyVar,
+                'value_var' => $node->valueVar,
+            ];
+        }
+
+        if ($node instanceof Node\Stmt\Return_) {
+            $context->returns[] = [
+                'node' => $node,
+                'line' => $this->line($node),
+                'expr' => $node->expr,
             ];
         }
 
