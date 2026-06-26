@@ -104,7 +104,7 @@ class Detector
 
         $verdict = Verdict::fromScore($score, $config->getThresholds());
 
-        return ScanResult::fromFindings($filePath, $verdict, $score, $severity, $findings, $config->getAction(), $config->isDryRun(), $resultTags);
+        return ScanResult::fromFindings($filePath, $verdict, $score, $severity, $findings, $config->getAction(), $config->isDryRun(), $resultTags, null, $config->getDocumentRoot());
     }
 
     private function addFinding(array &$findings, array &$seen, Finding $finding): void

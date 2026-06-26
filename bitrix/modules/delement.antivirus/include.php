@@ -66,6 +66,9 @@ Loader::registerAutoLoadClasses(
         'Delement\\Antivirus\\Scanner\\ScanSummary' => 'lib/Scanner/ScanSummary.php',
         'Delement\\Antivirus\\Storage\\RuntimeDirectory' => 'lib/Storage/RuntimeDirectory.php',
         'Delement\\Antivirus\\Support\\ModuleVersion' => 'lib/Support/ModuleVersion.php',
+        'Delement\\Antivirus\\Whitelist\\FindingSuppressor' => 'lib/Whitelist/FindingSuppressor.php',
+        'Delement\\Antivirus\\Whitelist\\SuppressionFingerprint' => 'lib/Whitelist/SuppressionFingerprint.php',
+        'Delement\\Antivirus\\Whitelist\\SuppressionStore' => 'lib/Whitelist/SuppressionStore.php',
         'Delement\\Antivirus\\Whitelist\\WhitelistManager' => 'lib/Whitelist/WhitelistManager.php',
     ]
 );

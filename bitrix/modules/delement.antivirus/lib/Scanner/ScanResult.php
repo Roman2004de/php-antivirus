@@ -5,6 +5,7 @@ namespace Delement\Antivirus\Scanner;
 use Delement\Antivirus\Detection\Finding;
 use Delement\Antivirus\Detection\Severity;
 use Delement\Antivirus\Detection\Verdict;
+use Delement\Antivirus\Whitelist\SuppressionFingerprint;
 
 class ScanResult
 {
@@ -46,8 +47,11 @@ class ScanResult
         string $action,
         bool $dryRun,
         array $tags = [],
-        ?string $normalizedHash = null
+        ?string $normalizedHash = null,
+        string $documentRoot = ''
     ): self {
+        $findings = self::withFindingFingerprints($filePath, $findings, $documentRoot);
+
         return new self([
             'file_path' => $filePath,
             'file_hash' => self::calculateHash($filePath),
@@ -143,6 +147,37 @@ class ScanResult
         $hash = @hash_file('sha256', $filePath);
 
         return $hash === false ? '' : $hash;
+    }
+
+    private static function withFindingFingerprints(string $filePath, array $findings, string $documentRoot): array
+    {
+        if (!class_exists(SuppressionFingerprint::class)) {
+            $path = dirname(__DIR__) . '/Whitelist/SuppressionFingerprint.php';
+
+            if (is_file($path)) {
+                require_once $path;
+            }
+        }
+
+        $result = [];
+
+        foreach ($findings as $finding) {
+            if (!$finding instanceof Finding) {
+                continue;
+            }
+
+            $fingerprint = $finding->getFingerprint();
+
+            if ($fingerprint === '') {
+                $fingerprint = class_exists(SuppressionFingerprint::class)
+                    ? SuppressionFingerprint::forFinding($filePath, $finding->toArray(), $documentRoot)
+                    : hash('sha256', $filePath . "\n" . $finding->getSignatureId() . "\n" . $finding->getTarget() . "\n" . sha1($finding->getExcerpt()));
+            }
+
+            $result[] = $finding->withFingerprint($fingerprint);
+        }
+
+        return $result;
     }
 
     private static function normalizeTags(array $tags): array

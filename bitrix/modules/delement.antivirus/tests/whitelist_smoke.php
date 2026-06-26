@@ -124,6 +124,15 @@ if (count($rulesAfterDelete) !== 1) {
     exit(1);
 }
 
+$suppression = $manager->suppressFinding($result, $result['findings'][0], 0, 'smoke suppression');
+$suppressions = $manager->listFindingSuppressions();
+
+if (empty($suppression['fingerprint']) || count($suppressions) !== 1) {
+    fwrite(STDERR, json_encode($suppressions, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL);
+    delement_antivirus_whitelist_remove_tree($moduleRoot);
+    exit(1);
+}
+
 echo json_encode(
     [
         'partial_status' => $filtered['status'],
@@ -131,6 +140,7 @@ echo json_encode(
         'after_deactivate_status' => $afterDeactivate['status'],
         'after_activate_status' => $afterActivate['status'],
         'rules' => count($rulesAfterDelete),
+        'finding_suppressions' => count($suppressions),
     ],
     JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
 ) . PHP_EOL;

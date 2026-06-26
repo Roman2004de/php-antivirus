@@ -42,7 +42,7 @@ scan -> explain -> review -> quarantine -> restore/delete manually
 
 ## Текущий статус
 
-Стадия: MVP с работающим сканированием, отчетами, карантином, CLI runner, AST-анализом PHP, taint-анализом request-to-sink, усиленным `.htaccess`-анализом, `common_strings` prefilter для regex pipeline и `normalized_hash` для текстовых файлов.
+Стадия: MVP с работающим сканированием, отчетами, карантином, CLI runner, AST-анализом PHP, taint-анализом request-to-sink, усиленным `.htaccess`-анализом, `common_strings` prefilter для regex pipeline, `normalized_hash` для текстовых файлов и FindingSuppressor для точечных false positive.
 
 Уже есть устанавливаемый skeleton, настройки, модульный scanner engine, AJAX-пошаговое сканирование, results storage/UI, RU/EN локализация и базовый карантин с восстановлением.
 Scanner использует встроенные правила и может добавлять к ним внешний файл regex-сигнатур из настройки `signatures_path`.
@@ -519,18 +519,23 @@ Acceptance:
 - в таблице подозрительных файлов отчета добавлена необязательная колонка `Normalized hash`;
 - добавлен `tests/normalized_hash_smoke.php`.
 
-#### [ ] Этап 10.4. `FindingSuppressor`
+#### [x] Этап 10.4. `FindingSuppressor`
 
 Цель: централизованно подавлять false positive для всех будущих findings.
 
-Задачи:
+Сделано:
 
-- вынести suppress-логику в отдельный сервис;
-- поддержать подавление по file/hash/normalized_hash/signature/context/tags;
-- сохранять suppressed findings в отчете отдельным состоянием;
-- обновить UI whitelist/результатов;
-- добавить CLI/JSON совместимость;
-- покрыть smoke-тестом.
+- добавлены `Whitelist/FindingSuppressor.php`, `Whitelist/SuppressionStore.php`, `Whitelist/SuppressionFingerprint.php`;
+- каждый `Finding` получил поле `fingerprint`, которое попадает в JSON report;
+- fingerprint строится из normalized relative path, signature id, target и normalized excerpt hash без absolute document root, mtime и runtime-specific данных;
+- suppressions сохраняются в whitelist runtime-хранилище в файле `finding_suppressions.json`;
+- битый JSON suppressions безопасно игнорируется и не вызывает fatal error;
+- `WhitelistManager::filterResult()` сначала применяет существующие whitelist-правила, затем suppressions, после чего пересчитывает score/severity/status;
+- suppressed findings сохраняются в result-полях `suppression_applied`, `suppressed_total`, `suppressed_findings`, `suppression_fingerprints`;
+- в отчете подозрительных файлов добавлено действие `Suppress this finding` с комментарием;
+- страница `admin/whitelist.php` показывает suppressions рядом с whitelist-правилами и позволяет удалить suppress-запись;
+- добавлен `tests/finding_suppressor_smoke.php`;
+- `tests/whitelist_smoke.php` расширен проверкой хранения suppressions.
 
 #### [ ] Этап 10.5. `EntropyAnalyzer`
 
@@ -689,6 +694,6 @@ MVP считается готовым, когда:
 
 ## Ближайший следующий шаг
 
-Этап 10.4: `FindingSuppressor`.
+Этап 10.5: `EntropyAnalyzer`.
 
-Начать с проектирования централизованного suppress-слоя для false positive с учетом file hash, normalized hash, signature, context и tags.
+Начать с проектирования эвристического анализа энтропии для подозрительных payload без сторонних scoring-массивов.

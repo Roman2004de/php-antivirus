@@ -2,5 +2,5 @@
 git status
 git remote set-url origin https://github.com/Roman2004de/php-antivirus
 git add .
-git commit -m "Add normalized hash support"
+git commit -m "Add FindingSuppressor"
 git push -u origin main

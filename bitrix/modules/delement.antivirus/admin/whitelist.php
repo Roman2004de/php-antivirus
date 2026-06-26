@@ -61,7 +61,43 @@ if (!function_exists('delement_antivirus_whitelist_rule_value')) {
             return trim((string)($rule['path'] ?? '') . ' + ' . (string)($rule['signature_id'] ?? ''));
         }
 
+        if ($type === WhitelistManager::TYPE_FINDING_SUPPRESSION) {
+            return trim((string)($rule['file_path'] ?? '') . ' + ' . (string)($rule['signature_id'] ?? '') . ' + ' . substr((string)($rule['fingerprint'] ?? ''), 0, 16));
+        }
+
         return '';
+    }
+}
+
+if (!function_exists('delement_antivirus_whitelist_suppression_row')) {
+    function delement_antivirus_whitelist_suppression_row(array $item): array
+    {
+        return [
+            'id' => 'suppression:' . (string)($item['fingerprint'] ?? ''),
+            'active' => true,
+            'type' => WhitelistManager::TYPE_FINDING_SUPPRESSION,
+            'file_path' => (string)($item['file_path'] ?? ''),
+            'signature_id' => (string)($item['signature_id'] ?? ''),
+            'fingerprint' => (string)($item['fingerprint'] ?? ''),
+            'created_at' => (string)($item['created_at'] ?? ''),
+            'created_by' => (int)($item['created_by'] ?? 0),
+            'disabled_at' => '',
+            'comment' => (string)($item['comment'] ?? ''),
+        ];
+    }
+}
+
+if (!function_exists('delement_antivirus_whitelist_is_suppression_id')) {
+    function delement_antivirus_whitelist_is_suppression_id(string $id): bool
+    {
+        return strpos($id, 'suppression:') === 0;
+    }
+}
+
+if (!function_exists('delement_antivirus_whitelist_suppression_fingerprint')) {
+    function delement_antivirus_whitelist_suppression_fingerprint(string $id): string
+    {
+        return substr($id, strlen('suppression:'));
     }
 }
 
@@ -140,6 +176,9 @@ try {
 if ($manager !== null) {
     try {
         $rules = $manager->listRules();
+        foreach ($manager->listFindingSuppressions() as $suppression) {
+            $rules[] = delement_antivirus_whitelist_suppression_row($suppression);
+        }
     } catch (Throwable $exception) {
         $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_WHITELIST_LIST_ERROR', [
             '#ERROR#' => htmlspecialcharsbx($exception->getMessage()),
@@ -170,7 +209,16 @@ if (($selectedIds = $lAdmin->GroupAction()) !== false) {
 
         foreach ($selectedIds as $id) {
             try {
-                if ($action === 'activate') {
+                if (delement_antivirus_whitelist_is_suppression_id($id)) {
+                    if ($action !== 'delete') {
+                        $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_WHITELIST_SUPPRESSION_ONLY_DELETE');
+                        continue;
+                    }
+
+                    if ($manager->deleteFindingSuppression(delement_antivirus_whitelist_suppression_fingerprint($id))) {
+                        $processedCount++;
+                    }
+                } elseif ($action === 'activate') {
                     $manager->activateRule($id);
                     $processedCount++;
                 } elseif ($action === 'deactivate') {
@@ -206,6 +254,9 @@ if (($selectedIds = $lAdmin->GroupAction()) !== false) {
 
         try {
             $rules = $manager->listRules();
+            foreach ($manager->listFindingSuppressions() as $suppression) {
+                $rules[] = delement_antivirus_whitelist_suppression_row($suppression);
+            }
         } catch (Throwable $exception) {
             $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_WHITELIST_LIST_ERROR', [
                 '#ERROR#' => htmlspecialcharsbx($exception->getMessage()),
@@ -275,30 +326,40 @@ while ($rule = $rsData->NavNext(true, 'f_')) {
     }
 
     $isActive = !empty($rule['active']);
+    $isSuppression = (string)($rule['type'] ?? '') === WhitelistManager::TYPE_FINDING_SUPPRESSION;
     $row = $lAdmin->AddRow($id, $rule);
     $row->AddViewField('ID', htmlspecialcharsbx($id));
     $row->AddViewField('ACTIVE', $isActive ? Loc::getMessage('DELEMENT_ANTIVIRUS_WHITELIST_YES') : Loc::getMessage('DELEMENT_ANTIVIRUS_WHITELIST_NO'));
     $row->AddViewField('TYPE', htmlspecialcharsbx(delement_antivirus_whitelist_type_label($rule['type'] ?? '')));
-    $row->AddViewField('VALUE', htmlspecialcharsbx(delement_antivirus_whitelist_rule_value($rule)));
+    $value = htmlspecialcharsbx(delement_antivirus_whitelist_rule_value($rule));
+
+    if ($isSuppression && (string)($rule['comment'] ?? '') !== '') {
+        $value .= '<br><small>' . htmlspecialcharsbx((string)$rule['comment']) . '</small>';
+    }
+
+    $row->AddViewField('VALUE', $value);
     $row->AddViewField('CREATED_AT', htmlspecialcharsbx((string)($rule['created_at'] ?? '')));
     $row->AddViewField('CREATED_BY', (int)($rule['created_by'] ?? 0));
     $row->AddViewField('DISABLED_AT', htmlspecialcharsbx((string)($rule['disabled_at'] ?? '')));
 
     if ($right >= 'W') {
-        $actions = [
-            [
+        $actions = [];
+
+        if (!$isSuppression) {
+            $actions[] = [
                 'ICON' => $isActive ? 'deactivate' : 'activate',
                 'TEXT' => $isActive
                     ? Loc::getMessage('DELEMENT_ANTIVIRUS_WHITELIST_DEACTIVATE')
                     : Loc::getMessage('DELEMENT_ANTIVIRUS_WHITELIST_ACTIVATE'),
                 'ACTION' => $lAdmin->ActionDoGroup($id, $isActive ? 'deactivate' : 'activate'),
-            ],
-            ['SEPARATOR' => true],
-            [
-                'ICON' => 'delete',
-                'TEXT' => Loc::getMessage('DELEMENT_ANTIVIRUS_WHITELIST_DELETE'),
-                'ACTION' => "if(confirm('" . CUtil::JSEscape(Loc::getMessage('DELEMENT_ANTIVIRUS_WHITELIST_DELETE_CONFIRM')) . "')) " . $lAdmin->ActionDoGroup($id, 'delete'),
-            ],
+            ];
+            $actions[] = ['SEPARATOR' => true];
+        }
+
+        $actions[] = [
+            'ICON' => 'delete',
+            'TEXT' => Loc::getMessage('DELEMENT_ANTIVIRUS_WHITELIST_DELETE'),
+            'ACTION' => "if(confirm('" . CUtil::JSEscape(Loc::getMessage('DELEMENT_ANTIVIRUS_WHITELIST_DELETE_CONFIRM')) . "')) " . $lAdmin->ActionDoGroup($id, 'delete'),
         ];
 
         $row->AddActions($actions);

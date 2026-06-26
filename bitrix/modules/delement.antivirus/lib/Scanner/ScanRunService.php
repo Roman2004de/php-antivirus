@@ -279,7 +279,7 @@ class ScanRunService
     private function getWhitelistManager(): WhitelistManager
     {
         if ($this->whitelistManager === null) {
-            $this->whitelistManager = new WhitelistManager($this->moduleRoot);
+            $this->whitelistManager = new WhitelistManager($this->moduleRoot, null, $this->documentRoot);
         }
 
         return $this->whitelistManager;

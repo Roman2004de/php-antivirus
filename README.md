@@ -27,6 +27,7 @@
 - Базовые правила детекта: PHP, JavaScript, HTML, Bitrix-specific.
 - Быстрый `common_strings` prefilter для regex-правил с настройкой и CLI-флагами.
 - `normalized_hash` для текстовых файлов: устойчивый SHA-256 от содержимого без пробелов и переносов строк.
+- FindingSuppressor: точечное скрытие конкретного false positive по стабильному finding fingerprint.
 - Поддержка внешнего файла regex-сигнатур с добавлением к встроенным правилам.
 - AST-анализ PHP поверх regex-слоя: опасные вызовы, динамические вызовы, include/require и encoded execution chains.
 - Taint-анализ PHP: request/php://input/filter_input -> переменные/трансформеры -> dangerous sink с сохранением trace.
@@ -398,6 +399,12 @@ Smoke-test normalized hash:
 php bitrix/modules/delement.antivirus/tests/normalized_hash_smoke.php
 ```
 
+Smoke-test FindingSuppressor:
+
+```bash
+php bitrix/modules/delement.antivirus/tests/finding_suppressor_smoke.php
+```
+
 ## Важные ограничения
 
 - Это сигнатурный и rule-based scanner, а не полноценная EDR/AV/WAF-система.
@@ -407,4 +414,4 @@ php bitrix/modules/delement.antivirus/tests/normalized_hash_smoke.php
 
 ## Следующий этап
 
-Этап 10.4: `FindingSuppressor` для централизованного управления false positive.
+Этап 10.5: `EntropyAnalyzer` для эвристического анализа высокоэнтропийных payload.

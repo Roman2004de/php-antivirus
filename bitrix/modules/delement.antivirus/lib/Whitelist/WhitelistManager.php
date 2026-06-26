@@ -15,17 +15,23 @@ class WhitelistManager
     public const TYPE_HASH = 'hash';
     public const TYPE_SIGNATURE = 'signature_id';
     public const TYPE_FILE_SIGNATURE = 'file_signature';
+    public const TYPE_FINDING_SUPPRESSION = 'finding_suppression';
 
     private $storagePath;
     private $rulesPath;
     private $resultTagger;
+    private $findingSuppressor;
+    private $documentRoot;
 
-    public function __construct(string $moduleRoot = null, ResultTagger $resultTagger = null)
+    public function __construct(string $moduleRoot = null, ResultTagger $resultTagger = null, string $documentRoot = '', FindingSuppressor $findingSuppressor = null)
     {
+        $this->loadSuppressionClasses();
         $moduleRoot = $moduleRoot ?: dirname(__DIR__, 2);
+        $this->documentRoot = $documentRoot !== '' ? rtrim($documentRoot, '/\\') : rtrim((string)($_SERVER['DOCUMENT_ROOT'] ?? ''), '/\\');
         $this->storagePath = RuntimeDirectory::resolve($moduleRoot, 'whitelist');
         $this->rulesPath = $this->storagePath . DIRECTORY_SEPARATOR . 'rules.json';
         $this->resultTagger = $resultTagger;
+        $this->findingSuppressor = $findingSuppressor ?: new FindingSuppressor(new SuppressionStore($moduleRoot), $this->documentRoot);
 
         if ($this->resultTagger === null && class_exists(ResultTagger::class)) {
             $this->resultTagger = new ResultTagger();
@@ -62,6 +68,21 @@ class WhitelistManager
         }
 
         return isset($data['rules']) && is_array($data['rules']) ? $data['rules'] : [];
+    }
+
+    public function listFindingSuppressions(): array
+    {
+        return $this->findingSuppressor->listItems();
+    }
+
+    public function suppressFinding(array $result, array $finding, int $createdBy = 0, string $comment = ''): array
+    {
+        return $this->findingSuppressor->suppress($result, $finding, $createdBy, $comment);
+    }
+
+    public function deleteFindingSuppression(string $fingerprint): bool
+    {
+        return $this->findingSuppressor->delete($fingerprint);
     }
 
     public function removeRule(string $id): void
@@ -136,44 +157,53 @@ class WhitelistManager
             return $result;
         }
 
+        $result['findings'] = $this->ensureFindingFingerprints($result, $findings);
         $rules = array_values(array_filter($this->listRules(), static function (array $rule) {
             return !empty($rule['active']);
         }));
+        $changed = false;
 
-        if (empty($rules)) {
-            return $result;
-        }
+        if (!empty($rules)) {
+            $keptFindings = [];
+            $ignoredFindings = [];
+            $matchedRuleIds = [];
 
-        $keptFindings = [];
-        $ignoredFindings = [];
-        $matchedRuleIds = [];
+            foreach ($result['findings'] as $finding) {
+                $finding = is_array($finding) ? $finding : [];
+                $matchedRule = $this->matchFinding($result, $finding, $rules);
 
-        foreach ($findings as $finding) {
-            $finding = is_array($finding) ? $finding : [];
-            $matchedRule = $this->matchFinding($result, $finding, $rules);
+                if ($matchedRule === null) {
+                    $keptFindings[] = $finding;
+                    continue;
+                }
 
-            if ($matchedRule === null) {
-                $keptFindings[] = $finding;
-                continue;
+                $finding['whitelist_rule_id'] = (string)$matchedRule['id'];
+                $finding['whitelist_rule_type'] = (string)$matchedRule['type'];
+                $ignoredFindings[] = $finding;
+                $matchedRuleIds[(string)$matchedRule['id']] = true;
             }
 
-            $finding['whitelist_rule_id'] = (string)$matchedRule['id'];
-            $finding['whitelist_rule_type'] = (string)$matchedRule['type'];
-            $ignoredFindings[] = $finding;
-            $matchedRuleIds[(string)$matchedRule['id']] = true;
+            if (!empty($ignoredFindings)) {
+                $result['findings'] = $keptFindings;
+                $result['whitelist_applied'] = true;
+                $result['whitelisted_total'] = count($ignoredFindings);
+                $result['whitelisted_findings'] = $ignoredFindings;
+                $result['whitelist_rule_ids'] = array_keys($matchedRuleIds);
+                $changed = true;
+            }
         }
 
-        if (empty($ignoredFindings)) {
-            return $result;
+        $beforeSuppressCount = count($result['findings']);
+        $result = $this->findingSuppressor->filterResult($result);
+
+        if (count($result['findings']) !== $beforeSuppressCount) {
+            $changed = true;
         }
 
-        $result['findings'] = $keptFindings;
-        $result['whitelist_applied'] = true;
-        $result['whitelisted_total'] = count($ignoredFindings);
-        $result['whitelisted_findings'] = $ignoredFindings;
-        $result['whitelist_rule_ids'] = array_keys($matchedRuleIds);
-        $this->recalculateResult($result, $thresholds);
-        $this->recalculateTags($result);
+        if ($changed) {
+            $this->recalculateResult($result, $thresholds);
+            $this->recalculateTags($result);
+        }
 
         return $result;
     }
@@ -224,6 +254,56 @@ class WhitelistManager
         }
 
         return $rule;
+    }
+
+    private function loadSuppressionClasses(): void
+    {
+        $basePath = __DIR__;
+
+        foreach (['SuppressionFingerprint.php', 'SuppressionStore.php', 'FindingSuppressor.php'] as $file) {
+            $className = __NAMESPACE__ . '\\' . basename($file, '.php');
+
+            if (!class_exists($className)) {
+                $path = $basePath . DIRECTORY_SEPARATOR . $file;
+
+                if (is_file($path)) {
+                    require_once $path;
+                }
+            }
+        }
+    }
+
+    public function filterSuppressedFindings(array $result, array $thresholds): array
+    {
+        $findings = isset($result['findings']) && is_array($result['findings']) ? $result['findings'] : [];
+
+        if (empty($findings)) {
+            return $result;
+        }
+
+        $result['findings'] = $this->ensureFindingFingerprints($result, $findings);
+        $beforeSuppressCount = count($result['findings']);
+        $result = $this->findingSuppressor->filterResult($result);
+
+        if (count($result['findings']) !== $beforeSuppressCount) {
+            $this->recalculateResult($result, $thresholds);
+            $this->recalculateTags($result);
+        }
+
+        return $result;
+    }
+
+    private function ensureFindingFingerprints(array $result, array $findings): array
+    {
+        $preparedFindings = [];
+
+        foreach ($findings as $finding) {
+            $finding = is_array($finding) ? $finding : [];
+            $finding['fingerprint'] = $this->findingSuppressor->fingerprintForResultFinding($result, $finding);
+            $preparedFindings[] = $finding;
+        }
+
+        return $preparedFindings;
     }
 
     private function matchFinding(array $result, array $finding, array $rules): ?array

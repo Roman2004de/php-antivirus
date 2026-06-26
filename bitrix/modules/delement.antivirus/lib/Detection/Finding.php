@@ -18,6 +18,7 @@ class Finding
     private $line;
     private $type;
     private $source;
+    private $fingerprint;
     private $tags = [];
 
     public function __construct(array $data)
@@ -36,6 +37,7 @@ class Finding
         $this->line = isset($data['line']) ? (int)$data['line'] : null;
         $this->type = isset($data['type']) ? (string)$data['type'] : '';
         $this->source = isset($data['source']) ? (string)$data['source'] : '';
+        $this->fingerprint = isset($data['fingerprint']) ? (string)$data['fingerprint'] : '';
         $this->tags = isset($data['tags']) && is_array($data['tags']) ? self::normalizeTags($data['tags']) : [];
     }
 
@@ -84,6 +86,19 @@ class Finding
         return $this->tags;
     }
 
+    public function getFingerprint(): string
+    {
+        return $this->fingerprint;
+    }
+
+    public function withFingerprint(string $fingerprint): self
+    {
+        $copy = clone $this;
+        $copy->fingerprint = $fingerprint;
+
+        return $copy;
+    }
+
     public function withTags(array $tags): self
     {
         $copy = clone $this;
@@ -109,6 +124,7 @@ class Finding
             'excerpt' => $this->excerpt,
             'target' => $this->target,
             'rule_type' => $this->ruleType,
+            'fingerprint' => $this->fingerprint,
             'tags' => $this->tags,
         ];
 

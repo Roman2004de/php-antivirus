@@ -66,8 +66,16 @@ class JsonReportWriter
             }
 
             foreach ($result['findings'] as &$finding) {
-                if (is_array($finding) && (!isset($finding['tags']) || !is_array($finding['tags']))) {
+                if (!is_array($finding)) {
+                    continue;
+                }
+
+                if (!isset($finding['tags']) || !is_array($finding['tags'])) {
                     $finding['tags'] = [];
+                }
+
+                if (!isset($finding['fingerprint'])) {
+                    $finding['fingerprint'] = '';
                 }
             }
             unset($finding);
