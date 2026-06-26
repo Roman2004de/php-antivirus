@@ -3,6 +3,7 @@
 namespace Delement\Antivirus\Scanner;
 
 use Delement\Antivirus\Config\ScanConfig;
+use Delement\Antivirus\Detection\Tags\ResultTagger;
 use Delement\Antivirus\File\FileCollector;
 use Delement\Antivirus\Report\ReportManager;
 use Delement\Antivirus\Whitelist\WhitelistManager;
@@ -19,6 +20,7 @@ class ScanRunService
     private $scanner;
     private $actionApplier;
     private $whitelistManager;
+    private $resultTagger;
 
     public function __construct(
         string $documentRoot,
@@ -28,7 +30,8 @@ class ScanRunService
         FileCollector $collector = null,
         Scanner $scanner = null,
         ScanActionApplier $actionApplier = null,
-        WhitelistManager $whitelistManager = null
+        WhitelistManager $whitelistManager = null,
+        ResultTagger $resultTagger = null
     ) {
         $this->documentRoot = rtrim($documentRoot, '/\\');
         $this->moduleRoot = $moduleRoot ?: dirname(__DIR__, 2);
@@ -38,6 +41,11 @@ class ScanRunService
         $this->scanner = $scanner ?: new Scanner();
         $this->actionApplier = $actionApplier ?: new ScanActionApplier($this->documentRoot);
         $this->whitelistManager = $whitelistManager;
+        $this->resultTagger = $resultTagger;
+
+        if ($this->resultTagger === null && class_exists(ResultTagger::class)) {
+            $this->resultTagger = new ResultTagger();
+        }
     }
 
     public function start(ScanConfig $config, int $createdBy = 0): array
@@ -117,6 +125,7 @@ class ScanRunService
             $result = $this->scanFile($filePath, $config);
             $result = $this->getWhitelistManager()->filterResult($result, $config->getThresholds());
             $result = $this->actionApplier->apply($result, $config, $scanId);
+            $result = $this->tagResultArray($result);
             $session['results'][] = $result;
             $stepResults[] = $result;
             $session['processed_files']++;
@@ -241,9 +250,9 @@ class ScanRunService
     private function scanFile(string $filePath, ScanConfig $config): array
     {
         try {
-            return $this->scanner->scanFile($filePath, $config)->toArray();
+            return $this->tagResultArray($this->scanner->scanFile($filePath, $config)->toArray());
         } catch (Throwable $exception) {
-            return [
+            return $this->tagResultArray([
                 'file_path' => $filePath,
                 'file_hash' => '',
                 'status' => 'error',
@@ -253,8 +262,17 @@ class ScanRunService
                 'action' => 'report',
                 'planned_action' => 'report',
                 'error' => $exception->getMessage(),
-            ];
+            ]);
         }
+    }
+
+    private function tagResultArray(array $result): array
+    {
+        if ($this->resultTagger === null) {
+            return $result;
+        }
+
+        return $this->resultTagger->tagResultArray($result);
     }
 
     private function getWhitelistManager(): WhitelistManager

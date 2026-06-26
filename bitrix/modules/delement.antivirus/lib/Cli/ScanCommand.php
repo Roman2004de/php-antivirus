@@ -138,6 +138,16 @@ class ScanCommand
             $options['enable_ast_analysis'] = 'N';
         }
 
+        if (!empty($flags['enable-prefilter']) && !empty($flags['disable-prefilter'])) {
+            throw new InvalidArgumentException('cli_prefilter_flags_conflict');
+        }
+
+        if (!empty($flags['enable-prefilter'])) {
+            $options['enable_common_strings_prefilter'] = 'Y';
+        } elseif (!empty($flags['disable-prefilter'])) {
+            $options['enable_common_strings_prefilter'] = 'N';
+        }
+
         if (isset($cliOptions['quarantine-path'])) {
             $options['quarantine_path'] = (string)$cliOptions['quarantine-path'];
         }
@@ -274,12 +284,14 @@ class ScanCommand
             'runtime_errors' => (int)($response['runtime_errors'] ?? 0),
             'report_path' => (string)($response['report_path'] ?? ''),
             'runtime_report_path' => '',
+            'tags' => $this->reportTags((string)($response['report_path'] ?? '')),
             'path' => $config->getPath(),
             'scan_profile' => $config->getScanProfile(),
             'profile' => $config->getProfile(),
             'action' => $config->getAction(),
             'dry_run' => $config->isDryRun(),
             'enable_ast_analysis' => $config->isAstAnalysisEnabled(),
+            'enable_common_strings_prefilter' => $config->isCommonStringsPrefilterEnabled(),
             'ast_max_file_size' => $config->getAstMaxFileSize(),
         ];
     }
@@ -299,6 +311,37 @@ class ScanCommand
         }
 
         return self::EXIT_OK;
+    }
+
+    private function reportTags(string $reportPath): array
+    {
+        if ($reportPath === '' || !is_file($reportPath) || !is_readable($reportPath)) {
+            return [];
+        }
+
+        $report = json_decode((string)file_get_contents($reportPath), true);
+
+        if (!is_array($report) || !isset($report['summary']['tags']) || !is_array($report['summary']['tags'])) {
+            return [];
+        }
+
+        $tags = [];
+        $seen = [];
+
+        foreach ($report['summary']['tags'] as $tag) {
+            $tag = strtolower(trim((string)$tag));
+
+            if ($tag === '' || isset($seen[$tag])) {
+                continue;
+            }
+
+            $tags[] = $tag;
+            $seen[$tag] = true;
+        }
+
+        sort($tags, SORT_STRING);
+
+        return $tags;
     }
 
     private function exportReportIfRequested(array &$payload, array $cliOptions): void
@@ -445,6 +488,8 @@ Options:
   --report=PATH            Save a copy of the final JSON report to this path.
   --enable-ast             Enable PHP AST analysis.
   --disable-ast            Disable PHP AST analysis.
+  --enable-prefilter       Enable common strings regex prefilter.
+  --disable-prefilter      Disable common strings regex prefilter.
   --ast-max-file-size=N    Maximum PHP file size for AST analysis, bytes.
   --exclude=PATH           Add excluded path. Can be repeated.
   --batch-size=N           Files per scanner batch, 1..1000.

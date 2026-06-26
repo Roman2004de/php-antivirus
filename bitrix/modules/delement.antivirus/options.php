@@ -48,6 +48,7 @@ $optionNames = [
     'exclude_paths',
     'batch_size',
     'max_file_size_mb',
+    'enable_common_strings_prefilter',
     'enable_ast_analysis',
     'ast_max_file_size',
 ];
@@ -120,6 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['save']) || isset($_P
         $values['signatures_path'] = trim((string)($_POST['signatures_path'] ?? ''));
         $values['batch_size'] = trim((string)($_POST['batch_size'] ?? ''));
         $values['max_file_size_mb'] = trim((string)($_POST['max_file_size_mb'] ?? ''));
+        $values['enable_common_strings_prefilter'] = isset($_POST['enable_common_strings_prefilter']) && $_POST['enable_common_strings_prefilter'] === 'Y' ? 'Y' : 'N';
         $values['enable_ast_analysis'] = isset($_POST['enable_ast_analysis']) && $_POST['enable_ast_analysis'] === 'Y' ? 'Y' : 'N';
         $values['ast_max_file_size'] = trim((string)($_POST['ast_max_file_size'] ?? ''));
 
@@ -380,6 +382,22 @@ $tabControl->Begin();
         </td>
         <td class="adm-detail-content-cell-r">
             <input type="number" min="1" max="1024" id="delement_antivirus_max_file_size_mb" name="max_file_size_mb" value="<?php echo htmlspecialcharsbx($values['max_file_size_mb']); ?>">
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_enable_common_strings_prefilter"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ENABLE_COMMON_STRINGS_PREFILTER'); ?></label>
+        </td>
+        <td class="adm-detail-content-cell-r">
+            <input type="checkbox" id="delement_antivirus_enable_common_strings_prefilter" name="enable_common_strings_prefilter" value="Y"<?php echo $values['enable_common_strings_prefilter'] === 'Y' ? ' checked' : ''; ?>>
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l"></td>
+        <td class="adm-detail-content-cell-r">
+            <?php echo BeginNote(); ?>
+            <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ENABLE_COMMON_STRINGS_PREFILTER_HINT'); ?>
+            <?php echo EndNote(); ?>
         </td>
     </tr>
     <tr>

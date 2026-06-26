@@ -15,6 +15,8 @@ class ArgvParser
         'force' => true,
         'enable-ast' => true,
         'disable-ast' => true,
+        'enable-prefilter' => true,
+        'disable-prefilter' => true,
     ];
 
     private const VALUE_OPTIONS = [

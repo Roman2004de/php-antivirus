@@ -35,6 +35,22 @@ if (isset($_GET['scan_id']) && (string)$_GET['scan_id'] !== '') {
 
 $APPLICATION->SetTitle(Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_TITLE'));
 
+$documentRoot = rtrim((string)$_SERVER['DOCUMENT_ROOT'], '/\\');
+$cssPath = '/bitrix/css/' . $moduleId . '/admin.css';
+$moduleCssPath = '/bitrix/modules/' . $moduleId . '/install/css/admin.css';
+$installedCssPath = $documentRoot . $cssPath;
+$installedCssIsCurrent = is_readable($installedCssPath)
+    && strpos((string)file_get_contents($installedCssPath), 'delement-antivirus-tag') !== false;
+$cssAssetPath = $installedCssIsCurrent || !is_file($documentRoot . $moduleCssPath) ? $cssPath : $moduleCssPath;
+$versionAsset = static function (string $path) use ($documentRoot): string {
+    $pathWithoutQuery = explode('?', $path, 2)[0];
+    $filePath = $documentRoot . $pathWithoutQuery;
+
+    return is_file($filePath) ? $path . '?v=' . filemtime($filePath) : $path;
+};
+
+$APPLICATION->SetAdditionalCSS($versionAsset($cssAssetPath));
+
 if (!function_exists('delement_antivirus_results_status_label')) {
     function delement_antivirus_results_status_label($status): string
     {
@@ -76,6 +92,72 @@ if (!function_exists('delement_antivirus_results_profile_label')) {
             : '';
 
         return $label ?: $profile;
+    }
+}
+
+if (!function_exists('delement_antivirus_results_normalize_tags')) {
+    function delement_antivirus_results_normalize_tags($tags): array
+    {
+        if (is_string($tags)) {
+            $tags = preg_split('/[\s,]+/', $tags);
+        }
+
+        if (!is_array($tags)) {
+            return [];
+        }
+
+        $result = [];
+        $seen = [];
+
+        foreach ($tags as $tag) {
+            $tag = strtolower(trim((string)$tag));
+
+            if ($tag === '' || isset($seen[$tag])) {
+                continue;
+            }
+
+            $result[] = $tag;
+            $seen[$tag] = true;
+        }
+
+        sort($result, SORT_STRING);
+
+        return $result;
+    }
+}
+
+if (!function_exists('delement_antivirus_results_tags_html')) {
+    function delement_antivirus_results_tags_html($tags): string
+    {
+        $tags = delement_antivirus_results_normalize_tags($tags);
+
+        if (empty($tags)) {
+            return '';
+        }
+
+        $html = '<span class="delement-antivirus-tags">';
+
+        foreach ($tags as $tag) {
+            $safeTag = htmlspecialcharsbx($tag);
+            $html .= '<span class="delement-antivirus-tag" title="' . $safeTag . '">' . $safeTag . '</span>';
+        }
+
+        return $html . '</span>';
+    }
+}
+
+if (!function_exists('delement_antivirus_results_filter_by_tag')) {
+    function delement_antivirus_results_filter_by_tag(array $reports, string $tag): array
+    {
+        $tag = strtolower(trim($tag));
+
+        if ($tag === '') {
+            return $reports;
+        }
+
+        return array_values(array_filter($reports, static function (array $report) use ($tag) {
+            return in_array($tag, delement_antivirus_results_normalize_tags($report['tags'] ?? []), true);
+        }));
     }
 }
 
@@ -145,6 +227,9 @@ $reports = [];
 $sTableID = 'tbl_delement_antivirus_results';
 $oSort = new CAdminSorting($sTableID, 'started_at', 'desc');
 $lAdmin = new CAdminList($sTableID, $oSort);
+$filterFields = ['find_tag'];
+$lAdmin->InitFilter($filterFields);
+$findTag = isset($find_tag) ? trim((string)$find_tag) : '';
 
 try {
     $reports = $reportManager->listReports(100);
@@ -204,6 +289,7 @@ if (($selectedIds = $lAdmin->GroupAction()) !== false) {
     }
 }
 
+$reports = delement_antivirus_results_filter_by_tag($reports, $findTag);
 delement_antivirus_results_sort_reports($reports, $by ?? 'started_at', $order ?? 'desc');
 
 $lAdmin->AddHeaders([
@@ -255,6 +341,11 @@ $lAdmin->AddHeaders([
         'sort' => 'profile',
         'default' => true,
     ],
+    [
+        'id' => 'TAGS',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_TAGS'),
+        'default' => true,
+    ],
 ]);
 
 $rsData = new CDBResult();
@@ -280,6 +371,7 @@ while ($item = $rsData->NavNext(true, 'f_')) {
     $row->AddViewField('FOUND', (int)($item['found_total'] ?? 0));
     $row->AddViewField('ERRORS', (int)($item['runtime_errors'] ?? 0));
     $row->AddViewField('PROFILE', htmlspecialcharsbx(delement_antivirus_results_profile_label($item['profile'] ?? '')));
+    $row->AddViewField('TAGS', delement_antivirus_results_tags_html($item['tags'] ?? []));
 
     $actions = [
         [
@@ -323,6 +415,26 @@ if ($right >= 'W') {
 $lAdmin->CheckListMode();
 
 require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_admin_after.php';
+
+$filter = new CAdminFilter($sTableID . '_filter', [Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_TAG')]);
+?>
+<form name="find_form" method="get" action="<?php echo htmlspecialcharsbx($APPLICATION->GetCurPage()); ?>">
+    <input type="hidden" name="lang" value="<?php echo htmlspecialcharsbx(LANGUAGE_ID); ?>">
+    <?php $filter->Begin(); ?>
+    <tr>
+        <td><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_TAG'); ?>:</td>
+        <td><input type="text" name="find_tag" value="<?php echo htmlspecialcharsbx($findTag); ?>" size="35"></td>
+    </tr>
+    <?php
+    $filter->Buttons([
+        'table_id' => $sTableID,
+        'url' => $APPLICATION->GetCurPage(),
+        'form' => 'find_form',
+    ]);
+    $filter->End();
+    ?>
+</form>
+<?php
 
 foreach ($messages as $message) {
     CAdminMessage::ShowNote($message);

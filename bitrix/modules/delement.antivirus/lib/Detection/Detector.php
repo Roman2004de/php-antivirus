@@ -3,6 +3,7 @@
 namespace Delement\Antivirus\Detection;
 
 use Delement\Antivirus\Config\ScanConfig;
+use Delement\Antivirus\Detection\Tags\ResultTagger;
 use Delement\Antivirus\Scanner\ScanResult;
 
 class Detector
@@ -10,6 +11,7 @@ class Detector
     private $ruleEngine;
     private $astAnalyzer;
     private $htaccessAnalyzer;
+    private $resultTagger;
 
     private const AST_EXTENSIONS = [
         'php' => true,
@@ -20,11 +22,12 @@ class Detector
         'include' => true,
     ];
 
-    public function __construct(RuleEngine $ruleEngine, $astAnalyzer = null, $htaccessAnalyzer = null)
+    public function __construct(RuleEngine $ruleEngine, $astAnalyzer = null, $htaccessAnalyzer = null, ResultTagger $resultTagger = null)
     {
         $this->ruleEngine = $ruleEngine;
         $this->astAnalyzer = $astAnalyzer;
         $this->htaccessAnalyzer = $htaccessAnalyzer;
+        $this->resultTagger = $resultTagger ?: $this->createResultTagger();
 
         if ($this->astAnalyzer === null && class_exists('Delement\\Antivirus\\Detection\\Ast\\AstAnalyzer')) {
             $className = 'Delement\\Antivirus\\Detection\\Ast\\AstAnalyzer';
@@ -84,6 +87,13 @@ class Detector
             }
         }
 
+        $resultTags = [];
+
+        if ($this->resultTagger !== null) {
+            $findings = $this->resultTagger->tagFindings($findings);
+            $resultTags = $this->resultTagger->tagsForResult($filePath, $findings);
+        }
+
         $score = 0;
         $severity = Severity::INFO;
 
@@ -94,7 +104,7 @@ class Detector
 
         $verdict = Verdict::fromScore($score, $config->getThresholds());
 
-        return ScanResult::fromFindings($filePath, $verdict, $score, $severity, $findings, $config->getAction(), $config->isDryRun());
+        return ScanResult::fromFindings($filePath, $verdict, $score, $severity, $findings, $config->getAction(), $config->isDryRun(), $resultTags);
     }
 
     private function addFinding(array &$findings, array &$seen, Finding $finding): void
@@ -150,5 +160,22 @@ class Detector
     private function shouldAnalyzeHtaccess(string $filePath): bool
     {
         return basename($filePath) === '.htaccess' && $this->htaccessAnalyzer !== null;
+    }
+
+    private function createResultTagger()
+    {
+        if (!class_exists(ResultTagger::class)) {
+            $tagPath = __DIR__ . '/Tags';
+
+            foreach (['TagCatalog.php', 'PathTagger.php', 'FindingTagger.php', 'ResultTagger.php'] as $file) {
+                $path = $tagPath . '/' . $file;
+
+                if (is_file($path)) {
+                    require_once $path;
+                }
+            }
+        }
+
+        return class_exists(ResultTagger::class) ? new ResultTagger() : null;
     }
 }

@@ -42,7 +42,7 @@ scan -> explain -> review -> quarantine -> restore/delete manually
 
 ## Текущий статус
 
-Стадия: MVP с работающим сканированием, отчетами, карантином, CLI runner, AST-анализом PHP, taint-анализом request-to-sink и усиленным `.htaccess`-анализом.
+Стадия: MVP с работающим сканированием, отчетами, карантином, CLI runner, AST-анализом PHP, taint-анализом request-to-sink, усиленным `.htaccess`-анализом и `common_strings` prefilter для regex pipeline.
 
 Уже есть устанавливаемый skeleton, настройки, модульный scanner engine, AJAX-пошаговое сканирование, results storage/UI, RU/EN локализация и базовый карантин с восстановлением.
 Scanner использует встроенные правила и может добавлять к ним внешний файл regex-сигнатур из настройки `signatures_path`.
@@ -386,6 +386,270 @@ Acceptance:
 - [ ] uninstall корректно удаляет proxy-файлы;
 - [ ] документация готова.
 
+## Новый этап расширения detector platform
+
+Цель новых работ: расширить модуль `delement.antivirus` комплексным набором подсистем, усиливающих качество обнаружения вредоносного кода, производительность regex-детектора, устойчивость поиска к обфускации, контроль целостности файлов, Bitrix-aware анализ сущностей из базы данных, отчетность, фильтрацию и управление false positive.
+
+Новые функции должны быть доступны:
+
+- в веб-интерфейсе модуля;
+- в CLI-режиме;
+- в JSON-отчетах;
+- в smoke-тестах.
+
+Все новые функции должны быть отключаемыми через настройки и/или CLI-флаги.
+
+### Требования по уникальности реализации
+
+При реализации запрещено:
+
+- копировать код Bitrix Security;
+- копировать код Wordfence или других WordPress-модулей;
+- копировать базы сигнатур, malware hash database, regex, CRC, fingerprints;
+- копировать внутренние коды срабатываний, тексты сообщений, scoring-массивы и структуру классов сторонних решений.
+
+Разрешено использовать `/reference` только как reference-only источник:
+
+- идею проверки;
+- тип проверяемой сущности;
+- общий сценарий обнаружения;
+- архитектурный подход;
+- категории риска.
+
+Для Bitrix Security reference-only можно смотреть:
+
+- `security/classes/general/xscan.php`;
+- `security/classes/general/xscan_htaccess.php`;
+- `security/admin/xscan_htaccess.php`;
+- `security/admin/security_file_verifier.php`.
+
+Для WordPress/Wordfence-подобных решений можно использовать только идеи:
+
+- common strings prefilter;
+- normalized hash;
+- entropy analysis;
+- URL extraction;
+- baseline integrity;
+- known malware hash lookup.
+
+Нельзя напрямую переносить базы, регулярные выражения, fingerprints или тексты сигнатур.
+
+### Строгий порядок внедрения
+
+Работы внедряются строго поэтапно:
+
+1. Теги результата.
+2. `common_strings` prefilter.
+3. `normalized_hash`.
+4. `FindingSuppressor`.
+5. `EntropyAnalyzer`.
+6. `UrlExtractor`.
+7. Known Malware Hash Database.
+8. WebShell Fingerprints.
+9. Baseline / Integrity Scanner.
+10. `AgentScanner`.
+11. `EventHandlerScanner`.
+12. `TemplateConditionScanner`.
+13. `DbTriggerScanner`.
+14. `CoreIntegrityChecker` Bitrix.
+
+Причина такого порядка:
+
+- Tags нужны почти всем последующим подсистемам;
+- `common_strings` prefilter ускоряет базовый regex pipeline;
+- `normalized_hash` нужен для отчетов, baseline и будущих сравнений;
+- `FindingSuppressor` должен работать со всеми будущими findings;
+- entropy, URL, hash DB и fingerprints усиливают file-based detection;
+- baseline должен использовать уже готовые hash/normalized_hash;
+- Bitrix DB scanners используют существующие `RuleEngine`, AST, Taint, tags и suppress;
+- `CoreIntegrityChecker` Bitrix логически отделяется от пользовательского baseline.
+
+### Детализация этапов расширения
+
+#### [x] Этап 10.1. Теги результата
+
+Цель: добавить единый слой тегов для файлов, findings и отчетов.
+
+Сделано:
+
+- расширить `Finding` и JSON report полем `tags`;
+- добавить tags в scanner result summary;
+- вывести теги в UI результатов и отчета;
+- добавить фильтр по тегам;
+- добавить CLI/JSON совместимость;
+- покрыть smoke-тестом.
+
+#### [x] Этап 10.2. `common_strings` prefilter
+
+Цель: ускорить regex pipeline за счет быстрого предварительного отбора правил.
+
+Сделано:
+
+- добавлен собственный prefilter-слой в `RuleEngine` без копирования сторонних строк и regex;
+- поддержан формат `common_strings` для правил: короткий `mode=any` и структурный `mode=all|any`;
+- regex-правило без `common_strings` работает как раньше;
+- regex-правило с `common_strings` запускается только после быстрого marker-check, если prefilter включен;
+- дефолтные PHP, Bitrix, JavaScript и HTML regex-правила получили safe prefilter tokens;
+- добавлена настройка `enable_common_strings_prefilter`, включенная по умолчанию;
+- добавлен checkbox в настройках модуля;
+- добавлены CLI-флаги `--enable-prefilter` и `--disable-prefilter`;
+- состояние prefilter попадает в `ScanConfig`/JSON-конфиг отчета и CLI JSON payload;
+- добавлен `tests/common_strings_prefilter_smoke.php`;
+- `tests/cli_scan_smoke.php` проверяет полный CLI запуск с `--disable-prefilter`.
+
+Ограничение на будущее:
+
+- текущий prefilter применяется к анализируемому содержимому, которое может быть chunk/content текущего прохода, а не обязательно ко всему файлу;
+- для текущих правил это допустимо, потому что маркер обычно находится рядом с regex-срабатыванием;
+- для будущих сложных правил с `mode=all` нужно либо не использовать `all`, либо запускать такие правила на полном содержимом файла, чтобы не получить false negative на разнесенных маркерах.
+
+#### [ ] Этап 10.3. `normalized_hash`
+
+Цель: добавить нормализованный хэш контента для отчетов, baseline и будущих сравнений.
+
+Задачи:
+
+- реализовать собственную нормализацию контента;
+- добавить `normalized_hash` в результат файла и JSON report;
+- добавить настройку/CLI-флаг включения;
+- покрыть smoke-тестом.
+
+#### [ ] Этап 10.4. `FindingSuppressor`
+
+Цель: централизованно подавлять false positive для всех будущих findings.
+
+Задачи:
+
+- вынести suppress-логику в отдельный сервис;
+- поддержать подавление по file/hash/normalized_hash/signature/context/tags;
+- сохранять suppressed findings в отчете отдельным состоянием;
+- обновить UI whitelist/результатов;
+- добавить CLI/JSON совместимость;
+- покрыть smoke-тестом.
+
+#### [ ] Этап 10.5. `EntropyAnalyzer`
+
+Цель: добавить эвристический анализ энтропии для подозрительных payload.
+
+Задачи:
+
+- реализовать собственный analyzer без сторонних scoring-массивов;
+- ограничить размер и количество анализируемых окон;
+- добавить finding tags и JSON-поля;
+- добавить настройки/CLI-флаги;
+- покрыть smoke-тестом.
+
+#### [ ] Этап 10.6. `UrlExtractor`
+
+Цель: извлекать подозрительные URL/домены/IP из файлов и отчетов.
+
+Задачи:
+
+- реализовать собственный extractor;
+- добавить URL entities в JSON report;
+- связать URL с findings и tags;
+- добавить UI-фильтрацию;
+- добавить CLI/JSON совместимость;
+- покрыть smoke-тестом.
+
+#### [ ] Этап 10.7. Known Malware Hash Database
+
+Цель: подключить собственную/пользовательскую базу известных hash-индикаторов.
+
+Задачи:
+
+- реализовать загрузчик пользовательской базы;
+- не поставлять и не копировать сторонние malware hash database;
+- поддержать file hash и normalized hash;
+- добавить настройки/CLI-флаги;
+- покрыть smoke-тестом на synthetic hash database.
+
+#### [ ] Этап 10.8. WebShell Fingerprints
+
+Цель: добавить собственные эвристики fingerprint-обнаружения web shell.
+
+Задачи:
+
+- реализовать fingerprint model без копирования сторонних fingerprints;
+- использовать tags, entropy, URL и AST/Taint сигналы;
+- добавить настройки/CLI-флаги;
+- покрыть smoke-тестом на synthetic fixtures.
+
+#### [ ] Этап 10.9. Baseline / Integrity Scanner
+
+Цель: добавить пользовательский baseline целостности файлов.
+
+Задачи:
+
+- создать baseline storage;
+- поддержать create/update/compare;
+- использовать file hash и normalized hash;
+- отразить статусы new/changed/deleted/restored;
+- добавить UI и CLI;
+- добавить JSON report секцию integrity;
+- покрыть smoke-тестом.
+
+#### [ ] Этап 10.10. `AgentScanner`
+
+Цель: анализировать Bitrix agents как DB-backed источник подозрительного кода.
+
+Задачи:
+
+- читать agents через Bitrix API;
+- анализировать payload через существующие RuleEngine/AST/Taint там, где применимо;
+- использовать tags и suppress;
+- добавить настройки/CLI-флаги;
+- покрыть smoke-тестом с mock/fake Bitrix data layer.
+
+#### [ ] Этап 10.11. `EventHandlerScanner`
+
+Цель: анализировать зарегистрированные обработчики событий Bitrix.
+
+Задачи:
+
+- извлекать event handlers через Bitrix API;
+- проверять suspicious callbacks и payload;
+- использовать RuleEngine/AST/Taint, tags и suppress;
+- добавить настройки/CLI-флаги;
+- покрыть smoke-тестом.
+
+#### [ ] Этап 10.12. `TemplateConditionScanner`
+
+Цель: анализировать условия шаблонов и DB-backed PHP fragments.
+
+Задачи:
+
+- определить безопасный перечень Bitrix-сущностей для чтения;
+- анализировать условия через существующие detector-слои;
+- использовать tags и suppress;
+- добавить настройки/CLI-флаги;
+- покрыть smoke-тестом.
+
+#### [ ] Этап 10.13. `DbTriggerScanner`
+
+Цель: анализировать DB triggers/procedural fragments там, где доступно и применимо.
+
+Задачи:
+
+- реализовать read-only сбор метаданных;
+- не выполнять DB code;
+- добавить отдельные findings/tags;
+- добавить настройки/CLI-флаги;
+- покрыть smoke-тестом.
+
+#### [ ] Этап 10.14. `CoreIntegrityChecker` Bitrix
+
+Цель: отдельно от пользовательского baseline проверять целостность ядра Bitrix.
+
+Задачи:
+
+- реализовать отдельный checker;
+- не смешивать с пользовательским baseline;
+- использовать только легальные источники контрольной информации;
+- добавить настройки/CLI-флаги;
+- добавить JSON report секцию core integrity;
+- покрыть smoke-тестом.
+
 ## MVP Definition of Done
 
 MVP считается готовым, когда:
@@ -411,6 +675,8 @@ MVP считается готовым, когда:
 - Не возвращать корневой CLI в этот проект.
 - Не добавлять Composer на первом этапе.
 - Не копировать код из сторонних модулей.
+- Не копировать код, сигнатуры, regex, fingerprints, malware hash database, тексты сообщений, scoring-массивы и структуру классов Bitrix Security, Wordfence или других сторонних решений.
+- `/reference` использовать только как reference-only источник идей, типов проверяемых сущностей, сценариев обнаружения и категорий риска.
 - Scanner engine не должен писать HTML.
 - UI не должен содержать detector logic.
 - Любое destructive action должно иметь dry-run и подтверждение.
@@ -418,6 +684,6 @@ MVP считается готовым, когда:
 
 ## Ближайший следующий шаг
 
-Этап 9: `Marketplace polish`.
+Этап 10.3: `normalized_hash`.
 
-Начать с финальной проверки install/uninstall, прав, локализации, документации, changelog и совместимости с требованиями 1С-Битрикс Marketplace.
+Начать с проектирования нормализации контента и добавления `normalized_hash` в результат файла, JSON-отчет и будущий baseline.

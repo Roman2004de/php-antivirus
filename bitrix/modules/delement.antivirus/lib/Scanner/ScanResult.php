@@ -17,6 +17,7 @@ class ScanResult
     private $action;
     private $plannedAction;
     private $error;
+    private $tags = [];
 
     public function __construct(array $data)
     {
@@ -29,6 +30,7 @@ class ScanResult
         $this->action = isset($data['action']) ? (string)$data['action'] : 'report';
         $this->plannedAction = isset($data['planned_action']) ? (string)$data['planned_action'] : $this->action;
         $this->error = isset($data['error']) ? (string)$data['error'] : '';
+        $this->tags = isset($data['tags']) && is_array($data['tags']) ? self::normalizeTags($data['tags']) : [];
     }
 
     public static function fromFindings(
@@ -38,7 +40,8 @@ class ScanResult
         string $severity,
         array $findings,
         string $action,
-        bool $dryRun
+        bool $dryRun,
+        array $tags = []
     ): self {
         return new self([
             'file_path' => $filePath,
@@ -49,6 +52,7 @@ class ScanResult
             'findings' => $findings,
             'action' => $dryRun ? 'report' : $action,
             'planned_action' => $action,
+            'tags' => $tags,
         ]);
     }
 
@@ -92,6 +96,11 @@ class ScanResult
         return $this->status;
     }
 
+    public function getTags(): array
+    {
+        return $this->tags;
+    }
+
     public function toArray(): array
     {
         return [
@@ -100,6 +109,7 @@ class ScanResult
             'status' => $this->status,
             'score' => $this->score,
             'severity' => $this->severity,
+            'tags' => $this->tags,
             'findings' => array_map(static function (Finding $finding) {
                 return $finding->toArray();
             }, $this->findings),
@@ -118,5 +128,26 @@ class ScanResult
         $hash = @hash_file('sha256', $filePath);
 
         return $hash === false ? '' : $hash;
+    }
+
+    private static function normalizeTags(array $tags): array
+    {
+        $result = [];
+        $seen = [];
+
+        foreach ($tags as $tag) {
+            $tag = strtolower(trim((string)$tag));
+
+            if ($tag === '' || isset($seen[$tag])) {
+                continue;
+            }
+
+            $result[] = $tag;
+            $seen[$tag] = true;
+        }
+
+        sort($result, SORT_STRING);
+
+        return $result;
     }
 }

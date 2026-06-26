@@ -17,6 +17,7 @@ return [
         'severity' => Severity::HIGH,
         'score' => 8,
         'pattern' => '/\$USER\s*->\s*Authorize\s*\(\s*\d+\s*\)/i',
+        'common_strings' => ['Authorize'],
         'extensions' => ['php', 'phtml', 'phtm', 'inc'],
     ],
     [
@@ -25,6 +26,7 @@ return [
         'severity' => Severity::HIGH,
         'score' => 7,
         'pattern' => '/\b(eval|assert|shell_exec|exec|system|passthru)\s*\(/i',
+        'common_strings' => ['eval', 'assert', 'shell_exec', 'exec', 'system', 'passthru'],
         'path_equals' => '/bitrix/php_interface/init.php',
         'extensions' => ['php'],
     ],
@@ -34,6 +36,7 @@ return [
         'severity' => Severity::HIGH,
         'score' => 7,
         'pattern' => '/\b(include|require|include_once|require_once)\s*\(?\s*[^;]*(\/upload\/|["\']upload\/)/i',
+        'common_strings' => ['upload'],
         'extensions' => ['php', 'phtml', 'phtm', 'inc'],
     ],
     [
@@ -42,6 +45,7 @@ return [
         'severity' => Severity::MEDIUM,
         'score' => 4,
         'pattern' => '/\b(eval|base64_decode|shell_exec|assert|file_put_contents)\s*\(/i',
+        'common_strings' => ['eval', 'base64_decode', 'shell_exec', 'assert', 'file_put_contents'],
         'path_equals' => '/.access.php',
         'extensions' => ['php'],
     ],
@@ -51,6 +55,7 @@ return [
         'severity' => Severity::HIGH,
         'score' => 6,
         'pattern' => '/(AddEventHandler|registerEventHandler)[^;]*(eval|assert|shell_exec|exec|system|base64_decode)/is',
+        'common_strings' => ['AddEventHandler', 'registerEventHandler', 'eval', 'assert', 'shell_exec', 'exec', 'system', 'base64_decode'],
         'extensions' => ['php', 'phtml', 'phtm', 'inc'],
     ],
     [
@@ -59,6 +64,7 @@ return [
         'severity' => Severity::HIGH,
         'score' => 6,
         'pattern' => '/move_uploaded_file\s*\([^;]+\.(php|phtml|php3|php4|php5|php7)[\'"]/i',
+        'common_strings' => ['move_uploaded_file'],
         'extensions' => ['php', 'phtml', 'phtm', 'inc'],
     ],
 ];

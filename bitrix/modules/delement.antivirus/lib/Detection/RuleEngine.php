@@ -49,6 +49,10 @@ class RuleEngine
                 continue;
             }
 
+            if ($config->isCommonStringsPrefilterEnabled() && !$this->passesCommonStringsPrefilter($rule, $content)) {
+                continue;
+            }
+
             $pattern = (string)$rule['pattern'];
 
             set_error_handler(static function () {
@@ -98,6 +102,101 @@ class RuleEngine
         }
 
         return true;
+    }
+
+    private function passesCommonStringsPrefilter(array $rule, string $content): bool
+    {
+        if (!isset($rule['common_strings'])) {
+            return true;
+        }
+
+        $prefilter = $this->normalizeCommonStrings($rule['common_strings']);
+
+        if (empty($prefilter['values'])) {
+            return true;
+        }
+
+        $mode = $prefilter['mode'];
+        $matched = 0;
+
+        foreach ($prefilter['values'] as $value) {
+            if (stripos($content, $value) === false) {
+                if ($mode === 'all') {
+                    return false;
+                }
+
+                continue;
+            }
+
+            $matched++;
+
+            if ($mode === 'any') {
+                return true;
+            }
+        }
+
+        return $mode === 'all' && $matched === count($prefilter['values']);
+    }
+
+    private function normalizeCommonStrings($commonStrings): array
+    {
+        if (is_string($commonStrings)) {
+            return [
+                'mode' => 'any',
+                'values' => $this->normalizeCommonStringValues([$commonStrings]),
+            ];
+        }
+
+        if (!is_array($commonStrings)) {
+            return [
+                'mode' => 'any',
+                'values' => [],
+            ];
+        }
+
+        $isShortFormat = !array_key_exists('mode', $commonStrings) && !array_key_exists('values', $commonStrings);
+
+        if ($isShortFormat) {
+            return [
+                'mode' => 'any',
+                'values' => $this->normalizeCommonStringValues($commonStrings),
+            ];
+        }
+
+        $mode = isset($commonStrings['mode']) ? strtolower((string)$commonStrings['mode']) : 'any';
+        $mode = $mode === 'all' ? 'all' : 'any';
+        $values = isset($commonStrings['values']) ? $commonStrings['values'] : [];
+        $values = is_array($values) ? $values : [$values];
+
+        return [
+            'mode' => $mode,
+            'values' => $this->normalizeCommonStringValues($values),
+        ];
+    }
+
+    private function normalizeCommonStringValues(array $values): array
+    {
+        $normalized = [];
+        $seen = [];
+
+        foreach ($values as $value) {
+            $value = (string)$value;
+
+            if ($value === '') {
+                continue;
+            }
+
+            $key = strtolower($value);
+
+            if (isset($seen[$key])) {
+                continue;
+            }
+
+            $normalized[] = $value;
+            $seen[$key] = true;
+        }
+
+        return $normalized;
     }
 
     private function createFinding(array $rule, ?int $offset, string $excerpt, string $target): Finding

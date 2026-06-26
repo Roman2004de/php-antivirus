@@ -3,6 +3,7 @@
 namespace Delement\Antivirus\Whitelist;
 
 use Delement\Antivirus\Detection\Severity;
+use Delement\Antivirus\Detection\Tags\ResultTagger;
 use Delement\Antivirus\Detection\Verdict;
 use Delement\Antivirus\Storage\RuntimeDirectory;
 use RuntimeException;
@@ -17,12 +18,18 @@ class WhitelistManager
 
     private $storagePath;
     private $rulesPath;
+    private $resultTagger;
 
-    public function __construct(string $moduleRoot = null)
+    public function __construct(string $moduleRoot = null, ResultTagger $resultTagger = null)
     {
         $moduleRoot = $moduleRoot ?: dirname(__DIR__, 2);
         $this->storagePath = RuntimeDirectory::resolve($moduleRoot, 'whitelist');
         $this->rulesPath = $this->storagePath . DIRECTORY_SEPARATOR . 'rules.json';
+        $this->resultTagger = $resultTagger;
+
+        if ($this->resultTagger === null && class_exists(ResultTagger::class)) {
+            $this->resultTagger = new ResultTagger();
+        }
     }
 
     public function addRule(string $type, array $data, int $createdBy = 0): array
@@ -166,6 +173,7 @@ class WhitelistManager
         $result['whitelisted_findings'] = $ignoredFindings;
         $result['whitelist_rule_ids'] = array_keys($matchedRuleIds);
         $this->recalculateResult($result, $thresholds);
+        $this->recalculateTags($result);
 
         return $result;
     }
@@ -270,6 +278,15 @@ class WhitelistManager
         $result['score'] = $score;
         $result['severity'] = $severity;
         $result['status'] = Verdict::fromScore($score, $thresholds);
+    }
+
+    private function recalculateTags(array &$result): void
+    {
+        if ($this->resultTagger === null) {
+            return;
+        }
+
+        $result = $this->resultTagger->tagResultArray($result);
     }
 
     private function saveRules(array $rules): void

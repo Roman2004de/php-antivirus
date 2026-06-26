@@ -175,6 +175,28 @@
     pointer-events: none !important;
 }
 
+.delement-antivirus-tags {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+    max-width: 360px !important;
+}
+
+.delement-antivirus-tag {
+    display: inline-flex !important;
+    align-items: center !important;
+    max-width: 100% !important;
+    min-height: 18px !important;
+    padding: 1px 6px !important;
+    border: 1px solid #c8d2db !important;
+    border-radius: 3px !important;
+    background: #f4f7f9 !important;
+    color: #36424d !important;
+    font-size: 11px !important;
+    line-height: 16px !important;
+    white-space: nowrap !important;
+}
+
 @media (max-width: 720px) {
     .delement-antivirus-panel {
         padding: 16px !important;

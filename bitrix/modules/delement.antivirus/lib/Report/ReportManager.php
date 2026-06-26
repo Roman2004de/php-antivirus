@@ -2,6 +2,7 @@
 
 namespace Delement\Antivirus\Report;
 
+use Delement\Antivirus\Detection\Tags\ResultTagger;
 use Delement\Antivirus\Storage\RuntimeDirectory;
 use RuntimeException;
 
@@ -9,12 +10,18 @@ class ReportManager
 {
     private $reportsPath;
     private $writer;
+    private $resultTagger;
 
-    public function __construct(string $moduleRoot = null, JsonReportWriter $writer = null)
+    public function __construct(string $moduleRoot = null, JsonReportWriter $writer = null, ResultTagger $resultTagger = null)
     {
         $moduleRoot = $moduleRoot ?: dirname(__DIR__, 2);
         $this->reportsPath = RuntimeDirectory::resolve($moduleRoot, 'reports');
         $this->writer = $writer ?: new JsonReportWriter();
+        $this->resultTagger = $resultTagger;
+
+        if ($this->resultTagger === null && class_exists(ResultTagger::class)) {
+            $this->resultTagger = new ResultTagger();
+        }
     }
 
     public function saveFromSession(array $session): string
@@ -61,6 +68,9 @@ class ReportManager
                 $summary = isset($report['summary']) && is_array($report['summary'])
                     ? $report['summary']
                     : $this->buildLegacySummary($report);
+                $results = isset($report['results']) && is_array($report['results']) ? $report['results'] : [];
+                $summaryTags = isset($summary['tags']) && is_array($summary['tags']) ? self::normalizeTags($summary['tags']) : [];
+                $summary['tags'] = !empty($summaryTags) ? $summaryTags : $this->collectTags($results);
                 $summary['report_path'] = $file;
                 $summary['report_size'] = filesize($file) ?: 0;
                 $summary['modified_at'] = date('c', filemtime($file) ?: time());
@@ -96,6 +106,7 @@ class ReportManager
     private function buildReport(array $session): array
     {
         $results = isset($session['results']) && is_array($session['results']) ? $session['results'] : [];
+        $results = $this->tagResults($results);
         $path = isset($session['config']['path']) ? (string)$session['config']['path'] : '';
         $scanPaths = isset($session['config']['scan_paths']) && is_array($session['config']['scan_paths']) ? $session['config']['scan_paths'] : [];
 
@@ -119,6 +130,7 @@ class ReportManager
             'found_total' => isset($session['found_total']) ? (int)$session['found_total'] : 0,
             'runtime_errors' => isset($session['runtime_errors']) ? (int)$session['runtime_errors'] : 0,
             'findings_total' => $this->countFindings($results),
+            'tags' => $this->collectTags($results),
         ];
 
         return [
@@ -151,7 +163,79 @@ class ReportManager
             'found_total' => isset($report['found_total']) ? (int)$report['found_total'] : 0,
             'runtime_errors' => isset($report['runtime_errors']) ? (int)$report['runtime_errors'] : 0,
             'findings_total' => $this->countFindings($results),
+            'tags' => $this->collectTags($results),
         ];
+    }
+
+    private function tagResults(array $results): array
+    {
+        if ($this->resultTagger === null) {
+            return $results;
+        }
+
+        $tagged = [];
+
+        foreach ($results as $result) {
+            $tagged[] = is_array($result) ? $this->resultTagger->tagResultArray($result) : $result;
+        }
+
+        return $tagged;
+    }
+
+    private function collectTags(array $results): array
+    {
+        $tags = [];
+
+        foreach ($results as $result) {
+            if (!is_array($result)) {
+                continue;
+            }
+
+            if ($this->resultTagger !== null) {
+                $tags = self::mergeTags($tags, $this->resultTagger->tagsForResultArray($result));
+                continue;
+            }
+
+            if (isset($result['tags']) && is_array($result['tags'])) {
+                $tags = self::mergeTags($tags, $result['tags']);
+            }
+        }
+
+        return self::normalizeTags($tags);
+    }
+
+    private static function mergeTags(array ...$tagSets): array
+    {
+        $tags = [];
+
+        foreach ($tagSets as $tagSet) {
+            foreach ($tagSet as $tag) {
+                $tags[] = $tag;
+            }
+        }
+
+        return self::normalizeTags($tags);
+    }
+
+    private static function normalizeTags(array $tags): array
+    {
+        $result = [];
+        $seen = [];
+
+        foreach ($tags as $tag) {
+            $tag = strtolower(trim((string)$tag));
+
+            if ($tag === '' || isset($seen[$tag])) {
+                continue;
+            }
+
+            $result[] = $tag;
+            $seen[$tag] = true;
+        }
+
+        sort($result, SORT_STRING);
+
+        return $result;
     }
 
     private function countFindings(array $results): int

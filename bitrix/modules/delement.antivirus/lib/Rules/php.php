@@ -9,6 +9,7 @@ return [
         'severity' => Severity::HIGH,
         'score' => 5,
         'pattern' => '/\beval\s*\(/i',
+        'common_strings' => ['eval'],
         'extensions' => ['php', 'phtml', 'phtm', 'php3', 'php4', 'php5', 'php6', 'php7', 'inc'],
     ],
     [
@@ -17,6 +18,7 @@ return [
         'severity' => Severity::HIGH,
         'score' => 4,
         'pattern' => '/\bassert\s*\(/i',
+        'common_strings' => ['assert'],
         'extensions' => ['php', 'phtml', 'phtm', 'php3', 'php4', 'php5', 'php6', 'php7', 'inc'],
     ],
     [
@@ -25,6 +27,7 @@ return [
         'severity' => Severity::HIGH,
         'score' => 4,
         'pattern' => '/\bcreate_function\s*\(/i',
+        'common_strings' => ['create_function'],
         'extensions' => ['php', 'phtml', 'phtm', 'php3', 'php4', 'php5', 'php6', 'php7', 'inc'],
     ],
     [
@@ -33,6 +36,7 @@ return [
         'severity' => Severity::HIGH,
         'score' => 5,
         'pattern' => '/\b(shell_exec|exec|system|passthru|proc_open|popen|pcntl_exec)\s*\(/i',
+        'common_strings' => ['shell_exec', 'exec', 'system', 'passthru', 'proc_open', 'popen', 'pcntl_exec'],
         'extensions' => ['php', 'phtml', 'phtm', 'php3', 'php4', 'php5', 'php6', 'php7', 'inc'],
     ],
     [
@@ -41,6 +45,7 @@ return [
         'severity' => Severity::MEDIUM,
         'score' => 2,
         'pattern' => '/\bbase64_decode\s*\(/i',
+        'common_strings' => ['base64_decode'],
         'extensions' => ['php', 'phtml', 'phtm', 'php3', 'php4', 'php5', 'php6', 'php7', 'inc'],
     ],
     [
@@ -49,6 +54,7 @@ return [
         'severity' => Severity::MEDIUM,
         'score' => 2,
         'pattern' => '/\b(gzinflate|gzuncompress|str_rot13)\s*\(/i',
+        'common_strings' => ['gzinflate', 'gzuncompress', 'str_rot13'],
         'extensions' => ['php', 'phtml', 'phtm', 'php3', 'php4', 'php5', 'php6', 'php7', 'inc'],
     ],
     [
@@ -57,6 +63,10 @@ return [
         'severity' => Severity::MEDIUM,
         'score' => 3,
         'pattern' => '/\bpack\s*\(\s*["\']H\*["\']/i',
+        'common_strings' => [
+            'mode' => 'all',
+            'values' => ['pack', 'H*'],
+        ],
         'extensions' => ['php', 'phtml', 'phtm', 'php3', 'php4', 'php5', 'php6', 'php7', 'inc'],
     ],
     [
@@ -65,6 +75,7 @@ return [
         'severity' => Severity::HIGH,
         'score' => 6,
         'pattern' => '/\$_(GET|POST|REQUEST|COOKIE)\s*\[[^\]]+\]\s*\(/i',
+        'common_strings' => ['$_GET', '$_POST', '$_REQUEST', '$_COOKIE'],
         'extensions' => ['php', 'phtml', 'phtm', 'php3', 'php4', 'php5', 'php6', 'php7', 'inc'],
     ],
     [
@@ -73,6 +84,7 @@ return [
         'severity' => Severity::HIGH,
         'score' => 6,
         'pattern' => '/\b(include|require|include_once|require_once)\s*\(?\s*\$_(GET|POST|REQUEST|COOKIE)/i',
+        'common_strings' => ['include', 'require', 'include_once', 'require_once'],
         'extensions' => ['php', 'phtml', 'phtm', 'php3', 'php4', 'php5', 'php6', 'php7', 'inc'],
     ],
     [
@@ -81,6 +93,10 @@ return [
         'severity' => Severity::HIGH,
         'score' => 6,
         'pattern' => '/file_put_contents\s*\(\s*["\']php:\/\/input["\']\s*,/i',
+        'common_strings' => [
+            'mode' => 'all',
+            'values' => ['file_put_contents', 'php://input'],
+        ],
         'extensions' => ['php', 'phtml', 'phtm', 'php3', 'php4', 'php5', 'php6', 'php7', 'inc'],
     ],
     [
@@ -89,6 +105,7 @@ return [
         'severity' => Severity::HIGH,
         'score' => 5,
         'pattern' => '/php:\/\/filter/i',
+        'common_strings' => ['php://filter'],
         'extensions' => ['php', 'phtml', 'phtm', 'php3', 'php4', 'php5', 'php6', 'php7', 'inc', 'txt'],
     ],
     [
@@ -97,6 +114,7 @@ return [
         'severity' => Severity::HIGH,
         'score' => 5,
         'pattern' => '/preg_replace\s*\(\s*[\'"].*\/e[\'"]\s*,/i',
+        'common_strings' => ['preg_replace'],
         'extensions' => ['php', 'phtml', 'phtm', 'php3', 'php4', 'php5', 'php6', 'php7', 'inc'],
     ],
     [

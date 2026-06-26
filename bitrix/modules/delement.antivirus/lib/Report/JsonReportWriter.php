@@ -35,6 +35,41 @@ class JsonReportWriter
             throw new RuntimeException('scan_report_corrupted');
         }
 
-        return $data;
+        return $this->normalizeTagFields($data);
+    }
+
+    private function normalizeTagFields(array $report): array
+    {
+        if (isset($report['summary']) && is_array($report['summary']) && !isset($report['summary']['tags'])) {
+            $report['summary']['tags'] = [];
+        }
+
+        if (!isset($report['results']) || !is_array($report['results'])) {
+            return $report;
+        }
+
+        foreach ($report['results'] as &$result) {
+            if (!is_array($result)) {
+                continue;
+            }
+
+            if (!isset($result['tags']) || !is_array($result['tags'])) {
+                $result['tags'] = [];
+            }
+
+            if (!isset($result['findings']) || !is_array($result['findings'])) {
+                continue;
+            }
+
+            foreach ($result['findings'] as &$finding) {
+                if (is_array($finding) && (!isset($finding['tags']) || !is_array($finding['tags']))) {
+                    $finding['tags'] = [];
+                }
+            }
+            unset($finding);
+        }
+        unset($result);
+
+        return $report;
     }
 }

@@ -18,6 +18,7 @@ class Finding
     private $line;
     private $type;
     private $source;
+    private $tags = [];
 
     public function __construct(array $data)
     {
@@ -35,6 +36,7 @@ class Finding
         $this->line = isset($data['line']) ? (int)$data['line'] : null;
         $this->type = isset($data['type']) ? (string)$data['type'] : '';
         $this->source = isset($data['source']) ? (string)$data['source'] : '';
+        $this->tags = isset($data['tags']) && is_array($data['tags']) ? self::normalizeTags($data['tags']) : [];
     }
 
     public function getSignatureId(): string
@@ -72,6 +74,29 @@ class Finding
         return $this->ruleType;
     }
 
+    public function getCategory(): string
+    {
+        return $this->category;
+    }
+
+    public function getTags(): array
+    {
+        return $this->tags;
+    }
+
+    public function withTags(array $tags): self
+    {
+        $copy = clone $this;
+        $copy->tags = self::normalizeTags($tags);
+
+        return $copy;
+    }
+
+    public function addTag(string $tag): self
+    {
+        return $this->withTags(array_merge($this->tags, [$tag]));
+    }
+
     public function toArray(): array
     {
         $result = [
@@ -84,6 +109,7 @@ class Finding
             'excerpt' => $this->excerpt,
             'target' => $this->target,
             'rule_type' => $this->ruleType,
+            'tags' => $this->tags,
         ];
 
         if (!empty($this->trace)) {
@@ -105,6 +131,27 @@ class Finding
         if ($this->source !== '') {
             $result['source'] = $this->source;
         }
+
+        return $result;
+    }
+
+    private static function normalizeTags(array $tags): array
+    {
+        $result = [];
+        $seen = [];
+
+        foreach ($tags as $tag) {
+            $tag = strtolower(trim((string)$tag));
+
+            if ($tag === '' || isset($seen[$tag])) {
+                continue;
+            }
+
+            $result[] = $tag;
+            $seen[$tag] = true;
+        }
+
+        sort($result, SORT_STRING);
 
         return $result;
     }

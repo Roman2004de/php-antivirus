@@ -4,6 +4,10 @@ use Delement\Antivirus\Report\JsonReportWriter;
 use Delement\Antivirus\Report\ReportManager;
 
 require_once __DIR__ . '/../lib/Storage/RuntimeDirectory.php';
+require_once __DIR__ . '/../lib/Detection/Tags/TagCatalog.php';
+require_once __DIR__ . '/../lib/Detection/Tags/PathTagger.php';
+require_once __DIR__ . '/../lib/Detection/Tags/FindingTagger.php';
+require_once __DIR__ . '/../lib/Detection/Tags/ResultTagger.php';
 require_once __DIR__ . '/../lib/Report/JsonReportWriter.php';
 require_once __DIR__ . '/../lib/Report/ReportManager.php';
 
@@ -44,6 +48,7 @@ $session = [
                     'severity' => 'high',
                     'score' => 8,
                     'excerpt' => '',
+                    'rule_type' => 'path',
                 ],
             ],
         ],
@@ -64,7 +69,15 @@ $reportsAfterDelete = $manager->listReports();
 @rmdir(dirname($reportsPath));
 @rmdir($moduleRoot);
 
-if (($loaded['summary']['findings_total'] ?? 0) !== 1 || count($reports) !== 1 || !$deleted || count($reportsAfterDelete) !== 0) {
+if (
+    ($loaded['summary']['findings_total'] ?? 0) !== 1
+    || empty($loaded['summary']['tags'])
+    || empty($loaded['results'][0]['tags'])
+    || empty($loaded['results'][0]['findings'][0]['tags'])
+    || count($reports) !== 1
+    || !$deleted
+    || count($reportsAfterDelete) !== 0
+) {
     fwrite(STDERR, json_encode([
         'loaded' => $loaded,
         'reports' => $reports,

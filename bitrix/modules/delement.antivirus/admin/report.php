@@ -28,6 +28,22 @@ if (!Loader::includeModule($moduleId)) {
 
 $APPLICATION->SetTitle(Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_DETAILS_TITLE'));
 
+$documentRoot = rtrim((string)$_SERVER['DOCUMENT_ROOT'], '/\\');
+$cssPath = '/bitrix/css/' . $moduleId . '/admin.css';
+$moduleCssPath = '/bitrix/modules/' . $moduleId . '/install/css/admin.css';
+$installedCssPath = $documentRoot . $cssPath;
+$installedCssIsCurrent = is_readable($installedCssPath)
+    && strpos((string)file_get_contents($installedCssPath), 'delement-antivirus-tag') !== false;
+$cssAssetPath = $installedCssIsCurrent || !is_file($documentRoot . $moduleCssPath) ? $cssPath : $moduleCssPath;
+$versionAsset = static function (string $path) use ($documentRoot): string {
+    $pathWithoutQuery = explode('?', $path, 2)[0];
+    $filePath = $documentRoot . $pathWithoutQuery;
+
+    return is_file($filePath) ? $path . '?v=' . filemtime($filePath) : $path;
+};
+
+$APPLICATION->SetAdditionalCSS($versionAsset($cssAssetPath));
+
 if (!function_exists('delement_antivirus_results_status_label')) {
     function delement_antivirus_results_status_label($status): string
     {
@@ -112,6 +128,91 @@ if (!function_exists('delement_antivirus_report_quarantine_manager')) {
     }
 }
 
+if (!function_exists('delement_antivirus_report_normalize_tags')) {
+    function delement_antivirus_report_normalize_tags($tags): array
+    {
+        if (is_string($tags)) {
+            $tags = preg_split('/[\s,]+/', $tags);
+        }
+
+        if (!is_array($tags)) {
+            return [];
+        }
+
+        $result = [];
+        $seen = [];
+
+        foreach ($tags as $tag) {
+            $tag = strtolower(trim((string)$tag));
+
+            if ($tag === '' || isset($seen[$tag])) {
+                continue;
+            }
+
+            $result[] = $tag;
+            $seen[$tag] = true;
+        }
+
+        sort($result, SORT_STRING);
+
+        return $result;
+    }
+}
+
+if (!function_exists('delement_antivirus_report_merge_tags')) {
+    function delement_antivirus_report_merge_tags(...$tagSets): array
+    {
+        $tags = [];
+
+        foreach ($tagSets as $tagSet) {
+            if (!is_array($tagSet)) {
+                continue;
+            }
+
+            foreach ($tagSet as $tag) {
+                $tags[] = $tag;
+            }
+        }
+
+        return delement_antivirus_report_normalize_tags($tags);
+    }
+}
+
+if (!function_exists('delement_antivirus_report_tags_html')) {
+    function delement_antivirus_report_tags_html($tags): string
+    {
+        $tags = delement_antivirus_report_normalize_tags($tags);
+
+        if (empty($tags)) {
+            return '';
+        }
+
+        $html = '<span class="delement-antivirus-tags">';
+
+        foreach ($tags as $tag) {
+            $safeTag = htmlspecialcharsbx($tag);
+            $html .= '<span class="delement-antivirus-tag" title="' . $safeTag . '">' . $safeTag . '</span>';
+        }
+
+        return $html . '</span>';
+    }
+}
+
+if (!function_exists('delement_antivirus_report_filter_rows_by_tag')) {
+    function delement_antivirus_report_filter_rows_by_tag(array $rows, string $tag): array
+    {
+        $tag = strtolower(trim($tag));
+
+        if ($tag === '') {
+            return $rows;
+        }
+
+        return array_values(array_filter($rows, static function (array $row) use ($tag) {
+            return in_array($tag, delement_antivirus_report_normalize_tags($row['tags'] ?? []), true);
+        }));
+    }
+}
+
 if (!function_exists('delement_antivirus_report_finding_rows')) {
     function delement_antivirus_report_finding_rows(array $report): array
     {
@@ -144,6 +245,7 @@ if (!function_exists('delement_antivirus_report_finding_rows')) {
                     'signature_id' => (string)($finding['signature_id'] ?? ''),
                     'category' => (string)($finding['category'] ?? ''),
                     'excerpt' => (string)($finding['excerpt'] ?? ''),
+                    'tags' => delement_antivirus_report_merge_tags($result['tags'] ?? [], $finding['tags'] ?? []),
                     'scan_result' => $result,
                 ];
             }
@@ -181,6 +283,7 @@ if (!function_exists('delement_antivirus_report_sort_finding_rows')) {
             'signature_id',
             'category',
             'excerpt',
+            'tags',
         ];
         $field = in_array((string)$field, $allowedFields, true) ? (string)$field : 'score';
         $direction = strtolower((string)$order) === 'asc' ? 1 : -1;
@@ -189,6 +292,9 @@ if (!function_exists('delement_antivirus_report_sort_finding_rows')) {
             if ($field === 'score') {
                 $leftValue = (int)($left[$field] ?? 0);
                 $rightValue = (int)($right[$field] ?? 0);
+            } elseif ($field === 'tags') {
+                $leftValue = implode(',', delement_antivirus_report_normalize_tags($left[$field] ?? []));
+                $rightValue = implode(',', delement_antivirus_report_normalize_tags($right[$field] ?? []));
             } else {
                 $leftValue = (string)($left[$field] ?? '');
                 $rightValue = (string)($right[$field] ?? '');
@@ -295,6 +401,9 @@ $pathViewMode = delement_antivirus_report_path_view_mode($_REQUEST['path_view'] 
 $sTableID = 'tbl_delement_antivirus_report_findings';
 $oSort = new CAdminSorting($sTableID, 'score', 'desc');
 $lAdmin = new CAdminList($sTableID, $oSort);
+$filterFields = ['find_tag'];
+$lAdmin->InitFilter($filterFields);
+$findTag = isset($find_tag) ? trim((string)$find_tag) : '';
 
 try {
     $whitelistManager = new WhitelistManager();
@@ -319,6 +428,7 @@ if ($scanId === '') {
         $report = $reportManager->load($scanId);
         $reportDocumentRoot = delement_antivirus_report_document_root($report);
         $findingRows = delement_antivirus_report_finding_rows($report);
+        $findingRows = delement_antivirus_report_filter_rows_by_tag($findingRows, $findTag);
         $findingRowMap = delement_antivirus_report_finding_row_map($findingRows);
     } catch (Throwable $exception) {
         $reportError = $exception->getMessage();
@@ -514,6 +624,12 @@ $lAdmin->AddHeaders([
         'sort' => 'excerpt',
         'default' => true,
     ],
+    [
+        'id' => 'TAGS',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_TAGS'),
+        'sort' => 'tags',
+        'default' => true,
+    ],
 ]);
 
 $rsData = new CDBResult();
@@ -542,6 +658,7 @@ while ($rowData = $rsData->NavNext(true, 'f_')) {
     $row->AddViewField('SIGNATURE_ID', htmlspecialcharsbx((string)($rowData['signature_id'] ?? '')));
     $row->AddViewField('CATEGORY', htmlspecialcharsbx((string)($rowData['category'] ?? '')));
     $row->AddViewField('EXCERPT', htmlspecialcharsbx((string)($rowData['excerpt'] ?? '')));
+    $row->AddViewField('TAGS', delement_antivirus_report_tags_html($rowData['tags'] ?? []));
 
     if ($right >= 'W') {
         $actions = [];
@@ -679,6 +796,30 @@ foreach ($errors as $error) {
         'TYPE' => 'ERROR',
         'HTML' => true,
     ]);
+}
+
+if (is_array($report)) {
+    $filter = new CAdminFilter($sTableID . '_filter', [Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_TAG')]);
+    ?>
+    <form name="find_form" method="get" action="<?php echo htmlspecialcharsbx($APPLICATION->GetCurPage()); ?>">
+        <input type="hidden" name="lang" value="<?php echo htmlspecialcharsbx(LANGUAGE_ID); ?>">
+        <input type="hidden" name="scan_id" value="<?php echo htmlspecialcharsbx($scanId); ?>">
+        <input type="hidden" name="path_view" value="<?php echo htmlspecialcharsbx($pathViewMode); ?>">
+        <?php $filter->Begin(); ?>
+        <tr>
+            <td><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_TAG'); ?>:</td>
+            <td><input type="text" name="find_tag" value="<?php echo htmlspecialcharsbx($findTag); ?>" size="35"></td>
+        </tr>
+        <?php
+        $filter->Buttons([
+            'table_id' => $sTableID,
+            'url' => $APPLICATION->GetCurPage(),
+            'form' => 'find_form',
+        ]);
+        $filter->End();
+        ?>
+    </form>
+    <?php
 }
 
 ?>

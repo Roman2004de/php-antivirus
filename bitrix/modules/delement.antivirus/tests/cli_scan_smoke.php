@@ -16,6 +16,10 @@ require_once __DIR__ . '/../lib/File/FileReader.php';
 require_once __DIR__ . '/../lib/Detection/Severity.php';
 require_once __DIR__ . '/../lib/Detection/Verdict.php';
 require_once __DIR__ . '/../lib/Detection/Finding.php';
+require_once __DIR__ . '/../lib/Detection/Tags/TagCatalog.php';
+require_once __DIR__ . '/../lib/Detection/Tags/PathTagger.php';
+require_once __DIR__ . '/../lib/Detection/Tags/FindingTagger.php';
+require_once __DIR__ . '/../lib/Detection/Tags/ResultTagger.php';
 require_once __DIR__ . '/../lib/Detection/RuleEngine.php';
 require_once __DIR__ . '/../lib/Detection/Detector.php';
 require_once __DIR__ . '/../lib/Detection/SignatureLoader.php';
@@ -128,6 +132,7 @@ try {
         '--dry-run',
         '--json',
         '--report=' . $exportReportPath,
+        '--disable-prefilter',
         '--batch-size=1',
     ]);
     $scanPayload = json_decode((string)$scan['stdout'], true);
@@ -142,6 +147,8 @@ try {
         || !is_file($exportReportPath)
         || empty($scanPayload['runtime_report_path'])
         || !is_file((string)$scanPayload['runtime_report_path'])
+        || !in_array('path:upload', (array)($scanPayload['tags'] ?? []), true)
+        || (($scanPayload['enable_common_strings_prefilter'] ?? true) !== false)
     ) {
         delement_antivirus_cli_smoke_fail('CLI JSON scan failed', [
             'result' => $scan,
@@ -205,6 +212,8 @@ try {
         'scan_exit_code' => $scan['exit_code'],
         'found_total' => $scanPayload['found_total'],
         'report_path' => $scanPayload['report_path'],
+        'tags' => $scanPayload['tags'],
+        'enable_common_strings_prefilter' => $scanPayload['enable_common_strings_prefilter'],
         'force_guard' => $unsafeDeletePayload['error'],
         'conflict_guard' => $conflictPayload['error'],
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;

@@ -25,6 +25,7 @@
 - D7 autoload map для классов модуля.
 - Модульный scanner engine в `lib/`.
 - Базовые правила детекта: PHP, JavaScript, HTML, Bitrix-specific.
+- Быстрый `common_strings` prefilter для regex-правил с настройкой и CLI-флагами.
 - Поддержка внешнего файла regex-сигнатур с добавлением к встроенным правилам.
 - AST-анализ PHP поверх regex-слоя: опасные вызовы, динамические вызовы, include/require и encoded execution chains.
 - Taint-анализ PHP: request/php://input/filter_input -> переменные/трансформеры -> dangerous sink с сохранением trace.
@@ -250,6 +251,8 @@ php /home/site/public_html/bitrix/tools/delement.antivirus/scan.php --path=/home
 - `--report=PATH`: сохранить копию итогового JSON-отчета в заданный файл;
 - `--enable-ast`: включить PHP AST-анализ;
 - `--disable-ast`: выключить PHP AST-анализ;
+- `--enable-prefilter`: включить быстрый `common_strings` prefilter для regex-правил;
+- `--disable-prefilter`: выключить быстрый `common_strings` prefilter для regex-правил;
 - `--ast-max-file-size=N`: лимит размера PHP-файла для AST-анализа в байтах;
 - `--exclude=PATH`: добавить исключение, можно указывать несколько раз;
 - `--batch-size=N`: размер порции сканирования от 1 до 1000;
