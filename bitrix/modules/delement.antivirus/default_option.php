@@ -12,6 +12,8 @@ $delement_antivirus_default_option = [
     'batch_size' => '50',
     'max_file_size_mb' => '100',
     'enable_common_strings_prefilter' => 'Y',
+    'enable_normalized_hash' => 'Y',
+    'normalized_hash_max_file_size_mb' => '5',
     'enable_ast_analysis' => 'Y',
     'ast_max_file_size' => '1048576',
 ];

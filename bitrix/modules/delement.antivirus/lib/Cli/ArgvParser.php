@@ -17,6 +17,8 @@ class ArgvParser
         'disable-ast' => true,
         'enable-prefilter' => true,
         'disable-prefilter' => true,
+        'enable-normalized-hash' => true,
+        'disable-normalized-hash' => true,
     ];
 
     private const VALUE_OPTIONS = [
@@ -30,6 +32,7 @@ class ArgvParser
         'report' => true,
         'batch-size' => true,
         'max-file-size-mb' => true,
+        'normalized-hash-max-file-size-mb' => true,
         'ast-max-file-size' => true,
         'quarantine-path' => true,
     ];

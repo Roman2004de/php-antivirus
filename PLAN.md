@@ -42,7 +42,7 @@ scan -> explain -> review -> quarantine -> restore/delete manually
 
 ## Текущий статус
 
-Стадия: MVP с работающим сканированием, отчетами, карантином, CLI runner, AST-анализом PHP, taint-анализом request-to-sink, усиленным `.htaccess`-анализом и `common_strings` prefilter для regex pipeline.
+Стадия: MVP с работающим сканированием, отчетами, карантином, CLI runner, AST-анализом PHP, taint-анализом request-to-sink, усиленным `.htaccess`-анализом, `common_strings` prefilter для regex pipeline и `normalized_hash` для текстовых файлов.
 
 Уже есть устанавливаемый skeleton, настройки, модульный scanner engine, AJAX-пошаговое сканирование, results storage/UI, RU/EN локализация и базовый карантин с восстановлением.
 Scanner использует встроенные правила и может добавлять к ним внешний файл regex-сигнатур из настройки `signatures_path`.
@@ -503,16 +503,21 @@ Acceptance:
 - для текущих правил это допустимо, потому что маркер обычно находится рядом с regex-срабатыванием;
 - для будущих сложных правил с `mode=all` нужно либо не использовать `all`, либо запускать такие правила на полном содержимом файла, чтобы не получить false negative на разнесенных маркерах.
 
-#### [ ] Этап 10.3. `normalized_hash`
+#### [x] Этап 10.3. `normalized_hash`
 
 Цель: добавить нормализованный хэш контента для отчетов, baseline и будущих сравнений.
 
-Задачи:
+Сделано:
 
-- реализовать собственную нормализацию контента;
-- добавить `normalized_hash` в результат файла и JSON report;
-- добавить настройку/CLI-флаг включения;
-- покрыть smoke-тестом.
+- реализована нормализация текстового содержимого через удаление whitespace и SHA-256;
+- `normalized_hash` добавлен в `ScanResult`, JSON result и report read-normalization для старых отчетов;
+- для бинарных файлов, файлов с NUL-байтами и файлов больше лимита `normalized_hash` остается `null`;
+- добавлены настройки `enable_normalized_hash` и `normalized_hash_max_file_size_mb`, включенные по умолчанию;
+- в настройках модуля добавлен блок `Hashing` с checkbox и лимитом размера;
+- добавлены CLI-флаги `--enable-normalized-hash`, `--disable-normalized-hash`, `--normalized-hash-max-file-size-mb`;
+- состояние normalized hash попадает в `ScanConfig`/JSON-конфиг отчета и CLI JSON payload;
+- в таблице подозрительных файлов отчета добавлена необязательная колонка `Normalized hash`;
+- добавлен `tests/normalized_hash_smoke.php`.
 
 #### [ ] Этап 10.4. `FindingSuppressor`
 
@@ -684,6 +689,6 @@ MVP считается готовым, когда:
 
 ## Ближайший следующий шаг
 
-Этап 10.3: `normalized_hash`.
+Этап 10.4: `FindingSuppressor`.
 
-Начать с проектирования нормализации контента и добавления `normalized_hash` в результат файла, JSON-отчет и будущий baseline.
+Начать с проектирования централизованного suppress-слоя для false positive с учетом file hash, normalized hash, signature, context и tags.

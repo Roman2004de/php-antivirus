@@ -26,6 +26,7 @@
 - Модульный scanner engine в `lib/`.
 - Базовые правила детекта: PHP, JavaScript, HTML, Bitrix-specific.
 - Быстрый `common_strings` prefilter для regex-правил с настройкой и CLI-флагами.
+- `normalized_hash` для текстовых файлов: устойчивый SHA-256 от содержимого без пробелов и переносов строк.
 - Поддержка внешнего файла regex-сигнатур с добавлением к встроенным правилам.
 - AST-анализ PHP поверх regex-слоя: опасные вызовы, динамические вызовы, include/require и encoded execution chains.
 - Taint-анализ PHP: request/php://input/filter_input -> переменные/трансформеры -> dangerous sink с сохранением trace.
@@ -253,6 +254,9 @@ php /home/site/public_html/bitrix/tools/delement.antivirus/scan.php --path=/home
 - `--disable-ast`: выключить PHP AST-анализ;
 - `--enable-prefilter`: включить быстрый `common_strings` prefilter для regex-правил;
 - `--disable-prefilter`: выключить быстрый `common_strings` prefilter для regex-правил;
+- `--enable-normalized-hash`: включить расчет `normalized_hash`;
+- `--disable-normalized-hash`: выключить расчет `normalized_hash`;
+- `--normalized-hash-max-file-size-mb=N`: максимальный размер файла для `normalized_hash` от 1 до 1024 МБ;
 - `--ast-max-file-size=N`: лимит размера PHP-файла для AST-анализа в байтах;
 - `--exclude=PATH`: добавить исключение, можно указывать несколько раз;
 - `--batch-size=N`: размер порции сканирования от 1 до 1000;
@@ -388,6 +392,12 @@ Smoke-test CLI-режима:
 php bitrix/modules/delement.antivirus/tests/cli_scan_smoke.php
 ```
 
+Smoke-test normalized hash:
+
+```bash
+php bitrix/modules/delement.antivirus/tests/normalized_hash_smoke.php
+```
+
 ## Важные ограничения
 
 - Это сигнатурный и rule-based scanner, а не полноценная EDR/AV/WAF-система.
@@ -397,4 +407,4 @@ php bitrix/modules/delement.antivirus/tests/cli_scan_smoke.php
 
 ## Следующий этап
 
-Ближайшие задачи: фильтры результатов, cron runner и audit log действий карантина.
+Этап 10.4: `FindingSuppressor` для централизованного управления false positive.

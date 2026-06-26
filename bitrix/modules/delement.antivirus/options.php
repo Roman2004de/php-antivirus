@@ -49,6 +49,8 @@ $optionNames = [
     'batch_size',
     'max_file_size_mb',
     'enable_common_strings_prefilter',
+    'enable_normalized_hash',
+    'normalized_hash_max_file_size_mb',
     'enable_ast_analysis',
     'ast_max_file_size',
 ];
@@ -122,6 +124,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['save']) || isset($_P
         $values['batch_size'] = trim((string)($_POST['batch_size'] ?? ''));
         $values['max_file_size_mb'] = trim((string)($_POST['max_file_size_mb'] ?? ''));
         $values['enable_common_strings_prefilter'] = isset($_POST['enable_common_strings_prefilter']) && $_POST['enable_common_strings_prefilter'] === 'Y' ? 'Y' : 'N';
+        $values['enable_normalized_hash'] = isset($_POST['enable_normalized_hash']) && $_POST['enable_normalized_hash'] === 'Y' ? 'Y' : 'N';
+        $values['normalized_hash_max_file_size_mb'] = trim((string)($_POST['normalized_hash_max_file_size_mb'] ?? ''));
         $values['enable_ast_analysis'] = isset($_POST['enable_ast_analysis']) && $_POST['enable_ast_analysis'] === 'Y' ? 'Y' : 'N';
         $values['ast_max_file_size'] = trim((string)($_POST['ast_max_file_size'] ?? ''));
 
@@ -175,6 +179,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['save']) || isset($_P
 
         if (!preg_match('/^\d+$/', $values['max_file_size_mb']) || (int)$values['max_file_size_mb'] < 1 || (int)$values['max_file_size_mb'] > 1024) {
             $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_MAX_FILE_SIZE');
+        }
+
+        if (!preg_match('/^\d+$/', $values['normalized_hash_max_file_size_mb']) || (int)$values['normalized_hash_max_file_size_mb'] < 1 || (int)$values['normalized_hash_max_file_size_mb'] > 1024) {
+            $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_NORMALIZED_HASH_MAX_FILE_SIZE');
         }
 
         if (!preg_match('/^\d+$/', $values['ast_max_file_size']) || (int)$values['ast_max_file_size'] < 1 || (int)$values['ast_max_file_size'] > 104857600) {
@@ -398,6 +406,33 @@ $tabControl->Begin();
             <?php echo BeginNote(); ?>
             <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ENABLE_COMMON_STRINGS_PREFILTER_HINT'); ?>
             <?php echo EndNote(); ?>
+        </td>
+    </tr>
+    <tr class="heading">
+        <td colspan="2"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_HASHING_SECTION'); ?></td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_enable_normalized_hash"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ENABLE_NORMALIZED_HASH'); ?></label>
+        </td>
+        <td class="adm-detail-content-cell-r">
+            <input type="checkbox" id="delement_antivirus_enable_normalized_hash" name="enable_normalized_hash" value="Y"<?php echo $values['enable_normalized_hash'] === 'Y' ? ' checked' : ''; ?>>
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l"></td>
+        <td class="adm-detail-content-cell-r">
+            <?php echo BeginNote(); ?>
+            <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ENABLE_NORMALIZED_HASH_HINT'); ?>
+            <?php echo EndNote(); ?>
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_normalized_hash_max_file_size_mb"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_NORMALIZED_HASH_MAX_FILE_SIZE_MB'); ?></label>
+        </td>
+        <td class="adm-detail-content-cell-r">
+            <input type="number" min="1" max="1024" id="delement_antivirus_normalized_hash_max_file_size_mb" name="normalized_hash_max_file_size_mb" value="<?php echo htmlspecialcharsbx($values['normalized_hash_max_file_size_mb']); ?>">
         </td>
     </tr>
     <tr>

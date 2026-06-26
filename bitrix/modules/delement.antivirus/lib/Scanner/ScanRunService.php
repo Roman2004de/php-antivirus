@@ -255,6 +255,7 @@ class ScanRunService
             return $this->tagResultArray([
                 'file_path' => $filePath,
                 'file_hash' => '',
+                'normalized_hash' => null,
                 'status' => 'error',
                 'score' => 0,
                 'severity' => 'low',

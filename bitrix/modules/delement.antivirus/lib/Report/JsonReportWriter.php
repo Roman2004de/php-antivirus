@@ -57,6 +57,10 @@ class JsonReportWriter
                 $result['tags'] = [];
             }
 
+            if (!array_key_exists('normalized_hash', $result)) {
+                $result['normalized_hash'] = null;
+            }
+
             if (!isset($result['findings']) || !is_array($result['findings'])) {
                 continue;
             }

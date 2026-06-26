@@ -95,6 +95,8 @@ class ScanConfig
     private $batchSize;
     private $maxFileSizeBytes;
     private $enableCommonStringsPrefilter;
+    private $enableNormalizedHash;
+    private $normalizedHashMaxFileSizeBytes;
     private $enableAstAnalysis;
     private $astMaxFileSize;
     private $extensions;
@@ -116,6 +118,10 @@ class ScanConfig
             ? $this->normalizeInt($options['max_file_size_bytes'], 1, 1024 * 1024 * 1024)
             : $this->normalizeMaxFileSize(isset($options['max_file_size_mb']) ? $options['max_file_size_mb'] : 100);
         $this->enableCommonStringsPrefilter = $this->normalizeBool(isset($options['enable_common_strings_prefilter']) ? $options['enable_common_strings_prefilter'] : true);
+        $this->enableNormalizedHash = $this->normalizeBool(isset($options['enable_normalized_hash']) ? $options['enable_normalized_hash'] : true);
+        $this->normalizedHashMaxFileSizeBytes = isset($options['normalized_hash_max_file_size_bytes'])
+            ? $this->normalizeInt($options['normalized_hash_max_file_size_bytes'], 1, 1024 * 1024 * 1024)
+            : $this->normalizeMaxFileSize(isset($options['normalized_hash_max_file_size_mb']) ? $options['normalized_hash_max_file_size_mb'] : 5);
         $this->enableAstAnalysis = $this->normalizeBool(isset($options['enable_ast_analysis']) ? $options['enable_ast_analysis'] : true);
         $this->astMaxFileSize = $this->normalizeInt(isset($options['ast_max_file_size']) ? $options['ast_max_file_size'] : 1048576, 1, 100 * 1024 * 1024);
         $this->extensions = $this->normalizeExtensions(isset($options['extensions']) ? $options['extensions'] : $this->defaultExtensionsForScanProfile($this->scanProfile));
@@ -136,6 +142,8 @@ class ScanConfig
             'batch_size' => isset($options['batch_size']) ? $options['batch_size'] : null,
             'max_file_size_mb' => isset($options['max_file_size_mb']) ? $options['max_file_size_mb'] : null,
             'enable_common_strings_prefilter' => isset($options['enable_common_strings_prefilter']) ? $options['enable_common_strings_prefilter'] : null,
+            'enable_normalized_hash' => isset($options['enable_normalized_hash']) ? $options['enable_normalized_hash'] : null,
+            'normalized_hash_max_file_size_mb' => isset($options['normalized_hash_max_file_size_mb']) ? $options['normalized_hash_max_file_size_mb'] : null,
             'enable_ast_analysis' => isset($options['enable_ast_analysis']) ? $options['enable_ast_analysis'] : null,
             'ast_max_file_size' => isset($options['ast_max_file_size']) ? $options['ast_max_file_size'] : null,
         ]);
@@ -232,6 +240,16 @@ class ScanConfig
         return $this->enableCommonStringsPrefilter;
     }
 
+    public function isNormalizedHashEnabled(): bool
+    {
+        return $this->enableNormalizedHash;
+    }
+
+    public function getNormalizedHashMaxFileSizeBytes(): int
+    {
+        return $this->normalizedHashMaxFileSizeBytes;
+    }
+
     public function getAstMaxFileSize(): int
     {
         return $this->astMaxFileSize;
@@ -268,6 +286,8 @@ class ScanConfig
             'batch_size' => $this->batchSize,
             'max_file_size_bytes' => $this->maxFileSizeBytes,
             'enable_common_strings_prefilter' => $this->enableCommonStringsPrefilter,
+            'enable_normalized_hash' => $this->enableNormalizedHash,
+            'normalized_hash_max_file_size_bytes' => $this->normalizedHashMaxFileSizeBytes,
             'enable_ast_analysis' => $this->enableAstAnalysis,
             'ast_max_file_size' => $this->astMaxFileSize,
             'extensions' => $this->extensions,

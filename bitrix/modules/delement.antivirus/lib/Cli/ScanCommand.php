@@ -148,6 +148,16 @@ class ScanCommand
             $options['enable_common_strings_prefilter'] = 'N';
         }
 
+        if (!empty($flags['enable-normalized-hash']) && !empty($flags['disable-normalized-hash'])) {
+            throw new InvalidArgumentException('cli_normalized_hash_flags_conflict');
+        }
+
+        if (!empty($flags['enable-normalized-hash'])) {
+            $options['enable_normalized_hash'] = 'Y';
+        } elseif (!empty($flags['disable-normalized-hash'])) {
+            $options['enable_normalized_hash'] = 'N';
+        }
+
         if (isset($cliOptions['quarantine-path'])) {
             $options['quarantine_path'] = (string)$cliOptions['quarantine-path'];
         }
@@ -164,6 +174,11 @@ class ScanCommand
         if (isset($cliOptions['max-file-size-mb'])) {
             $this->assertIntegerRange('max-file-size-mb', (string)$cliOptions['max-file-size-mb'], 1, 1024);
             $options['max_file_size_mb'] = (string)$cliOptions['max-file-size-mb'];
+        }
+
+        if (isset($cliOptions['normalized-hash-max-file-size-mb'])) {
+            $this->assertIntegerRange('normalized-hash-max-file-size-mb', (string)$cliOptions['normalized-hash-max-file-size-mb'], 1, 1024);
+            $options['normalized_hash_max_file_size_mb'] = (string)$cliOptions['normalized-hash-max-file-size-mb'];
         }
 
         if (isset($cliOptions['ast-max-file-size'])) {
@@ -292,6 +307,8 @@ class ScanCommand
             'dry_run' => $config->isDryRun(),
             'enable_ast_analysis' => $config->isAstAnalysisEnabled(),
             'enable_common_strings_prefilter' => $config->isCommonStringsPrefilterEnabled(),
+            'enable_normalized_hash' => $config->isNormalizedHashEnabled(),
+            'normalized_hash_max_file_size_bytes' => $config->getNormalizedHashMaxFileSizeBytes(),
             'ast_max_file_size' => $config->getAstMaxFileSize(),
         ];
     }
@@ -490,6 +507,10 @@ Options:
   --disable-ast            Disable PHP AST analysis.
   --enable-prefilter       Enable common strings regex prefilter.
   --disable-prefilter      Disable common strings regex prefilter.
+  --enable-normalized-hash Enable normalized hash calculation.
+  --disable-normalized-hash Disable normalized hash calculation.
+  --normalized-hash-max-file-size-mb=N
+                           Maximum file size for normalized hash, 1..1024 MB.
   --ast-max-file-size=N    Maximum PHP file size for AST analysis, bytes.
   --exclude=PATH           Add excluded path. Can be repeated.
   --batch-size=N           Files per scanner batch, 1..1000.

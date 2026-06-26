@@ -239,6 +239,7 @@ if (!function_exists('delement_antivirus_report_finding_rows')) {
                     'scan_id' => $scanId,
                     'file_path' => (string)($result['file_path'] ?? ''),
                     'file_hash' => (string)($result['file_hash'] ?? ''),
+                    'normalized_hash' => isset($result['normalized_hash']) && $result['normalized_hash'] !== null ? (string)$result['normalized_hash'] : '',
                     'status' => (string)($result['status'] ?? ''),
                     'score' => (int)($result['score'] ?? 0),
                     'severity' => (string)($finding['severity'] ?? ($result['severity'] ?? '')),
@@ -282,6 +283,7 @@ if (!function_exists('delement_antivirus_report_sort_finding_rows')) {
             'severity',
             'signature_id',
             'category',
+            'normalized_hash',
             'excerpt',
             'tags',
         ];
@@ -619,6 +621,12 @@ $lAdmin->AddHeaders([
         'default' => true,
     ],
     [
+        'id' => 'NORMALIZED_HASH',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_NORMALIZED_HASH'),
+        'sort' => 'normalized_hash',
+        'default' => false,
+    ],
+    [
         'id' => 'EXCERPT',
         'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_EXCERPT'),
         'sort' => 'excerpt',
@@ -657,6 +665,12 @@ while ($rowData = $rsData->NavNext(true, 'f_')) {
     $row->AddViewField('SEVERITY', htmlspecialcharsbx((string)($rowData['severity'] ?? '')));
     $row->AddViewField('SIGNATURE_ID', htmlspecialcharsbx((string)($rowData['signature_id'] ?? '')));
     $row->AddViewField('CATEGORY', htmlspecialcharsbx((string)($rowData['category'] ?? '')));
+    $row->AddViewField(
+        'NORMALIZED_HASH',
+        (string)($rowData['normalized_hash'] ?? '') !== ''
+            ? '<span title="' . htmlspecialcharsbx((string)$rowData['normalized_hash']) . '">' . htmlspecialcharsbx(substr((string)$rowData['normalized_hash'], 0, 16)) . '...</span>'
+            : '&mdash;'
+    );
     $row->AddViewField('EXCERPT', htmlspecialcharsbx((string)($rowData['excerpt'] ?? '')));
     $row->AddViewField('TAGS', delement_antivirus_report_tags_html($rowData['tags'] ?? []));
 

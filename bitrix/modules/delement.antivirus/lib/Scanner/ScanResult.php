@@ -10,6 +10,7 @@ class ScanResult
 {
     private $filePath;
     private $fileHash;
+    private $normalizedHash;
     private $status;
     private $score;
     private $severity;
@@ -23,6 +24,9 @@ class ScanResult
     {
         $this->filePath = isset($data['file_path']) ? (string)$data['file_path'] : '';
         $this->fileHash = isset($data['file_hash']) ? (string)$data['file_hash'] : '';
+        $this->normalizedHash = array_key_exists('normalized_hash', $data) && $data['normalized_hash'] !== null
+            ? (string)$data['normalized_hash']
+            : null;
         $this->status = isset($data['status']) ? (string)$data['status'] : Verdict::CLEAN;
         $this->score = isset($data['score']) ? (int)$data['score'] : 0;
         $this->severity = isset($data['severity']) ? (string)$data['severity'] : Severity::INFO;
@@ -41,11 +45,13 @@ class ScanResult
         array $findings,
         string $action,
         bool $dryRun,
-        array $tags = []
+        array $tags = [],
+        ?string $normalizedHash = null
     ): self {
         return new self([
             'file_path' => $filePath,
             'file_hash' => self::calculateHash($filePath),
+            'normalized_hash' => $normalizedHash,
             'status' => $status,
             'score' => $score,
             'severity' => $severity,
@@ -101,11 +107,20 @@ class ScanResult
         return $this->tags;
     }
 
+    public function withNormalizedHash(?string $normalizedHash): self
+    {
+        $copy = clone $this;
+        $copy->normalizedHash = $normalizedHash;
+
+        return $copy;
+    }
+
     public function toArray(): array
     {
         return [
             'file_path' => $this->filePath,
             'file_hash' => $this->fileHash,
+            'normalized_hash' => $this->normalizedHash,
             'status' => $this->status,
             'score' => $this->score,
             'severity' => $this->severity,
