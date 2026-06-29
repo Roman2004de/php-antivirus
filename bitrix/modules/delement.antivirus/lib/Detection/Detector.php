@@ -13,6 +13,7 @@ class Detector
     private $htaccessAnalyzer;
     private $entropyAnalyzer;
     private $urlAnalyzer;
+    private $hashAnalyzer;
     private $resultTagger;
 
     private const AST_EXTENSIONS = [
@@ -24,13 +25,14 @@ class Detector
         'include' => true,
     ];
 
-    public function __construct(RuleEngine $ruleEngine, $astAnalyzer = null, $htaccessAnalyzer = null, ResultTagger $resultTagger = null, $entropyAnalyzer = null, $urlAnalyzer = null)
+    public function __construct(RuleEngine $ruleEngine, $astAnalyzer = null, $htaccessAnalyzer = null, ResultTagger $resultTagger = null, $entropyAnalyzer = null, $urlAnalyzer = null, $hashAnalyzer = null)
     {
         $this->ruleEngine = $ruleEngine;
         $this->astAnalyzer = $astAnalyzer;
         $this->htaccessAnalyzer = $htaccessAnalyzer;
         $this->entropyAnalyzer = $entropyAnalyzer ?: $this->createEntropyAnalyzer();
         $this->urlAnalyzer = $urlAnalyzer ?: $this->createUrlAnalyzer();
+        $this->hashAnalyzer = $hashAnalyzer ?: $this->createHashAnalyzer();
         $this->resultTagger = $resultTagger ?: $this->createResultTagger();
 
         if ($this->astAnalyzer === null && class_exists('Delement\\Antivirus\\Detection\\Ast\\AstAnalyzer')) {
@@ -60,6 +62,12 @@ class Detector
 
         foreach ($this->ruleEngine->analyzePath($filePath, $config) as $finding) {
             $this->addFinding($findings, $seen, $finding);
+        }
+
+        if ($this->shouldAnalyzeHashDb($config)) {
+            foreach ($this->hashAnalyzer->analyzeFile($filePath, $config) as $finding) {
+                $this->addFinding($findings, $seen, $finding);
+            }
         }
 
         foreach ($chunks as $chunk) {
@@ -200,6 +208,11 @@ class Detector
         return $config->isUrlAnalyzerEnabled() && $this->urlAnalyzer !== null;
     }
 
+    private function shouldAnalyzeHashDb(ScanConfig $config): bool
+    {
+        return $config->isHashDatabaseEnabled() && $this->hashAnalyzer !== null;
+    }
+
     private function createEntropyAnalyzer()
     {
         $className = 'Delement\\Antivirus\\Detection\\Entropy\\EntropyAnalyzer';
@@ -228,6 +241,25 @@ class Detector
 
             foreach (['UrlExtractor.php', 'SuspiciousDomainList.php', 'UrlFindingFactory.php', 'UrlAnalyzer.php'] as $file) {
                 $path = $urlPath . '/' . $file;
+
+                if (is_file($path)) {
+                    require_once $path;
+                }
+            }
+        }
+
+        return class_exists($className) ? new $className() : null;
+    }
+
+    private function createHashAnalyzer()
+    {
+        $className = 'Delement\\Antivirus\\Detection\\Hash\\KnownMalwareHashAnalyzer';
+
+        if (!class_exists($className)) {
+            $hashPath = __DIR__ . '/Hash';
+
+            foreach (['HashDatabase.php', 'HashPrefixIndex.php', 'HashFindingFactory.php', 'KnownMalwareHashAnalyzer.php'] as $file) {
+                $path = $hashPath . '/' . $file;
 
                 if (is_file($path)) {
                     require_once $path;

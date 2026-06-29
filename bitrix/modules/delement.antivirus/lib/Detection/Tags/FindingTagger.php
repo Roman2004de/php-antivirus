@@ -98,7 +98,7 @@ class FindingTagger
             $tags[] = TagCatalog::RISK_WEBSHELL_FINGERPRINT;
         }
 
-        if ($category === 'hash_db') {
+        if ($category === 'hash_db' && $signatureId !== 'hash_db_runtime_warning') {
             $tags[] = TagCatalog::RISK_KNOWN_MALWARE_HASH;
         }
 

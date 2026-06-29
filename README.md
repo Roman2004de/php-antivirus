@@ -30,6 +30,7 @@
 - FindingSuppressor: точечное скрытие конкретного false positive по стабильному finding fingerprint.
 - EntropyAnalyzer: эвристическое обнаружение длинных высокоэнтропийных encoded payload с тегами и CLI-флагами.
 - UrlExtractor/UrlAnalyzer: извлечение внешних URL, remote loaders, iframe/script-инъекций, `.htaccess` redirects и локальная suspicious-domain база.
+- Known Malware Hash Database: быстрая проверка SHA-256 через prefix-index и полную пользовательскую/тестовую базу malware-хешей.
 - Поддержка внешнего файла regex-сигнатур с добавлением к встроенным правилам.
 - AST-анализ PHP поверх regex-слоя: опасные вызовы, динамические вызовы, include/require и encoded execution chains.
 - Taint-анализ PHP: request/php://input/filter_input -> переменные/трансформеры -> dangerous sink с сохранением trace.
@@ -88,6 +89,7 @@ bitrix/modules/delement.antivirus/
     Detection/
       Ast/
       Entropy/
+      Hash/
       Htaccess/
       Taint/
       Url/
@@ -140,6 +142,9 @@ bitrix/modules/delement.antivirus/
 - `Delement\Antivirus\Detection\Ast\NodeCollector`
 - `Delement\Antivirus\Detection\Entropy\EntropyAnalyzer`
 - `Delement\Antivirus\Detection\Entropy\EntropyCalculator`
+- `Delement\Antivirus\Detection\Hash\KnownMalwareHashAnalyzer`
+- `Delement\Antivirus\Detection\Hash\HashDatabase`
+- `Delement\Antivirus\Detection\Hash\HashPrefixIndex`
 - `Delement\Antivirus\Detection\Htaccess\HtaccessAnalyzer`
 - `Delement\Antivirus\Detection\Taint\TaintAnalyzer`
 - `Delement\Antivirus\Detection\Taint\TaintPropagator`
@@ -165,6 +170,8 @@ Entropy-слой ищет длинные строки с высокой Shannon 
 
 URL-слой извлекает внешние `http://` и `https://` URL из PHP, JavaScript, HTML и `.htaccess`. Он отдельно помечает remote payload loaders, `iframe src`, `script src`, `document.write('<script ...>')`, `.htaccess` redirects и совпадения с локальной JSON-базой подозрительных доменов. Findings категории `url` содержат `url`, `domain`, `trace` и теги `engine:url`, `risk:external_url`, а для loader-сценариев также `risk:remote_loader`. Обычный внешний URL фиксируется как informational finding со score `0` и не увеличивает `found_files`; такие срабатывания считаются отдельно в `informational_findings_total`. База доменов находится в `var/signatures/suspicious_domains.json` и не содержит сторонних malware databases.
 
+Hash DB слой считает SHA-256 файла, проверяет первые 8-12 символов по prefix-index и только после этого сверяет полный хеш. Prefix-only match не создает malware finding. Полное совпадение дает `known_malware_hash_match` с `severity=critical`, `score=100`, `recommendation=quarantine`, тегами `engine:hash_db` и `risk:known_malware_hash`. Базы `var/signatures/malware_hashes.json` и `var/signatures/malware_hash_prefixes.json` являются synthetic/test placeholders; базы Wordfence или другие сторонние malware hash databases не копируются.
+
 ## Настройки
 
 В `options.php` доступны:
@@ -186,6 +193,8 @@ URL-слой извлекает внешние `http://` и `https://` URL из 
 - минимальная длина строки и порог entropy;
 - URL analyzer;
 - путь к локальной базе подозрительных доменов;
+- Known malware hash database;
+- путь к полной базе malware-хешей и prefix-index;
 - список исключений.
 
 Исключения путей сравниваются как нормализованный path-prefix: путь равен исключению или начинается с `excludePath/`.
@@ -284,6 +293,10 @@ php /home/site/public_html/bitrix/tools/delement.antivirus/scan.php --path=/home
 - `--enable-url-analyzer`: включить анализ внешних URL;
 - `--disable-url-analyzer`: выключить анализ внешних URL;
 - `--suspicious-domains=PATH`: путь к пользовательской/тестовой JSON-базе подозрительных доменов;
+- `--enable-hash-db`: включить базу известных malware-хешей;
+- `--disable-hash-db`: выключить базу известных malware-хешей;
+- `--malware-hashes=PATH`: путь к JSON-файлу полных SHA-256 malware-хешей;
+- `--malware-hash-prefixes=PATH`: путь к JSON-файлу SHA-256 prefix-index;
 - `--ast-max-file-size=N`: лимит размера PHP-файла для AST-анализа в байтах;
 - `--exclude=PATH`: добавить исключение, можно указывать несколько раз;
 - `--batch-size=N`: размер порции сканирования от 1 до 1000;
@@ -443,6 +456,12 @@ Smoke-test UrlExtractor:
 php bitrix/modules/delement.antivirus/tests/url_extractor_smoke.php
 ```
 
+Smoke-test Known Malware Hash Database:
+
+```bash
+php bitrix/modules/delement.antivirus/tests/hash_database_smoke.php
+```
+
 ## Важные ограничения
 
 - Это сигнатурный и rule-based scanner, а не полноценная EDR/AV/WAF-система.
@@ -452,4 +471,4 @@ php bitrix/modules/delement.antivirus/tests/url_extractor_smoke.php
 
 ## Следующий этап
 
-Этап 10.7: Known Malware Hash Database на пользовательской/тестовой базе hash-индикаторов.
+Этап 10.8: WebShell Fingerprints на собственных эвристиках без сторонних fingerprint-баз.

@@ -259,6 +259,8 @@ if (!function_exists('delement_antivirus_report_finding_rows')) {
                     'length' => isset($finding['length']) && $finding['length'] !== null ? (int)$finding['length'] : null,
                     'url' => (string)($finding['url'] ?? ''),
                     'domain' => (string)($finding['domain'] ?? ''),
+                    'hash' => (string)($finding['hash'] ?? ''),
+                    'recommendation' => (string)($finding['recommendation'] ?? ''),
                     'excerpt' => (string)($finding['excerpt'] ?? ''),
                     'tags' => delement_antivirus_report_merge_tags($result['tags'] ?? [], $finding['tags'] ?? []),
                     'scan_result' => $result,
@@ -303,6 +305,8 @@ if (!function_exists('delement_antivirus_report_sort_finding_rows')) {
             'length',
             'url',
             'domain',
+            'hash',
+            'recommendation',
             'normalized_hash',
             'excerpt',
             'tags',
@@ -776,6 +780,18 @@ $lAdmin->AddHeaders([
         'default' => false,
     ],
     [
+        'id' => 'HASH',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_HASH'),
+        'sort' => 'hash',
+        'default' => false,
+    ],
+    [
+        'id' => 'RECOMMENDATION',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_RECOMMENDATION'),
+        'sort' => 'recommendation',
+        'default' => false,
+    ],
+    [
         'id' => 'NORMALIZED_HASH',
         'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_NORMALIZED_HASH'),
         'sort' => 'normalized_hash',
@@ -825,6 +841,13 @@ while ($rowData = $rsData->NavNext(true, 'f_')) {
     $row->AddViewField('LENGTH', $rowData['length'] !== null ? (int)$rowData['length'] : '&mdash;');
     $row->AddViewField('URL', (string)($rowData['url'] ?? '') !== '' ? '<span title="' . htmlspecialcharsbx((string)$rowData['url']) . '">' . htmlspecialcharsbx((string)$rowData['url']) . '</span>' : '&mdash;');
     $row->AddViewField('DOMAIN', (string)($rowData['domain'] ?? '') !== '' ? htmlspecialcharsbx((string)$rowData['domain']) : '&mdash;');
+    $row->AddViewField(
+        'HASH',
+        (string)($rowData['hash'] ?? '') !== ''
+            ? '<span title="' . htmlspecialcharsbx((string)$rowData['hash']) . '">' . htmlspecialcharsbx(substr((string)$rowData['hash'], 0, 16)) . '...</span>'
+            : '&mdash;'
+    );
+    $row->AddViewField('RECOMMENDATION', (string)($rowData['recommendation'] ?? '') !== '' ? htmlspecialcharsbx((string)$rowData['recommendation']) : '&mdash;');
     $row->AddViewField(
         'NORMALIZED_HASH',
         (string)($rowData['normalized_hash'] ?? '') !== ''

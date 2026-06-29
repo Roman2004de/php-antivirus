@@ -23,6 +23,8 @@ class ArgvParser
         'disable-entropy' => true,
         'enable-url-analyzer' => true,
         'disable-url-analyzer' => true,
+        'enable-hash-db' => true,
+        'disable-hash-db' => true,
     ];
 
     private const VALUE_OPTIONS = [
@@ -41,6 +43,8 @@ class ArgvParser
         'entropy-threshold' => true,
         'entropy-min-length' => true,
         'suspicious-domains' => true,
+        'malware-hashes' => true,
+        'malware-hash-prefixes' => true,
         'quarantine-path' => true,
     ];
 

@@ -60,6 +60,9 @@ $optionNames = [
     'entropy_context_window',
     'enable_url_analyzer',
     'suspicious_domains_path',
+    'enable_hash_db',
+    'malware_hashes_path',
+    'malware_hash_prefixes_path',
 ];
 
 $getDefault = static function ($name) use ($defaults) {
@@ -142,6 +145,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['save']) || isset($_P
         $values['entropy_context_window'] = trim((string)($_POST['entropy_context_window'] ?? ''));
         $values['enable_url_analyzer'] = isset($_POST['enable_url_analyzer']) && $_POST['enable_url_analyzer'] === 'Y' ? 'Y' : 'N';
         $values['suspicious_domains_path'] = trim((string)($_POST['suspicious_domains_path'] ?? ''));
+        $values['enable_hash_db'] = isset($_POST['enable_hash_db']) && $_POST['enable_hash_db'] === 'Y' ? 'Y' : 'N';
+        $values['malware_hashes_path'] = trim((string)($_POST['malware_hashes_path'] ?? ''));
+        $values['malware_hash_prefixes_path'] = trim((string)($_POST['malware_hash_prefixes_path'] ?? ''));
 
         $pathFields = [
             'scan_path' => Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_SCAN_PATH'),
@@ -181,6 +187,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['save']) || isset($_P
             if (strpos($values['suspicious_domains_path'], "\0") !== false || $hasTraversal($values['suspicious_domains_path'])) {
                 $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_PATH', ['#FIELD#' => $label]);
             } elseif (strlen($values['suspicious_domains_path']) > 4096) {
+                $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_TOO_LONG', ['#FIELD#' => $label]);
+            }
+        }
+
+        foreach ([
+            'malware_hashes_path' => Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_MALWARE_HASHES_PATH'),
+            'malware_hash_prefixes_path' => Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_MALWARE_HASH_PREFIXES_PATH'),
+        ] as $name => $label) {
+            if ($values[$name] === '') {
+                continue;
+            }
+
+            if (strpos($values[$name], "\0") !== false || $hasTraversal($values[$name])) {
+                $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_PATH', ['#FIELD#' => $label]);
+            } elseif (strlen($values[$name]) > 4096) {
                 $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_TOO_LONG', ['#FIELD#' => $label]);
             }
         }
@@ -578,6 +599,49 @@ $tabControl->Begin();
         <td class="adm-detail-content-cell-r">
             <?php echo BeginNote(); ?>
             <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_SUSPICIOUS_DOMAINS_PATH_HINT'); ?>
+            <?php echo EndNote(); ?>
+        </td>
+    </tr>
+    <tr class="heading">
+        <td colspan="2"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_KNOWN_MALWARE_SECTION'); ?></td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_enable_hash_db"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ENABLE_HASH_DB'); ?></label>
+        </td>
+        <td class="adm-detail-content-cell-r">
+            <input type="checkbox" id="delement_antivirus_enable_hash_db" name="enable_hash_db" value="Y"<?php echo $values['enable_hash_db'] === 'Y' ? ' checked' : ''; ?>>
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l"></td>
+        <td class="adm-detail-content-cell-r">
+            <?php echo BeginNote(); ?>
+            <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ENABLE_HASH_DB_HINT'); ?>
+            <?php echo EndNote(); ?>
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_malware_hashes_path"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_MALWARE_HASHES_PATH'); ?></label>
+        </td>
+        <td class="adm-detail-content-cell-r">
+            <input type="text" size="70" id="delement_antivirus_malware_hashes_path" name="malware_hashes_path" value="<?php echo htmlspecialcharsbx($values['malware_hashes_path']); ?>">
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_malware_hash_prefixes_path"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_MALWARE_HASH_PREFIXES_PATH'); ?></label>
+        </td>
+        <td class="adm-detail-content-cell-r">
+            <input type="text" size="70" id="delement_antivirus_malware_hash_prefixes_path" name="malware_hash_prefixes_path" value="<?php echo htmlspecialcharsbx($values['malware_hash_prefixes_path']); ?>">
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l"></td>
+        <td class="adm-detail-content-cell-r">
+            <?php echo BeginNote(); ?>
+            <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_MALWARE_HASHES_PATH_HINT'); ?>
             <?php echo EndNote(); ?>
         </td>
     </tr>

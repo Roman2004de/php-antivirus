@@ -108,6 +108,10 @@ class ScanConfig
     private $disableUrlAnalyzer;
     private $enableUrlAnalyzer;
     private $suspiciousDomainsPath;
+    private $disableHashDatabase;
+    private $enableHashDatabase;
+    private $malwareHashesPath;
+    private $malwareHashPrefixesPath;
     private $extensions;
     private $documentRoot;
 
@@ -142,6 +146,10 @@ class ScanConfig
         $this->disableUrlAnalyzer = $this->normalizeBool(isset($options['disable_url_analyzer']) ? $options['disable_url_analyzer'] : false);
         $this->enableUrlAnalyzer = $this->normalizeBool(isset($options['enable_url_analyzer']) ? $options['enable_url_analyzer'] : true);
         $this->suspiciousDomainsPath = $this->normalizeOptionalPath(isset($options['suspicious_domains_path']) ? (string)$options['suspicious_domains_path'] : '');
+        $this->disableHashDatabase = $this->normalizeBool(isset($options['disable_hash_db']) ? $options['disable_hash_db'] : false);
+        $this->enableHashDatabase = $this->normalizeBool(isset($options['enable_hash_db']) ? $options['enable_hash_db'] : true);
+        $this->malwareHashesPath = $this->normalizeOptionalPath(isset($options['malware_hashes_path']) ? (string)$options['malware_hashes_path'] : '');
+        $this->malwareHashPrefixesPath = $this->normalizeOptionalPath(isset($options['malware_hash_prefixes_path']) ? (string)$options['malware_hash_prefixes_path'] : '');
         $this->extensions = $this->normalizeExtensions(isset($options['extensions']) ? $options['extensions'] : $this->defaultExtensionsForScanProfile($this->scanProfile));
     }
 
@@ -173,6 +181,10 @@ class ScanConfig
             'disable_url_analyzer' => isset($options['disable_url_analyzer']) ? $options['disable_url_analyzer'] : null,
             'enable_url_analyzer' => isset($options['enable_url_analyzer']) ? $options['enable_url_analyzer'] : null,
             'suspicious_domains_path' => isset($options['suspicious_domains_path']) ? $options['suspicious_domains_path'] : null,
+            'disable_hash_db' => isset($options['disable_hash_db']) ? $options['disable_hash_db'] : null,
+            'enable_hash_db' => isset($options['enable_hash_db']) ? $options['enable_hash_db'] : null,
+            'malware_hashes_path' => isset($options['malware_hashes_path']) ? $options['malware_hashes_path'] : null,
+            'malware_hash_prefixes_path' => isset($options['malware_hash_prefixes_path']) ? $options['malware_hash_prefixes_path'] : null,
         ]);
     }
 
@@ -348,6 +360,25 @@ class ScanConfig
         return $this->suspiciousDomainsPath;
     }
 
+    public function isHashDatabaseEnabled(): bool
+    {
+        if ($this->disableHashDatabase) {
+            return false;
+        }
+
+        return $this->enableHashDatabase;
+    }
+
+    public function getMalwareHashesPath(): string
+    {
+        return $this->malwareHashesPath;
+    }
+
+    public function getMalwareHashPrefixesPath(): string
+    {
+        return $this->malwareHashPrefixesPath;
+    }
+
     public function getExtensions(): array
     {
         return $this->extensions;
@@ -394,6 +425,11 @@ class ScanConfig
             'enable_url_analyzer' => $this->enableUrlAnalyzer,
             'url_effective_enabled' => $this->isUrlAnalyzerEnabled(),
             'suspicious_domains_path' => $this->suspiciousDomainsPath,
+            'disable_hash_db' => $this->disableHashDatabase,
+            'enable_hash_db' => $this->enableHashDatabase,
+            'hash_db_effective_enabled' => $this->isHashDatabaseEnabled(),
+            'malware_hashes_path' => $this->malwareHashesPath,
+            'malware_hash_prefixes_path' => $this->malwareHashPrefixesPath,
             'extensions' => $this->extensions,
         ];
     }

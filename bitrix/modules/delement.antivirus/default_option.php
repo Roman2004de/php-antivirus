@@ -23,4 +23,7 @@ $delement_antivirus_default_option = [
     'entropy_context_window' => '300',
     'enable_url_analyzer' => 'Y',
     'suspicious_domains_path' => '#DOCUMENT_ROOT#/bitrix/modules/delement.antivirus/var/signatures/suspicious_domains.json',
+    'enable_hash_db' => 'Y',
+    'malware_hashes_path' => '#DOCUMENT_ROOT#/bitrix/modules/delement.antivirus/var/signatures/malware_hashes.json',
+    'malware_hash_prefixes_path' => '#DOCUMENT_ROOT#/bitrix/modules/delement.antivirus/var/signatures/malware_hash_prefixes.json',
 ];

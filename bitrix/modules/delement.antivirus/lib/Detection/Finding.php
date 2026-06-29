@@ -24,6 +24,9 @@ class Finding
     private $length;
     private $url;
     private $domain;
+    private $hash;
+    private $hashAlgorithm;
+    private $recommendation;
     private $tags = [];
 
     public function __construct(array $data)
@@ -48,6 +51,9 @@ class Finding
         $this->length = isset($data['length']) && $data['length'] !== null ? (int)$data['length'] : null;
         $this->url = isset($data['url']) ? (string)$data['url'] : '';
         $this->domain = isset($data['domain']) ? (string)$data['domain'] : '';
+        $this->hash = isset($data['hash']) ? (string)$data['hash'] : '';
+        $this->hashAlgorithm = isset($data['hash_algorithm']) ? (string)$data['hash_algorithm'] : '';
+        $this->recommendation = isset($data['recommendation']) ? (string)$data['recommendation'] : '';
         $this->tags = isset($data['tags']) && is_array($data['tags']) ? self::normalizeTags($data['tags']) : [];
     }
 
@@ -176,6 +182,18 @@ class Finding
 
         if ($this->domain !== '') {
             $result['domain'] = $this->domain;
+        }
+
+        if ($this->hash !== '') {
+            $result['hash'] = $this->hash;
+        }
+
+        if ($this->hashAlgorithm !== '') {
+            $result['hash_algorithm'] = $this->hashAlgorithm;
+        }
+
+        if ($this->recommendation !== '') {
+            $result['recommendation'] = $this->recommendation;
         }
 
         return $result;

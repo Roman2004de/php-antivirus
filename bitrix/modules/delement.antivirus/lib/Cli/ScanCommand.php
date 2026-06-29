@@ -183,6 +183,18 @@ class ScanCommand
             $options['enable_url_analyzer'] = 'N';
         }
 
+        if (!empty($flags['enable-hash-db']) && !empty($flags['disable-hash-db'])) {
+            throw new InvalidArgumentException('cli_hash_db_flags_conflict');
+        }
+
+        if (!empty($flags['enable-hash-db'])) {
+            $options['disable_hash_db'] = 'N';
+            $options['enable_hash_db'] = 'Y';
+        } elseif (!empty($flags['disable-hash-db'])) {
+            $options['disable_hash_db'] = 'Y';
+            $options['enable_hash_db'] = 'N';
+        }
+
         if (isset($cliOptions['quarantine-path'])) {
             $options['quarantine_path'] = (string)$cliOptions['quarantine-path'];
         }
@@ -223,6 +235,14 @@ class ScanCommand
 
         if (isset($cliOptions['suspicious-domains'])) {
             $options['suspicious_domains_path'] = (string)$cliOptions['suspicious-domains'];
+        }
+
+        if (isset($cliOptions['malware-hashes'])) {
+            $options['malware_hashes_path'] = (string)$cliOptions['malware-hashes'];
+        }
+
+        if (isset($cliOptions['malware-hash-prefixes'])) {
+            $options['malware_hash_prefixes_path'] = (string)$cliOptions['malware-hash-prefixes'];
         }
 
         if (isset($cliOptions['exclude']) && is_array($cliOptions['exclude'])) {
@@ -367,6 +387,9 @@ class ScanCommand
             'entropy_threshold' => $config->getEntropyThreshold(),
             'enable_url_analyzer' => $config->isUrlAnalyzerEnabled(),
             'suspicious_domains_path' => $config->getSuspiciousDomainsPath(),
+            'enable_hash_db' => $config->isHashDatabaseEnabled(),
+            'malware_hashes_path' => $config->getMalwareHashesPath(),
+            'malware_hash_prefixes_path' => $config->getMalwareHashPrefixesPath(),
             'ast_max_file_size' => $config->getAstMaxFileSize(),
         ];
     }
@@ -578,6 +601,11 @@ Options:
   --disable-url-analyzer   Disable external URL analyzer.
   --suspicious-domains=PATH
                            JSON file with user/test suspicious domains.
+  --enable-hash-db         Enable known malware hash database.
+  --disable-hash-db        Disable known malware hash database.
+  --malware-hashes=PATH    JSON file with full SHA-256 malware hashes.
+  --malware-hash-prefixes=PATH
+                           JSON file with SHA-256 hash prefixes.
   --ast-max-file-size=N    Maximum PHP file size for AST analysis, bytes.
   --exclude=PATH           Add excluded path. Can be repeated.
   --batch-size=N           Files per scanner batch, 1..1000.
