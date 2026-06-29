@@ -17,7 +17,7 @@ class ScanActionApplier
 
     public function apply(array $result, ScanConfig $config, string $scanId): array
     {
-        $hasFindings = isset($result['findings']) && is_array($result['findings']) && !empty($result['findings']);
+        $hasFindings = $this->hasRiskFindings($result);
         $plannedAction = $config->getAction();
 
         if (!$hasFindings) {
@@ -89,5 +89,20 @@ class ScanActionApplier
         }
 
         return $result;
+    }
+
+    private function hasRiskFindings(array $result): bool
+    {
+        if (!isset($result['findings']) || !is_array($result['findings'])) {
+            return false;
+        }
+
+        foreach ($result['findings'] as $finding) {
+            if (is_array($finding) && (int)($finding['score'] ?? 0) > 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

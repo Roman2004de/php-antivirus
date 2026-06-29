@@ -110,6 +110,10 @@ class FindingTagger
             $tags[] = TagCatalog::RISK_EXTERNAL_URL;
         }
 
+        if ($category === 'url' && (strpos($signatureId, 'remote_payload_loader') !== false || strpos($signatureId, 'external_script_injection') !== false)) {
+            $tags[] = TagCatalog::RISK_REMOTE_LOADER;
+        }
+
         if ($category === 'baseline') {
             $tags[] = TagCatalog::RISK_BASELINE_CHANGE;
         }

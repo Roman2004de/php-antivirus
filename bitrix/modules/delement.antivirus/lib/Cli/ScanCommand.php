@@ -158,6 +158,31 @@ class ScanCommand
             $options['enable_normalized_hash'] = 'N';
         }
 
+        if (!empty($flags['enable-entropy']) && !empty($flags['disable-entropy'])) {
+            throw new InvalidArgumentException('cli_entropy_flags_conflict');
+        }
+
+        if (!empty($flags['enable-entropy'])) {
+            $options['disable_entropy_analyzer'] = 'N';
+            $options['enable_entropy_analyzer'] = 'Y';
+        } elseif (!empty($flags['disable-entropy'])) {
+            $options['disable_entropy_analyzer'] = 'Y';
+            $options['enable_entropy_analyzer'] = 'N';
+            $options['enable_entropy_in_deep_profile'] = 'N';
+        }
+
+        if (!empty($flags['enable-url-analyzer']) && !empty($flags['disable-url-analyzer'])) {
+            throw new InvalidArgumentException('cli_url_analyzer_flags_conflict');
+        }
+
+        if (!empty($flags['enable-url-analyzer'])) {
+            $options['disable_url_analyzer'] = 'N';
+            $options['enable_url_analyzer'] = 'Y';
+        } elseif (!empty($flags['disable-url-analyzer'])) {
+            $options['disable_url_analyzer'] = 'Y';
+            $options['enable_url_analyzer'] = 'N';
+        }
+
         if (isset($cliOptions['quarantine-path'])) {
             $options['quarantine_path'] = (string)$cliOptions['quarantine-path'];
         }
@@ -184,6 +209,20 @@ class ScanCommand
         if (isset($cliOptions['ast-max-file-size'])) {
             $this->assertIntegerRange('ast-max-file-size', (string)$cliOptions['ast-max-file-size'], 1, 104857600);
             $options['ast_max_file_size'] = (string)$cliOptions['ast-max-file-size'];
+        }
+
+        if (isset($cliOptions['entropy-threshold'])) {
+            $this->assertFloatRange('entropy-threshold', (string)$cliOptions['entropy-threshold'], 0.1, 8.0);
+            $options['entropy_threshold'] = (string)$cliOptions['entropy-threshold'];
+        }
+
+        if (isset($cliOptions['entropy-min-length'])) {
+            $this->assertIntegerRange('entropy-min-length', (string)$cliOptions['entropy-min-length'], 20, 100000);
+            $options['entropy_min_length'] = (string)$cliOptions['entropy-min-length'];
+        }
+
+        if (isset($cliOptions['suspicious-domains'])) {
+            $options['suspicious_domains_path'] = (string)$cliOptions['suspicious-domains'];
         }
 
         if (isset($cliOptions['exclude']) && is_array($cliOptions['exclude'])) {
@@ -264,6 +303,19 @@ class ScanCommand
         }
     }
 
+    private function assertFloatRange(string $name, string $value, float $min, float $max): void
+    {
+        if (!preg_match('/^\d+(?:[\.,]\d+)?$/', $value)) {
+            throw new InvalidArgumentException('cli_invalid_' . str_replace('-', '_', $name));
+        }
+
+        $number = (float)str_replace(',', '.', $value);
+
+        if ($number < $min || $number > $max) {
+            throw new InvalidArgumentException('cli_invalid_' . str_replace('-', '_', $name));
+        }
+    }
+
     private function normalizeExclusions(array $exclusions): array
     {
         $result = [];
@@ -296,6 +348,7 @@ class ScanCommand
             'total_files_estimated' => (int)($response['total_files_estimated'] ?? 0),
             'files_discovered' => (int)($response['files_discovered'] ?? 0),
             'found_total' => (int)($response['found_total'] ?? 0),
+            'informational_findings_total' => (int)($response['informational_findings_total'] ?? 0),
             'runtime_errors' => (int)($response['runtime_errors'] ?? 0),
             'report_path' => (string)($response['report_path'] ?? ''),
             'runtime_report_path' => '',
@@ -309,6 +362,11 @@ class ScanCommand
             'enable_common_strings_prefilter' => $config->isCommonStringsPrefilterEnabled(),
             'enable_normalized_hash' => $config->isNormalizedHashEnabled(),
             'normalized_hash_max_file_size_bytes' => $config->getNormalizedHashMaxFileSizeBytes(),
+            'enable_entropy_analyzer' => $config->isEntropyAnalyzerEnabled(),
+            'entropy_min_length' => $config->getEntropyMinLength(),
+            'entropy_threshold' => $config->getEntropyThreshold(),
+            'enable_url_analyzer' => $config->isUrlAnalyzerEnabled(),
+            'suspicious_domains_path' => $config->getSuspiciousDomainsPath(),
             'ast_max_file_size' => $config->getAstMaxFileSize(),
         ];
     }
@@ -437,6 +495,7 @@ class ScanCommand
             'Action: ' . $payload['action'] . ($payload['dry_run'] ? ' (dry-run)' : ''),
             'Processed: ' . $payload['processed_files'] . '/' . $payload['total_files_estimated'],
             'Found: ' . $payload['found_total'],
+            'Informational findings: ' . $payload['informational_findings_total'],
             'Runtime errors: ' . $payload['runtime_errors'],
         ];
 
@@ -511,6 +570,14 @@ Options:
   --disable-normalized-hash Disable normalized hash calculation.
   --normalized-hash-max-file-size-mb=N
                            Maximum file size for normalized hash, 1..1024 MB.
+  --enable-entropy         Enable entropy analyzer for encoded payload strings.
+  --disable-entropy        Disable entropy analyzer, including deep/strict auto-enable.
+  --entropy-threshold=N    Shannon entropy threshold, 0.1..8.0. Default: 4.7.
+  --entropy-min-length=N   Minimum candidate string length, 20..100000. Default: 200.
+  --enable-url-analyzer    Enable external URL analyzer.
+  --disable-url-analyzer   Disable external URL analyzer.
+  --suspicious-domains=PATH
+                           JSON file with user/test suspicious domains.
   --ast-max-file-size=N    Maximum PHP file size for AST analysis, bytes.
   --exclude=PATH           Add excluded path. Can be repeated.
   --batch-size=N           Files per scanner batch, 1..1000.

@@ -1,0 +1,10 @@
+{
+  "version": "1",
+  "items": [
+    {
+      "domain": "example-malicious.test",
+      "severity": "critical",
+      "tags": ["malware", "payload_host"]
+    }
+  ]
+}

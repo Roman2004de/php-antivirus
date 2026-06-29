@@ -53,6 +53,13 @@ $optionNames = [
     'normalized_hash_max_file_size_mb',
     'enable_ast_analysis',
     'ast_max_file_size',
+    'enable_entropy_analyzer',
+    'enable_entropy_in_deep_profile',
+    'entropy_min_length',
+    'entropy_threshold',
+    'entropy_context_window',
+    'enable_url_analyzer',
+    'suspicious_domains_path',
 ];
 
 $getDefault = static function ($name) use ($defaults) {
@@ -128,6 +135,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['save']) || isset($_P
         $values['normalized_hash_max_file_size_mb'] = trim((string)($_POST['normalized_hash_max_file_size_mb'] ?? ''));
         $values['enable_ast_analysis'] = isset($_POST['enable_ast_analysis']) && $_POST['enable_ast_analysis'] === 'Y' ? 'Y' : 'N';
         $values['ast_max_file_size'] = trim((string)($_POST['ast_max_file_size'] ?? ''));
+        $values['enable_entropy_analyzer'] = isset($_POST['enable_entropy_analyzer']) && $_POST['enable_entropy_analyzer'] === 'Y' ? 'Y' : 'N';
+        $values['enable_entropy_in_deep_profile'] = isset($_POST['enable_entropy_in_deep_profile']) && $_POST['enable_entropy_in_deep_profile'] === 'Y' ? 'Y' : 'N';
+        $values['entropy_min_length'] = trim((string)($_POST['entropy_min_length'] ?? ''));
+        $values['entropy_threshold'] = str_replace(',', '.', trim((string)($_POST['entropy_threshold'] ?? '')));
+        $values['entropy_context_window'] = trim((string)($_POST['entropy_context_window'] ?? ''));
+        $values['enable_url_analyzer'] = isset($_POST['enable_url_analyzer']) && $_POST['enable_url_analyzer'] === 'Y' ? 'Y' : 'N';
+        $values['suspicious_domains_path'] = trim((string)($_POST['suspicious_domains_path'] ?? ''));
 
         $pathFields = [
             'scan_path' => Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_SCAN_PATH'),
@@ -161,6 +175,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['save']) || isset($_P
             }
         }
 
+        if ($values['suspicious_domains_path'] !== '') {
+            $label = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_SUSPICIOUS_DOMAINS_PATH');
+
+            if (strpos($values['suspicious_domains_path'], "\0") !== false || $hasTraversal($values['suspicious_domains_path'])) {
+                $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_PATH', ['#FIELD#' => $label]);
+            } elseif (strlen($values['suspicious_domains_path']) > 4096) {
+                $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_TOO_LONG', ['#FIELD#' => $label]);
+            }
+        }
+
         if (!isset($scanProfiles[$values['scan_profile']])) {
             $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_SCAN_PROFILE');
         }
@@ -187,6 +211,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['save']) || isset($_P
 
         if (!preg_match('/^\d+$/', $values['ast_max_file_size']) || (int)$values['ast_max_file_size'] < 1 || (int)$values['ast_max_file_size'] > 104857600) {
             $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_AST_MAX_FILE_SIZE');
+        }
+
+        if (!preg_match('/^\d+$/', $values['entropy_min_length']) || (int)$values['entropy_min_length'] < 20 || (int)$values['entropy_min_length'] > 100000) {
+            $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_ENTROPY_MIN_LENGTH');
+        }
+
+        if (!preg_match('/^\d+(?:\.\d+)?$/', $values['entropy_threshold']) || (float)$values['entropy_threshold'] < 0.1 || (float)$values['entropy_threshold'] > 8.0) {
+            $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_ENTROPY_THRESHOLD');
+        }
+
+        if (!preg_match('/^\d+$/', $values['entropy_context_window']) || (int)$values['entropy_context_window'] < 0 || (int)$values['entropy_context_window'] > 10000) {
+            $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_ENTROPY_CONTEXT_WINDOW');
         }
 
         [$excludePaths, $excludeErrors] = $normalizeLines($_POST['exclude_paths'] ?? '');
@@ -457,6 +493,92 @@ $tabControl->Begin();
         </td>
         <td class="adm-detail-content-cell-r">
             <input type="number" min="1" max="104857600" id="delement_antivirus_ast_max_file_size" name="ast_max_file_size" value="<?php echo htmlspecialcharsbx($values['ast_max_file_size']); ?>">
+        </td>
+    </tr>
+    <tr class="heading">
+        <td colspan="2"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ENTROPY_SECTION'); ?></td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_enable_entropy_analyzer"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ENABLE_ENTROPY_ANALYZER'); ?></label>
+        </td>
+        <td class="adm-detail-content-cell-r">
+            <input type="checkbox" id="delement_antivirus_enable_entropy_analyzer" name="enable_entropy_analyzer" value="Y"<?php echo $values['enable_entropy_analyzer'] === 'Y' ? ' checked' : ''; ?>>
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l"></td>
+        <td class="adm-detail-content-cell-r">
+            <?php echo BeginNote(); ?>
+            <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ENABLE_ENTROPY_ANALYZER_HINT'); ?>
+            <?php echo EndNote(); ?>
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_enable_entropy_in_deep_profile"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ENABLE_ENTROPY_IN_DEEP_PROFILE'); ?></label>
+        </td>
+        <td class="adm-detail-content-cell-r">
+            <input type="checkbox" id="delement_antivirus_enable_entropy_in_deep_profile" name="enable_entropy_in_deep_profile" value="Y"<?php echo $values['enable_entropy_in_deep_profile'] === 'Y' ? ' checked' : ''; ?>>
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_entropy_min_length"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ENTROPY_MIN_LENGTH'); ?></label>
+        </td>
+        <td class="adm-detail-content-cell-r">
+            <input type="number" min="20" max="100000" id="delement_antivirus_entropy_min_length" name="entropy_min_length" value="<?php echo htmlspecialcharsbx($values['entropy_min_length']); ?>">
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_entropy_threshold"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ENTROPY_THRESHOLD'); ?></label>
+        </td>
+        <td class="adm-detail-content-cell-r">
+            <input type="text" id="delement_antivirus_entropy_threshold" name="entropy_threshold" value="<?php echo htmlspecialcharsbx($values['entropy_threshold']); ?>">
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_entropy_context_window"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ENTROPY_CONTEXT_WINDOW'); ?></label>
+        </td>
+        <td class="adm-detail-content-cell-r">
+            <input type="number" min="0" max="10000" id="delement_antivirus_entropy_context_window" name="entropy_context_window" value="<?php echo htmlspecialcharsbx($values['entropy_context_window']); ?>">
+        </td>
+    </tr>
+    <tr class="heading">
+        <td colspan="2"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_URL_SECTION'); ?></td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_enable_url_analyzer"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ENABLE_URL_ANALYZER'); ?></label>
+        </td>
+        <td class="adm-detail-content-cell-r">
+            <input type="checkbox" id="delement_antivirus_enable_url_analyzer" name="enable_url_analyzer" value="Y"<?php echo $values['enable_url_analyzer'] === 'Y' ? ' checked' : ''; ?>>
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l"></td>
+        <td class="adm-detail-content-cell-r">
+            <?php echo BeginNote(); ?>
+            <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ENABLE_URL_ANALYZER_HINT'); ?>
+            <?php echo EndNote(); ?>
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_suspicious_domains_path"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_SUSPICIOUS_DOMAINS_PATH'); ?></label>
+        </td>
+        <td class="adm-detail-content-cell-r">
+            <input type="text" size="70" id="delement_antivirus_suspicious_domains_path" name="suspicious_domains_path" value="<?php echo htmlspecialcharsbx($values['suspicious_domains_path']); ?>">
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l"></td>
+        <td class="adm-detail-content-cell-r">
+            <?php echo BeginNote(); ?>
+            <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_SUSPICIOUS_DOMAINS_PATH_HINT'); ?>
+            <?php echo EndNote(); ?>
         </td>
     </tr>
     <tr>

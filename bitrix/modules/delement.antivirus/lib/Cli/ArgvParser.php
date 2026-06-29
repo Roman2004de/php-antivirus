@@ -19,6 +19,10 @@ class ArgvParser
         'disable-prefilter' => true,
         'enable-normalized-hash' => true,
         'disable-normalized-hash' => true,
+        'enable-entropy' => true,
+        'disable-entropy' => true,
+        'enable-url-analyzer' => true,
+        'disable-url-analyzer' => true,
     ];
 
     private const VALUE_OPTIONS = [
@@ -34,6 +38,9 @@ class ArgvParser
         'max-file-size-mb' => true,
         'normalized-hash-max-file-size-mb' => true,
         'ast-max-file-size' => true,
+        'entropy-threshold' => true,
+        'entropy-min-length' => true,
+        'suspicious-domains' => true,
         'quarantine-path' => true,
     ];
 

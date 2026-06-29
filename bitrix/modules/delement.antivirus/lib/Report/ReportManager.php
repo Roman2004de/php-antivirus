@@ -130,6 +130,9 @@ class ReportManager
             'found_total' => isset($session['found_total']) ? (int)$session['found_total'] : 0,
             'runtime_errors' => isset($session['runtime_errors']) ? (int)$session['runtime_errors'] : 0,
             'findings_total' => $this->countFindings($results),
+            'informational_findings_total' => isset($session['informational_findings_total'])
+                ? (int)$session['informational_findings_total']
+                : $this->countInformationalFindings($results),
             'tags' => $this->collectTags($results),
         ];
 
@@ -163,6 +166,7 @@ class ReportManager
             'found_total' => isset($report['found_total']) ? (int)$report['found_total'] : 0,
             'runtime_errors' => isset($report['runtime_errors']) ? (int)$report['runtime_errors'] : 0,
             'findings_total' => $this->countFindings($results),
+            'informational_findings_total' => $this->countInformationalFindings($results),
             'tags' => $this->collectTags($results),
         ];
     }
@@ -245,6 +249,25 @@ class ReportManager
         foreach ($results as $result) {
             if (isset($result['findings']) && is_array($result['findings'])) {
                 $total += count($result['findings']);
+            }
+        }
+
+        return $total;
+    }
+
+    private function countInformationalFindings(array $results): int
+    {
+        $total = 0;
+
+        foreach ($results as $result) {
+            if (!isset($result['findings']) || !is_array($result['findings'])) {
+                continue;
+            }
+
+            foreach ($result['findings'] as $finding) {
+                if (is_array($finding) && (int)($finding['score'] ?? 0) <= 0) {
+                    $total++;
+                }
             }
         }
 

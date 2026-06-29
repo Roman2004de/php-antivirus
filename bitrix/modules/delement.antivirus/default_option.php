@@ -16,4 +16,11 @@ $delement_antivirus_default_option = [
     'normalized_hash_max_file_size_mb' => '5',
     'enable_ast_analysis' => 'Y',
     'ast_max_file_size' => '1048576',
+    'enable_entropy_analyzer' => 'N',
+    'enable_entropy_in_deep_profile' => 'Y',
+    'entropy_min_length' => '200',
+    'entropy_threshold' => '4.7',
+    'entropy_context_window' => '300',
+    'enable_url_analyzer' => 'Y',
+    'suspicious_domains_path' => '#DOCUMENT_ROOT#/bitrix/modules/delement.antivirus/var/signatures/suspicious_domains.json',
 ];

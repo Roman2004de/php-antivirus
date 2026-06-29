@@ -44,6 +44,10 @@ class JsonReportWriter
             $report['summary']['tags'] = [];
         }
 
+        if (isset($report['summary']) && is_array($report['summary']) && !isset($report['summary']['informational_findings_total'])) {
+            $report['summary']['informational_findings_total'] = 0;
+        }
+
         if (!isset($report['results']) || !is_array($report['results'])) {
             return $report;
         }

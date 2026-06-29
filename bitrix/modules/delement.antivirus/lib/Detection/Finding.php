@@ -19,6 +19,11 @@ class Finding
     private $type;
     private $source;
     private $fingerprint;
+    private $confidence;
+    private $entropy;
+    private $length;
+    private $url;
+    private $domain;
     private $tags = [];
 
     public function __construct(array $data)
@@ -38,6 +43,11 @@ class Finding
         $this->type = isset($data['type']) ? (string)$data['type'] : '';
         $this->source = isset($data['source']) ? (string)$data['source'] : '';
         $this->fingerprint = isset($data['fingerprint']) ? (string)$data['fingerprint'] : '';
+        $this->confidence = isset($data['confidence']) ? (string)$data['confidence'] : '';
+        $this->entropy = isset($data['entropy']) && $data['entropy'] !== null ? (float)$data['entropy'] : null;
+        $this->length = isset($data['length']) && $data['length'] !== null ? (int)$data['length'] : null;
+        $this->url = isset($data['url']) ? (string)$data['url'] : '';
+        $this->domain = isset($data['domain']) ? (string)$data['domain'] : '';
         $this->tags = isset($data['tags']) && is_array($data['tags']) ? self::normalizeTags($data['tags']) : [];
     }
 
@@ -146,6 +156,26 @@ class Finding
 
         if ($this->source !== '') {
             $result['source'] = $this->source;
+        }
+
+        if ($this->confidence !== '') {
+            $result['confidence'] = $this->confidence;
+        }
+
+        if ($this->entropy !== null) {
+            $result['entropy'] = $this->entropy;
+        }
+
+        if ($this->length !== null) {
+            $result['length'] = $this->length;
+        }
+
+        if ($this->url !== '') {
+            $result['url'] = $this->url;
+        }
+
+        if ($this->domain !== '') {
+            $result['domain'] = $this->domain;
         }
 
         return $result;

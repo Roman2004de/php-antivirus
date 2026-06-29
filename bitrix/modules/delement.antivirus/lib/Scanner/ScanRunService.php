@@ -130,7 +130,9 @@ class ScanRunService
             $stepResults[] = $result;
             $session['processed_files']++;
 
-            if (!empty($result['findings'])) {
+            $session['informational_findings_total'] = (int)($session['informational_findings_total'] ?? 0) + $this->countInformationalFindings($result);
+
+            if ($this->hasRiskFindings($result)) {
                 $session['found_total']++;
             }
 
@@ -408,6 +410,7 @@ class ScanRunService
                 ? (int)$session['files_discovered']
                 : (isset($session['files']) && is_array($session['files']) ? count($session['files']) : 0),
             'found_total' => (int)$session['found_total'],
+            'informational_findings_total' => (int)($session['informational_findings_total'] ?? 0),
             'runtime_errors' => (int)$session['runtime_errors'],
             'current_file' => (string)$session['current_file'],
             'cursor' => (int)$session['cursor'],
@@ -431,10 +434,43 @@ class ScanRunService
             'total_files_estimated' => $discoveryDone ? (int)($activeSession['total_files_estimated'] ?? 0) : 0,
             'files_discovered' => (int)($activeSession['files_discovered'] ?? 0),
             'found_total' => (int)($activeSession['found_total'] ?? 0),
+            'informational_findings_total' => (int)($activeSession['informational_findings_total'] ?? 0),
             'runtime_errors' => (int)($activeSession['runtime_errors'] ?? 0),
             'current_file' => (string)($activeSession['current_file'] ?? ''),
             'discovery_done' => $discoveryDone,
         ];
+    }
+
+    private function hasRiskFindings(array $result): bool
+    {
+        if (!isset($result['findings']) || !is_array($result['findings'])) {
+            return false;
+        }
+
+        foreach ($result['findings'] as $finding) {
+            if (is_array($finding) && (int)($finding['score'] ?? 0) > 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function countInformationalFindings(array $result): int
+    {
+        if (!isset($result['findings']) || !is_array($result['findings'])) {
+            return 0;
+        }
+
+        $total = 0;
+
+        foreach ($result['findings'] as $finding) {
+            if (is_array($finding) && (int)($finding['score'] ?? 0) <= 0) {
+                $total++;
+            }
+        }
+
+        return $total;
     }
 
     private function validateScanPath(string $path): string

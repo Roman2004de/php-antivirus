@@ -91,6 +91,30 @@ class ScanResult
         return !empty($this->findings);
     }
 
+    public function hasRiskFindings(): bool
+    {
+        foreach ($this->findings as $finding) {
+            if ($finding instanceof Finding && $finding->getScore() > 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function getInformationalFindingsCount(): int
+    {
+        $count = 0;
+
+        foreach ($this->findings as $finding) {
+            if ($finding instanceof Finding && $finding->getScore() <= 0) {
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
     public function isError(): bool
     {
         return $this->status === Verdict::ERROR;

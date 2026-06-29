@@ -180,6 +180,15 @@ try {
     }
 
     $report = json_decode((string)file_get_contents((string)$payload['report_path']), true);
+    $reportConfig = isset($report['config']) && is_array($report['config']) ? $report['config'] : [];
+
+    if (($reportConfig['enable_normalized_hash'] ?? true) !== false) {
+        delement_antivirus_normalized_hash_fail('Disabled CLI report config must contain enable_normalized_hash=false', [
+            'config' => $reportConfig,
+            'payload' => $payload,
+        ]);
+    }
+
     $reportResults = isset($report['results']) && is_array($report['results']) ? $report['results'] : [];
 
     foreach ($reportResults as $result) {
@@ -219,6 +228,15 @@ try {
     }
 
     $enabledReport = json_decode((string)file_get_contents((string)$enabledPayload['report_path']), true);
+    $enabledReportConfig = isset($enabledReport['config']) && is_array($enabledReport['config']) ? $enabledReport['config'] : [];
+
+    if (($enabledReportConfig['enable_normalized_hash'] ?? false) !== true) {
+        delement_antivirus_normalized_hash_fail('Enabled CLI report config must contain enable_normalized_hash=true', [
+            'config' => $enabledReportConfig,
+            'payload' => $enabledPayload,
+        ]);
+    }
+
     $enabledResults = isset($enabledReport['results']) && is_array($enabledReport['results']) ? $enabledReport['results'] : [];
     $enabledHashesByName = [];
 
@@ -250,7 +268,8 @@ try {
         'normalized_hash_value' => $expectedNormalizedHash,
         'large_is_null' => $large['normalized_hash'] === null,
         'binary_is_null' => $binary['normalized_hash'] === null,
-        'cli_enable_normalized_hash' => $payload['enable_normalized_hash'],
+        'cli_disable_normalized_hash' => $payload['enable_normalized_hash'],
+        'cli_enable_normalized_hash' => $enabledPayload['enable_normalized_hash'],
         'cli_normalized_hash_max_file_size_bytes' => $payload['normalized_hash_max_file_size_bytes'],
         'json_report_enabled_hash' => $enabledHashesByName['formatted.php'],
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;

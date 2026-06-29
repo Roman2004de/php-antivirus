@@ -9,6 +9,7 @@ class ScanSummary
     private $finishedAt;
     private $processedFiles = 0;
     private $foundFiles = 0;
+    private $informationalFindingsTotal = 0;
     private $skippedFiles = 0;
     private $runtimeErrors = 0;
     private $results = [];
@@ -35,7 +36,9 @@ class ScanSummary
             return;
         }
 
-        if ($result->hasFindings()) {
+        $this->informationalFindingsTotal += $result->getInformationalFindingsCount();
+
+        if ($result->hasRiskFindings()) {
             $this->foundFiles++;
         }
     }
@@ -58,6 +61,7 @@ class ScanSummary
             'finished_at' => $this->finishedAt,
             'processed_files' => $this->processedFiles,
             'found_files' => $this->foundFiles,
+            'informational_findings_total' => $this->informationalFindingsTotal,
             'skipped_files' => $this->skippedFiles,
             'runtime_errors' => $this->runtimeErrors,
             'results' => array_map(static function (ScanResult $result) {

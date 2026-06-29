@@ -28,6 +28,8 @@
 - Быстрый `common_strings` prefilter для regex-правил с настройкой и CLI-флагами.
 - `normalized_hash` для текстовых файлов: устойчивый SHA-256 от содержимого без пробелов и переносов строк.
 - FindingSuppressor: точечное скрытие конкретного false positive по стабильному finding fingerprint.
+- EntropyAnalyzer: эвристическое обнаружение длинных высокоэнтропийных encoded payload с тегами и CLI-флагами.
+- UrlExtractor/UrlAnalyzer: извлечение внешних URL, remote loaders, iframe/script-инъекций, `.htaccess` redirects и локальная suspicious-domain база.
 - Поддержка внешнего файла regex-сигнатур с добавлением к встроенным правилам.
 - AST-анализ PHP поверх regex-слоя: опасные вызовы, динамические вызовы, include/require и encoded execution chains.
 - Taint-анализ PHP: request/php://input/filter_input -> переменные/трансформеры -> dangerous sink с сохранением trace.
@@ -85,8 +87,10 @@ bitrix/modules/delement.antivirus/
     Config/
     Detection/
       Ast/
+      Entropy/
       Htaccess/
       Taint/
+      Url/
     File/
     Quarantine/
     Report/
@@ -134,10 +138,15 @@ bitrix/modules/delement.antivirus/
 - `Delement\Antivirus\Detection\Ast\AstAnalyzer`
 - `Delement\Antivirus\Detection\Ast\PhpAstParser`
 - `Delement\Antivirus\Detection\Ast\NodeCollector`
+- `Delement\Antivirus\Detection\Entropy\EntropyAnalyzer`
+- `Delement\Antivirus\Detection\Entropy\EntropyCalculator`
 - `Delement\Antivirus\Detection\Htaccess\HtaccessAnalyzer`
 - `Delement\Antivirus\Detection\Taint\TaintAnalyzer`
 - `Delement\Antivirus\Detection\Taint\TaintPropagator`
 - `Delement\Antivirus\Detection\Taint\TaintSinkDetector`
+- `Delement\Antivirus\Detection\Url\UrlAnalyzer`
+- `Delement\Antivirus\Detection\Url\UrlExtractor`
+- `Delement\Antivirus\Detection\Url\SuspiciousDomainList`
 - `Delement\Antivirus\File\FileCollector`
 - `Delement\Antivirus\File\FileFilter`
 - `Delement\Antivirus\File\FileReader`
@@ -152,6 +161,10 @@ Taint-слой работает внутри AST-прохода и ищет це
 
 Файлы `.htaccess` анализируются отдельным слоем `HtaccessAnalyzer`. Он ищет попытки включить PHP-исполнение для статических расширений, `auto_prepend_file`/`auto_append_file`, PHP/JS-код внутри `.htaccess`, подозрительные rewrite-правила, WordPress-маркеры внутри Bitrix-проекта и директивы обхода доступа в чувствительных каталогах.
 
+Entropy-слой ищет длинные строки с высокой Shannon entropy: base64/hex payload и packed JS/PHP. В стандартном профиле он выключен по умолчанию, в deep-профиле может включаться автоматически через настройку `enable_entropy_in_deep_profile`, а в CLI управляется флагами `--enable-entropy` и `--disable-entropy`. Findings категории `entropy` содержат `confidence`, `entropy`, `length` и теги `engine:entropy`, `risk:entropy`, `risk:encoded_payload`.
+
+URL-слой извлекает внешние `http://` и `https://` URL из PHP, JavaScript, HTML и `.htaccess`. Он отдельно помечает remote payload loaders, `iframe src`, `script src`, `document.write('<script ...>')`, `.htaccess` redirects и совпадения с локальной JSON-базой подозрительных доменов. Findings категории `url` содержат `url`, `domain`, `trace` и теги `engine:url`, `risk:external_url`, а для loader-сценариев также `risk:remote_loader`. Обычный внешний URL фиксируется как informational finding со score `0` и не увеличивает `found_files`; такие срабатывания считаются отдельно в `informational_findings_total`. База доменов находится в `var/signatures/suspicious_domains.json` и не содержит сторонних malware databases.
+
 ## Настройки
 
 В `options.php` доступны:
@@ -165,8 +178,14 @@ Taint-слой работает внутри AST-прохода и ищет це
 - путь к внешнему файлу сигнатур;
 - размер порции сканирования;
 - максимальный размер файла;
+- `common_strings` prefilter;
+- normalized hash;
 - включение AST-анализа PHP;
 - максимальный размер PHP-файла для AST-анализа;
+- entropy analyzer;
+- минимальная длина строки и порог entropy;
+- URL analyzer;
+- путь к локальной базе подозрительных доменов;
 - список исключений.
 
 Исключения путей сравниваются как нормализованный path-prefix: путь равен исключению или начинается с `excludePath/`.
@@ -258,6 +277,13 @@ php /home/site/public_html/bitrix/tools/delement.antivirus/scan.php --path=/home
 - `--enable-normalized-hash`: включить расчет `normalized_hash`;
 - `--disable-normalized-hash`: выключить расчет `normalized_hash`;
 - `--normalized-hash-max-file-size-mb=N`: максимальный размер файла для `normalized_hash` от 1 до 1024 МБ;
+- `--enable-entropy`: включить entropy analyzer;
+- `--disable-entropy`: выключить entropy analyzer, включая auto-enable для deep/strict;
+- `--entropy-threshold=N`: порог Shannon entropy от 0.1 до 8.0;
+- `--entropy-min-length=N`: минимальная длина строки-кандидата от 20 до 100000;
+- `--enable-url-analyzer`: включить анализ внешних URL;
+- `--disable-url-analyzer`: выключить анализ внешних URL;
+- `--suspicious-domains=PATH`: путь к пользовательской/тестовой JSON-базе подозрительных доменов;
 - `--ast-max-file-size=N`: лимит размера PHP-файла для AST-анализа в байтах;
 - `--exclude=PATH`: добавить исключение, можно указывать несколько раз;
 - `--batch-size=N`: размер порции сканирования от 1 до 1000;
@@ -405,6 +431,18 @@ Smoke-test FindingSuppressor:
 php bitrix/modules/delement.antivirus/tests/finding_suppressor_smoke.php
 ```
 
+Smoke-test EntropyAnalyzer:
+
+```bash
+php bitrix/modules/delement.antivirus/tests/entropy_analyzer_smoke.php
+```
+
+Smoke-test UrlExtractor:
+
+```bash
+php bitrix/modules/delement.antivirus/tests/url_extractor_smoke.php
+```
+
 ## Важные ограничения
 
 - Это сигнатурный и rule-based scanner, а не полноценная EDR/AV/WAF-система.
@@ -414,4 +452,4 @@ php bitrix/modules/delement.antivirus/tests/finding_suppressor_smoke.php
 
 ## Следующий этап
 
-Этап 10.5: `EntropyAnalyzer` для эвристического анализа высокоэнтропийных payload.
+Этап 10.7: Known Malware Hash Database на пользовательской/тестовой базе hash-индикаторов.

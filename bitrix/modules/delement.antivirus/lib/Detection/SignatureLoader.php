@@ -9,6 +9,7 @@ class SignatureLoader
         'javascript.php',
         'html.php',
         'bitrix.php',
+        'url.php',
     ];
 
     private $rulesPath;

@@ -11,6 +11,8 @@ class Detector
     private $ruleEngine;
     private $astAnalyzer;
     private $htaccessAnalyzer;
+    private $entropyAnalyzer;
+    private $urlAnalyzer;
     private $resultTagger;
 
     private const AST_EXTENSIONS = [
@@ -22,11 +24,13 @@ class Detector
         'include' => true,
     ];
 
-    public function __construct(RuleEngine $ruleEngine, $astAnalyzer = null, $htaccessAnalyzer = null, ResultTagger $resultTagger = null)
+    public function __construct(RuleEngine $ruleEngine, $astAnalyzer = null, $htaccessAnalyzer = null, ResultTagger $resultTagger = null, $entropyAnalyzer = null, $urlAnalyzer = null)
     {
         $this->ruleEngine = $ruleEngine;
         $this->astAnalyzer = $astAnalyzer;
         $this->htaccessAnalyzer = $htaccessAnalyzer;
+        $this->entropyAnalyzer = $entropyAnalyzer ?: $this->createEntropyAnalyzer();
+        $this->urlAnalyzer = $urlAnalyzer ?: $this->createUrlAnalyzer();
         $this->resultTagger = $resultTagger ?: $this->createResultTagger();
 
         if ($this->astAnalyzer === null && class_exists('Delement\\Antivirus\\Detection\\Ast\\AstAnalyzer')) {
@@ -49,6 +53,10 @@ class Detector
         $useAst = $this->shouldAnalyzeAst($filePath, $config);
         $htaccessContent = '';
         $useHtaccess = $this->shouldAnalyzeHtaccess($filePath);
+        $entropyContent = '';
+        $useEntropy = $this->shouldAnalyzeEntropy($config);
+        $urlContent = '';
+        $useUrl = $this->shouldAnalyzeUrl($config);
 
         foreach ($this->ruleEngine->analyzePath($filePath, $config) as $finding) {
             $this->addFinding($findings, $seen, $finding);
@@ -73,6 +81,14 @@ class Detector
             if ($useHtaccess) {
                 $htaccessContent .= $chunk;
             }
+
+            if ($useEntropy) {
+                $entropyContent .= $chunk;
+            }
+
+            if ($useUrl) {
+                $urlContent .= $chunk;
+            }
         }
 
         if ($useAst && !$astTooLarge && $astContent !== '' && $this->astAnalyzer !== null) {
@@ -83,6 +99,18 @@ class Detector
 
         if ($useHtaccess && $htaccessContent !== '' && $this->htaccessAnalyzer !== null) {
             foreach ($this->htaccessAnalyzer->analyze($htaccessContent, $filePath) as $finding) {
+                $this->addFinding($findings, $seen, $finding);
+            }
+        }
+
+        if ($useEntropy && $entropyContent !== '' && $this->entropyAnalyzer !== null) {
+            foreach ($this->entropyAnalyzer->analyze($entropyContent, $filePath, $config) as $finding) {
+                $this->addFinding($findings, $seen, $finding);
+            }
+        }
+
+        if ($useUrl && $urlContent !== '' && $this->urlAnalyzer !== null) {
+            foreach ($this->urlAnalyzer->analyze($urlContent, $filePath, $config) as $finding) {
                 $this->addFinding($findings, $seen, $finding);
             }
         }
@@ -160,6 +188,54 @@ class Detector
     private function shouldAnalyzeHtaccess(string $filePath): bool
     {
         return basename($filePath) === '.htaccess' && $this->htaccessAnalyzer !== null;
+    }
+
+    private function shouldAnalyzeEntropy(ScanConfig $config): bool
+    {
+        return $config->isEntropyAnalyzerEnabled() && $this->entropyAnalyzer !== null;
+    }
+
+    private function shouldAnalyzeUrl(ScanConfig $config): bool
+    {
+        return $config->isUrlAnalyzerEnabled() && $this->urlAnalyzer !== null;
+    }
+
+    private function createEntropyAnalyzer()
+    {
+        $className = 'Delement\\Antivirus\\Detection\\Entropy\\EntropyAnalyzer';
+
+        if (!class_exists($className)) {
+            $entropyPath = __DIR__ . '/Entropy';
+
+            foreach (['EntropyCalculator.php', 'EntropyFindingFactory.php', 'EntropyAnalyzer.php'] as $file) {
+                $path = $entropyPath . '/' . $file;
+
+                if (is_file($path)) {
+                    require_once $path;
+                }
+            }
+        }
+
+        return class_exists($className) ? new $className() : null;
+    }
+
+    private function createUrlAnalyzer()
+    {
+        $className = 'Delement\\Antivirus\\Detection\\Url\\UrlAnalyzer';
+
+        if (!class_exists($className)) {
+            $urlPath = __DIR__ . '/Url';
+
+            foreach (['UrlExtractor.php', 'SuspiciousDomainList.php', 'UrlFindingFactory.php', 'UrlAnalyzer.php'] as $file) {
+                $path = $urlPath . '/' . $file;
+
+                if (is_file($path)) {
+                    require_once $path;
+                }
+            }
+        }
+
+        return class_exists($className) ? new $className() : null;
     }
 
     private function createResultTagger()

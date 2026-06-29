@@ -254,6 +254,11 @@ if (!function_exists('delement_antivirus_report_finding_rows')) {
                     'severity' => (string)($finding['severity'] ?? ($result['severity'] ?? '')),
                     'signature_id' => (string)($finding['signature_id'] ?? ''),
                     'category' => (string)($finding['category'] ?? ''),
+                    'confidence' => (string)($finding['confidence'] ?? ''),
+                    'entropy' => isset($finding['entropy']) && $finding['entropy'] !== null ? (float)$finding['entropy'] : null,
+                    'length' => isset($finding['length']) && $finding['length'] !== null ? (int)$finding['length'] : null,
+                    'url' => (string)($finding['url'] ?? ''),
+                    'domain' => (string)($finding['domain'] ?? ''),
                     'excerpt' => (string)($finding['excerpt'] ?? ''),
                     'tags' => delement_antivirus_report_merge_tags($result['tags'] ?? [], $finding['tags'] ?? []),
                     'scan_result' => $result,
@@ -293,6 +298,11 @@ if (!function_exists('delement_antivirus_report_sort_finding_rows')) {
             'severity',
             'signature_id',
             'category',
+            'confidence',
+            'entropy',
+            'length',
+            'url',
+            'domain',
             'normalized_hash',
             'excerpt',
             'tags',
@@ -301,9 +311,12 @@ if (!function_exists('delement_antivirus_report_sort_finding_rows')) {
         $direction = strtolower((string)$order) === 'asc' ? 1 : -1;
 
         usort($rows, static function (array $left, array $right) use ($field, $direction) {
-            if ($field === 'score') {
+            if ($field === 'score' || $field === 'length') {
                 $leftValue = (int)($left[$field] ?? 0);
                 $rightValue = (int)($right[$field] ?? 0);
+            } elseif ($field === 'entropy') {
+                $leftValue = (float)($left[$field] ?? 0);
+                $rightValue = (float)($right[$field] ?? 0);
             } elseif ($field === 'tags') {
                 $leftValue = implode(',', delement_antivirus_report_normalize_tags($left[$field] ?? []));
                 $rightValue = implode(',', delement_antivirus_report_normalize_tags($right[$field] ?? []));
@@ -733,6 +746,36 @@ $lAdmin->AddHeaders([
         'default' => true,
     ],
     [
+        'id' => 'CONFIDENCE',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_CONFIDENCE'),
+        'sort' => 'confidence',
+        'default' => false,
+    ],
+    [
+        'id' => 'ENTROPY',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_ENTROPY'),
+        'sort' => 'entropy',
+        'default' => false,
+    ],
+    [
+        'id' => 'LENGTH',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_LENGTH'),
+        'sort' => 'length',
+        'default' => false,
+    ],
+    [
+        'id' => 'URL',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_URL'),
+        'sort' => 'url',
+        'default' => true,
+    ],
+    [
+        'id' => 'DOMAIN',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_DOMAIN'),
+        'sort' => 'domain',
+        'default' => false,
+    ],
+    [
         'id' => 'NORMALIZED_HASH',
         'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_NORMALIZED_HASH'),
         'sort' => 'normalized_hash',
@@ -777,6 +820,11 @@ while ($rowData = $rsData->NavNext(true, 'f_')) {
     $row->AddViewField('SEVERITY', htmlspecialcharsbx((string)($rowData['severity'] ?? '')));
     $row->AddViewField('SIGNATURE_ID', htmlspecialcharsbx((string)($rowData['signature_id'] ?? '')));
     $row->AddViewField('CATEGORY', htmlspecialcharsbx((string)($rowData['category'] ?? '')));
+    $row->AddViewField('CONFIDENCE', (string)($rowData['confidence'] ?? '') !== '' ? htmlspecialcharsbx((string)$rowData['confidence']) : '&mdash;');
+    $row->AddViewField('ENTROPY', $rowData['entropy'] !== null ? htmlspecialcharsbx((string)$rowData['entropy']) : '&mdash;');
+    $row->AddViewField('LENGTH', $rowData['length'] !== null ? (int)$rowData['length'] : '&mdash;');
+    $row->AddViewField('URL', (string)($rowData['url'] ?? '') !== '' ? '<span title="' . htmlspecialcharsbx((string)$rowData['url']) . '">' . htmlspecialcharsbx((string)$rowData['url']) . '</span>' : '&mdash;');
+    $row->AddViewField('DOMAIN', (string)($rowData['domain'] ?? '') !== '' ? htmlspecialcharsbx((string)$rowData['domain']) : '&mdash;');
     $row->AddViewField(
         'NORMALIZED_HASH',
         (string)($rowData['normalized_hash'] ?? '') !== ''
@@ -1007,6 +1055,14 @@ if (is_array($report)) {
         <tr>
             <td class="delement-antivirus-results-summary-label"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_DRY_RUN'); ?></td>
             <td><?php echo !empty($summary['dry_run']) ? 'Y' : 'N'; ?></td>
+        </tr>
+        <tr>
+            <td class="delement-antivirus-results-summary-label"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_FINDINGS_TOTAL'); ?></td>
+            <td><?php echo (int)($summary['findings_total'] ?? count($findingRows)); ?></td>
+        </tr>
+        <tr>
+            <td class="delement-antivirus-results-summary-label"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_INFORMATIONAL_FINDINGS_TOTAL'); ?></td>
+            <td><?php echo (int)($summary['informational_findings_total'] ?? 0); ?></td>
         </tr>
         </tbody>
     </table>

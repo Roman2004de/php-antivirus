@@ -99,6 +99,15 @@ class ScanConfig
     private $normalizedHashMaxFileSizeBytes;
     private $enableAstAnalysis;
     private $astMaxFileSize;
+    private $disableEntropyAnalyzer;
+    private $enableEntropyAnalyzer;
+    private $enableEntropyInDeepProfile;
+    private $entropyMinLength;
+    private $entropyThreshold;
+    private $entropyContextWindow;
+    private $disableUrlAnalyzer;
+    private $enableUrlAnalyzer;
+    private $suspiciousDomainsPath;
     private $extensions;
     private $documentRoot;
 
@@ -124,6 +133,15 @@ class ScanConfig
             : $this->normalizeMaxFileSize(isset($options['normalized_hash_max_file_size_mb']) ? $options['normalized_hash_max_file_size_mb'] : 5);
         $this->enableAstAnalysis = $this->normalizeBool(isset($options['enable_ast_analysis']) ? $options['enable_ast_analysis'] : true);
         $this->astMaxFileSize = $this->normalizeInt(isset($options['ast_max_file_size']) ? $options['ast_max_file_size'] : 1048576, 1, 100 * 1024 * 1024);
+        $this->disableEntropyAnalyzer = $this->normalizeBool(isset($options['disable_entropy_analyzer']) ? $options['disable_entropy_analyzer'] : false);
+        $this->enableEntropyAnalyzer = $this->normalizeBool(isset($options['enable_entropy_analyzer']) ? $options['enable_entropy_analyzer'] : false);
+        $this->enableEntropyInDeepProfile = $this->normalizeBool(isset($options['enable_entropy_in_deep_profile']) ? $options['enable_entropy_in_deep_profile'] : true);
+        $this->entropyMinLength = $this->normalizeInt(isset($options['entropy_min_length']) ? $options['entropy_min_length'] : 200, 20, 100000);
+        $this->entropyThreshold = $this->normalizeFloat(isset($options['entropy_threshold']) ? $options['entropy_threshold'] : 4.7, 0.1, 8.0);
+        $this->entropyContextWindow = $this->normalizeInt(isset($options['entropy_context_window']) ? $options['entropy_context_window'] : 300, 0, 10000);
+        $this->disableUrlAnalyzer = $this->normalizeBool(isset($options['disable_url_analyzer']) ? $options['disable_url_analyzer'] : false);
+        $this->enableUrlAnalyzer = $this->normalizeBool(isset($options['enable_url_analyzer']) ? $options['enable_url_analyzer'] : true);
+        $this->suspiciousDomainsPath = $this->normalizeOptionalPath(isset($options['suspicious_domains_path']) ? (string)$options['suspicious_domains_path'] : '');
         $this->extensions = $this->normalizeExtensions(isset($options['extensions']) ? $options['extensions'] : $this->defaultExtensionsForScanProfile($this->scanProfile));
     }
 
@@ -146,6 +164,15 @@ class ScanConfig
             'normalized_hash_max_file_size_mb' => isset($options['normalized_hash_max_file_size_mb']) ? $options['normalized_hash_max_file_size_mb'] : null,
             'enable_ast_analysis' => isset($options['enable_ast_analysis']) ? $options['enable_ast_analysis'] : null,
             'ast_max_file_size' => isset($options['ast_max_file_size']) ? $options['ast_max_file_size'] : null,
+            'disable_entropy_analyzer' => isset($options['disable_entropy_analyzer']) ? $options['disable_entropy_analyzer'] : null,
+            'enable_entropy_analyzer' => isset($options['enable_entropy_analyzer']) ? $options['enable_entropy_analyzer'] : null,
+            'enable_entropy_in_deep_profile' => isset($options['enable_entropy_in_deep_profile']) ? $options['enable_entropy_in_deep_profile'] : null,
+            'entropy_min_length' => isset($options['entropy_min_length']) ? $options['entropy_min_length'] : null,
+            'entropy_threshold' => isset($options['entropy_threshold']) ? $options['entropy_threshold'] : null,
+            'entropy_context_window' => isset($options['entropy_context_window']) ? $options['entropy_context_window'] : null,
+            'disable_url_analyzer' => isset($options['disable_url_analyzer']) ? $options['disable_url_analyzer'] : null,
+            'enable_url_analyzer' => isset($options['enable_url_analyzer']) ? $options['enable_url_analyzer'] : null,
+            'suspicious_domains_path' => isset($options['suspicious_domains_path']) ? $options['suspicious_domains_path'] : null,
         ]);
     }
 
@@ -255,6 +282,72 @@ class ScanConfig
         return $this->astMaxFileSize;
     }
 
+    public function isEntropyAnalyzerEnabled(): bool
+    {
+        if ($this->disableEntropyAnalyzer) {
+            return false;
+        }
+
+        if ($this->enableEntropyAnalyzer) {
+            return true;
+        }
+
+        if ($this->enableEntropyInDeepProfile && $this->scanProfile === self::SCAN_PROFILE_DEEP) {
+            return true;
+        }
+
+        return in_array($this->profile, [self::PROFILE_STRICT, self::PROFILE_PARANOID], true);
+    }
+
+    public function isEntropyAnalyzerExplicitlyEnabled(): bool
+    {
+        return $this->enableEntropyAnalyzer;
+    }
+
+    public function isEntropyAnalyzerExplicitlyDisabled(): bool
+    {
+        return $this->disableEntropyAnalyzer;
+    }
+
+    public function isEntropyInDeepProfileEnabled(): bool
+    {
+        return $this->enableEntropyInDeepProfile;
+    }
+
+    public function getEntropyMinLength(): int
+    {
+        return $this->entropyMinLength;
+    }
+
+    public function getEntropyThreshold(): float
+    {
+        return $this->entropyThreshold;
+    }
+
+    public function getEntropyContextWindow(): int
+    {
+        return $this->entropyContextWindow;
+    }
+
+    public function isUrlAnalyzerEnabled(): bool
+    {
+        if ($this->disableUrlAnalyzer) {
+            return false;
+        }
+
+        return $this->enableUrlAnalyzer;
+    }
+
+    public function isUrlAnalyzerExplicitlyDisabled(): bool
+    {
+        return $this->disableUrlAnalyzer;
+    }
+
+    public function getSuspiciousDomainsPath(): string
+    {
+        return $this->suspiciousDomainsPath;
+    }
+
     public function getExtensions(): array
     {
         return $this->extensions;
@@ -290,6 +383,17 @@ class ScanConfig
             'normalized_hash_max_file_size_bytes' => $this->normalizedHashMaxFileSizeBytes,
             'enable_ast_analysis' => $this->enableAstAnalysis,
             'ast_max_file_size' => $this->astMaxFileSize,
+            'disable_entropy_analyzer' => $this->disableEntropyAnalyzer,
+            'enable_entropy_analyzer' => $this->enableEntropyAnalyzer,
+            'enable_entropy_in_deep_profile' => $this->enableEntropyInDeepProfile,
+            'entropy_effective_enabled' => $this->isEntropyAnalyzerEnabled(),
+            'entropy_min_length' => $this->entropyMinLength,
+            'entropy_threshold' => $this->entropyThreshold,
+            'entropy_context_window' => $this->entropyContextWindow,
+            'disable_url_analyzer' => $this->disableUrlAnalyzer,
+            'enable_url_analyzer' => $this->enableUrlAnalyzer,
+            'url_effective_enabled' => $this->isUrlAnalyzerEnabled(),
+            'suspicious_domains_path' => $this->suspiciousDomainsPath,
             'extensions' => $this->extensions,
         ];
     }
@@ -350,6 +454,21 @@ class ScanConfig
     private function normalizeInt($value, int $min, int $max): int
     {
         $value = (int)$value;
+
+        if ($value < $min) {
+            return $min;
+        }
+
+        if ($value > $max) {
+            return $max;
+        }
+
+        return $value;
+    }
+
+    private function normalizeFloat($value, float $min, float $max): float
+    {
+        $value = (float)str_replace(',', '.', (string)$value);
 
         if ($value < $min) {
             return $min;
