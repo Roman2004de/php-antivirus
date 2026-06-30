@@ -26,4 +26,11 @@ $delement_antivirus_default_option = [
     'enable_hash_db' => 'Y',
     'malware_hashes_path' => '#DOCUMENT_ROOT#/bitrix/modules/delement.antivirus/var/signatures/malware_hashes.json',
     'malware_hash_prefixes_path' => '#DOCUMENT_ROOT#/bitrix/modules/delement.antivirus/var/signatures/malware_hash_prefixes.json',
+    'malware_hash_prefix_length' => '8',
+    'panelica_source_path' => '',
+    'panelica_download_url' => 'https://github.com/Panelica/malware-signatures',
+    'panelica_last_import_at' => '',
+    'panelica_imported_count' => '0',
+    'panelica_source_commit' => '',
+    'panelica_source_license' => '',
 ];

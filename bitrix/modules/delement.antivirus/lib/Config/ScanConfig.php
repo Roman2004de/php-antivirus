@@ -112,6 +112,7 @@ class ScanConfig
     private $enableHashDatabase;
     private $malwareHashesPath;
     private $malwareHashPrefixesPath;
+    private $malwareHashPrefixLength;
     private $extensions;
     private $documentRoot;
 
@@ -150,6 +151,7 @@ class ScanConfig
         $this->enableHashDatabase = $this->normalizeBool(isset($options['enable_hash_db']) ? $options['enable_hash_db'] : true);
         $this->malwareHashesPath = $this->normalizeOptionalPath(isset($options['malware_hashes_path']) ? (string)$options['malware_hashes_path'] : '');
         $this->malwareHashPrefixesPath = $this->normalizeOptionalPath(isset($options['malware_hash_prefixes_path']) ? (string)$options['malware_hash_prefixes_path'] : '');
+        $this->malwareHashPrefixLength = $this->normalizeInt(isset($options['malware_hash_prefix_length']) ? $options['malware_hash_prefix_length'] : 8, 8, 12);
         $this->extensions = $this->normalizeExtensions(isset($options['extensions']) ? $options['extensions'] : $this->defaultExtensionsForScanProfile($this->scanProfile));
     }
 
@@ -185,6 +187,7 @@ class ScanConfig
             'enable_hash_db' => isset($options['enable_hash_db']) ? $options['enable_hash_db'] : null,
             'malware_hashes_path' => isset($options['malware_hashes_path']) ? $options['malware_hashes_path'] : null,
             'malware_hash_prefixes_path' => isset($options['malware_hash_prefixes_path']) ? $options['malware_hash_prefixes_path'] : null,
+            'malware_hash_prefix_length' => isset($options['malware_hash_prefix_length']) ? $options['malware_hash_prefix_length'] : null,
         ]);
     }
 
@@ -379,6 +382,11 @@ class ScanConfig
         return $this->malwareHashPrefixesPath;
     }
 
+    public function getMalwareHashPrefixLength(): int
+    {
+        return $this->malwareHashPrefixLength;
+    }
+
     public function getExtensions(): array
     {
         return $this->extensions;
@@ -430,6 +438,7 @@ class ScanConfig
             'hash_db_effective_enabled' => $this->isHashDatabaseEnabled(),
             'malware_hashes_path' => $this->malwareHashesPath,
             'malware_hash_prefixes_path' => $this->malwareHashPrefixesPath,
+            'malware_hash_prefix_length' => $this->malwareHashPrefixLength,
             'extensions' => $this->extensions,
         ];
     }

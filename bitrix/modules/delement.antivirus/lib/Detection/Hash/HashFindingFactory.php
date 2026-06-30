@@ -18,16 +18,21 @@ class HashFindingFactory
             'offset' => null,
             'excerpt' => substr($hash, 0, 16) . '...',
             'target' => 'file_hash',
-            'rule_type' => 'hash_db',
+            'rule_type' => 'hash',
             'file' => $filePath,
             'type' => 'known_malware_hash',
-            'source' => 'malware_hashes',
+            'source' => (string)($item['source'] ?? 'malware_hashes'),
+            'confidence' => (string)($item['confidence'] ?? 'high'),
             'hash' => $hash,
             'hash_algorithm' => 'sha256',
             'recommendation' => 'quarantine',
             'trace' => [
+                'source' => (string)($item['source'] ?? 'malware_hashes'),
                 'hash' => $hash,
                 'algorithm' => 'sha256',
+                'family' => (string)($item['family'] ?? ''),
+                'category' => (string)($item['category'] ?? ''),
+                'source_ref' => (string)($item['source_ref'] ?? ''),
                 'matched_name' => (string)($item['name'] ?? ''),
                 'matched_severity' => (string)($item['severity'] ?? Severity::CRITICAL),
                 'matched_tags' => isset($item['tags']) && is_array($item['tags']) ? array_values($item['tags']) : [],
@@ -76,7 +81,7 @@ class HashFindingFactory
             $tag = strtolower(trim((string)$tag));
 
             if ($tag !== '') {
-                $result[] = 'hashdb:' . $tag;
+                $result[] = $tag;
             }
         }
 

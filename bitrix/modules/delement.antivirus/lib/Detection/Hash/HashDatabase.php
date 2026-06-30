@@ -8,6 +8,7 @@ class HashDatabase
 {
     private $itemsByHash = [];
     private $warnings = [];
+    private $source = [];
 
     public static function fromFile(string $path): self
     {
@@ -48,6 +49,8 @@ class HashDatabase
             return $database;
         }
 
+        $database->source = isset($data['source']) && is_array($data['source']) ? $data['source'] : [];
+
         foreach ($data['items'] as $item) {
             if (!is_array($item)) {
                 continue;
@@ -62,8 +65,14 @@ class HashDatabase
             $database->itemsByHash[$hash] = [
                 'hash' => $hash,
                 'name' => trim((string)($item['name'] ?? 'Known malware')),
+                'family' => trim((string)($item['family'] ?? '')),
+                'category' => trim((string)($item['category'] ?? '')),
+                'description' => trim((string)($item['description'] ?? '')),
                 'severity' => self::normalizeSeverity((string)($item['severity'] ?? Severity::CRITICAL)),
+                'confidence' => trim((string)($item['confidence'] ?? 'high')),
                 'tags' => isset($item['tags']) && is_array($item['tags']) ? array_values($item['tags']) : [],
+                'source' => trim((string)($item['source'] ?? ($database->source['name'] ?? 'malware_hashes'))),
+                'source_ref' => trim((string)($item['source_ref'] ?? '')),
             ];
         }
 
@@ -80,6 +89,16 @@ class HashDatabase
     public function getWarnings(): array
     {
         return $this->warnings;
+    }
+
+    public function count(): int
+    {
+        return count($this->itemsByHash);
+    }
+
+    public function getSource(): array
+    {
+        return $this->source;
     }
 
     private static function normalizeSeverity(string $severity): string

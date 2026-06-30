@@ -41,6 +41,13 @@ class HashPrefixIndex
             return $index;
         }
 
+        $algorithm = strtolower((string)($data['algorithm'] ?? 'sha256'));
+
+        if ($algorithm !== 'sha256') {
+            $index->warnings[] = 'malware_hash_prefixes_unsupported_algorithm:' . $algorithm;
+            return $index;
+        }
+
         $prefixLength = isset($data['prefix_length']) ? (int)$data['prefix_length'] : 8;
         $prefixLength = max(8, min(12, $prefixLength));
         $prefixes = [];
@@ -76,5 +83,15 @@ class HashPrefixIndex
     public function getWarnings(): array
     {
         return $this->warnings;
+    }
+
+    public function count(): int
+    {
+        return count($this->prefixes);
+    }
+
+    public function getPrefixLength(): int
+    {
+        return $this->prefixLength;
     }
 }

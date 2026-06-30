@@ -25,6 +25,7 @@ class ArgvParser
         'disable-url-analyzer' => true,
         'enable-hash-db' => true,
         'disable-hash-db' => true,
+        'download-panelica-hashes' => true,
     ];
 
     private const VALUE_OPTIONS = [
@@ -45,6 +46,16 @@ class ArgvParser
         'suspicious-domains' => true,
         'malware-hashes' => true,
         'malware-hash-prefixes' => true,
+        'import-panelica-hashes' => true,
+        'panelica-source' => true,
+        'panelica-hashes-json' => true,
+        'panelica-sha256-txt' => true,
+        'panelica-license' => true,
+        'malware-hashes-output' => true,
+        'malware-prefixes-output' => true,
+        'malware-hash-prefix-length' => true,
+        'panelica-source-commit' => true,
+        'panelica-download-url' => true,
         'quarantine-path' => true,
     ];
 

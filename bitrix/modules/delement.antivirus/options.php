@@ -2,6 +2,10 @@
 
 use Bitrix\Main\Config\Option;
 use Bitrix\Main\Localization\Loc;
+use Delement\Antivirus\Detection\Hash\HashDatabase;
+use Delement\Antivirus\Detection\Hash\HashPrefixIndex;
+use Delement\Antivirus\Detection\Hash\Import\PanelicaHashDownloader;
+use Delement\Antivirus\Detection\Hash\Import\PanelicaHashImporter;
 
 global $APPLICATION, $USER;
 
@@ -14,6 +18,14 @@ $moduleId = 'delement.antivirus';
 Loc::loadMessages(__FILE__);
 
 require __DIR__ . '/default_option.php';
+require_once __DIR__ . '/lib/Detection/Severity.php';
+require_once __DIR__ . '/lib/Detection/Hash/HashDatabase.php';
+require_once __DIR__ . '/lib/Detection/Hash/HashPrefixIndex.php';
+require_once __DIR__ . '/lib/Detection/Hash/Import/SignatureSourceMetadata.php';
+require_once __DIR__ . '/lib/Detection/Hash/Import/PanelicaImportResult.php';
+require_once __DIR__ . '/lib/Detection/Hash/Import/PanelicaHashNormalizer.php';
+require_once __DIR__ . '/lib/Detection/Hash/Import/PanelicaHashDownloader.php';
+require_once __DIR__ . '/lib/Detection/Hash/Import/PanelicaHashImporter.php';
 
 $defaults = isset($delement_antivirus_default_option) && is_array($delement_antivirus_default_option)
     ? $delement_antivirus_default_option
@@ -63,6 +75,13 @@ $optionNames = [
     'enable_hash_db',
     'malware_hashes_path',
     'malware_hash_prefixes_path',
+    'malware_hash_prefix_length',
+    'panelica_source_path',
+    'panelica_download_url',
+    'panelica_last_import_at',
+    'panelica_imported_count',
+    'panelica_source_commit',
+    'panelica_source_license',
 ];
 
 $getDefault = static function ($name) use ($defaults) {
@@ -79,6 +98,27 @@ $hasTraversal = static function ($value) {
 
 $expandDocumentRoot = static function ($value) {
     return str_replace('#DOCUMENT_ROOT#', (string)($_SERVER['DOCUMENT_ROOT'] ?? ''), (string)$value);
+};
+
+$isPanelicaWebDownloadUrlAllowed = static function ($value) {
+    $parts = parse_url((string)$value);
+
+    if (!is_array($parts) || strtolower((string)($parts['scheme'] ?? '')) !== 'https') {
+        return false;
+    }
+
+    $host = strtolower((string)($parts['host'] ?? ''));
+    $path = '/' . trim((string)($parts['path'] ?? ''), '/');
+
+    if ($host === 'github.com') {
+        return strpos($path, '/Panelica/malware-signatures') === 0;
+    }
+
+    if ($host === 'raw.githubusercontent.com') {
+        return strpos($path, '/Panelica/malware-signatures/') === 0;
+    }
+
+    return false;
 };
 
 $normalizeLines = static function ($value) use ($hasTraversal) {
@@ -109,10 +149,21 @@ $normalizeLines = static function ($value) use ($hasTraversal) {
 };
 
 $errors = [];
+$notes = [];
 $saved = false;
 $postedValues = null;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['save']) || isset($_POST['apply']) || isset($_POST['restore_defaults']))) {
+if (
+    $_SERVER['REQUEST_METHOD'] === 'POST'
+    && (
+        isset($_POST['save'])
+        || isset($_POST['apply'])
+        || isset($_POST['restore_defaults'])
+        || isset($_POST['import_panelica'])
+        || isset($_POST['download_panelica'])
+        || isset($_POST['validate_hash_db'])
+    )
+) {
     if (!check_bitrix_sessid()) {
         $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_SESSID');
     } elseif (isset($_POST['restore_defaults'])) {
@@ -121,6 +172,194 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['save']) || isset($_P
         }
 
         $saved = true;
+    } elseif (isset($_POST['download_panelica'])) {
+        $panelicaDownloadUrl = trim((string)($_POST['panelica_download_url'] ?? $getDefault('panelica_download_url')));
+        $malwareHashesPath = trim((string)($_POST['malware_hashes_path'] ?? $getDefault('malware_hashes_path')));
+        $malwarePrefixesPath = trim((string)($_POST['malware_hash_prefixes_path'] ?? $getDefault('malware_hash_prefixes_path')));
+        $prefixLength = trim((string)($_POST['malware_hash_prefix_length'] ?? $getDefault('malware_hash_prefix_length')));
+        $sourceCommit = trim((string)($_POST['panelica_source_commit'] ?? ''));
+        $postedValues = array_merge($postedValues ?: [], [
+            'panelica_download_url' => $panelicaDownloadUrl,
+            'malware_hashes_path' => $malwareHashesPath,
+            'malware_hash_prefixes_path' => $malwarePrefixesPath,
+            'malware_hash_prefix_length' => $prefixLength,
+            'panelica_source_commit' => $sourceCommit,
+        ]);
+
+        foreach ([
+            'malware_hashes_path' => Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_MALWARE_HASHES_PATH'),
+            'malware_hash_prefixes_path' => Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_MALWARE_HASH_PREFIXES_PATH'),
+        ] as $name => $label) {
+            $value = (string)($postedValues[$name] ?? '');
+
+            if ($value === '') {
+                $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_REQUIRED', ['#FIELD#' => $label]);
+            } elseif (strpos($value, "\0") !== false || $hasTraversal($value)) {
+                $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_PATH', ['#FIELD#' => $label]);
+            } elseif (strlen($value) > 4096) {
+                $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_TOO_LONG', ['#FIELD#' => $label]);
+            }
+        }
+
+        if ($panelicaDownloadUrl === '' || strlen($panelicaDownloadUrl) > 2048 || !$isPanelicaWebDownloadUrlAllowed($panelicaDownloadUrl)) {
+            $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_DOWNLOAD_URL_ERROR');
+        }
+
+        if (!preg_match('/^\d+$/', $prefixLength) || (int)$prefixLength < 8 || (int)$prefixLength > 12) {
+            $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_MALWARE_HASH_PREFIX_LENGTH');
+        }
+
+        if (empty($errors)) {
+            try {
+                $download = (new PanelicaHashDownloader(__DIR__))->download($panelicaDownloadUrl);
+                $result = (new PanelicaHashImporter(__DIR__))->import((string)$download['source_directory'], [
+                    'hashes_output' => $expandDocumentRoot($malwareHashesPath),
+                    'prefixes_output' => $expandDocumentRoot($malwarePrefixesPath),
+                    'prefix_length' => (int)$prefixLength,
+                    'source_commit' => $sourceCommit,
+                ]);
+                $downloadWarnings = (array)($download['warnings'] ?? []);
+            } catch (Throwable $exception) {
+                $download = null;
+                $result = null;
+                $downloadWarnings = [];
+                $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_IMPORT_ERROR', [
+                    '#ERROR#' => htmlspecialcharsbx($exception->getMessage()),
+                ]);
+            }
+
+            if ($result !== null && !$result->isSuccess()) {
+                $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_IMPORT_ERROR', [
+                    '#ERROR#' => htmlspecialcharsbx($result->getError()),
+                ]);
+            } elseif ($result !== null && is_array($download)) {
+                $metadata = $result->getMetadata();
+                Option::set($moduleId, 'enable_hash_db', 'Y');
+                Option::set($moduleId, 'panelica_source_path', (string)$download['source_directory']);
+                Option::set($moduleId, 'panelica_download_url', $panelicaDownloadUrl);
+                Option::set($moduleId, 'panelica_last_import_at', (string)($metadata['imported_at'] ?? date('c')));
+                Option::set($moduleId, 'panelica_imported_count', (string)$result->getImported());
+                Option::set($moduleId, 'panelica_source_commit', $sourceCommit);
+                Option::set($moduleId, 'panelica_source_license', 'MIT');
+                Option::set($moduleId, 'malware_hashes_path', $malwareHashesPath);
+                Option::set($moduleId, 'malware_hash_prefixes_path', $malwarePrefixesPath);
+                Option::set($moduleId, 'malware_hash_prefix_length', $prefixLength);
+                $notes[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_DOWNLOAD_IMPORT_OK', [
+                    '#COUNT#' => (string)$result->getImported(),
+                    '#URL#' => htmlspecialcharsbx($panelicaDownloadUrl),
+                ]);
+
+                foreach (array_merge($downloadWarnings, $result->getWarnings()) as $warning) {
+                    $notes[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_IMPORT_WARNING', [
+                        '#WARNING#' => htmlspecialcharsbx((string)$warning),
+                    ]);
+                }
+
+                $saved = true;
+            }
+        }
+    } elseif (isset($_POST['import_panelica'])) {
+        $panelicaSourcePath = trim((string)($_POST['panelica_source_path'] ?? ''));
+        $malwareHashesPath = trim((string)($_POST['malware_hashes_path'] ?? $getDefault('malware_hashes_path')));
+        $malwarePrefixesPath = trim((string)($_POST['malware_hash_prefixes_path'] ?? $getDefault('malware_hash_prefixes_path')));
+        $prefixLength = trim((string)($_POST['malware_hash_prefix_length'] ?? $getDefault('malware_hash_prefix_length')));
+        $sourceCommit = trim((string)($_POST['panelica_source_commit'] ?? ''));
+        $postedValues = array_merge($postedValues ?: [], [
+            'panelica_source_path' => $panelicaSourcePath,
+            'malware_hashes_path' => $malwareHashesPath,
+            'malware_hash_prefixes_path' => $malwarePrefixesPath,
+            'malware_hash_prefix_length' => $prefixLength,
+            'panelica_source_commit' => $sourceCommit,
+        ]);
+
+        foreach ([
+            'panelica_source_path' => Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_SOURCE_PATH'),
+            'malware_hashes_path' => Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_MALWARE_HASHES_PATH'),
+            'malware_hash_prefixes_path' => Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_MALWARE_HASH_PREFIXES_PATH'),
+        ] as $name => $label) {
+            $value = (string)($postedValues[$name] ?? '');
+
+            if ($value === '') {
+                $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_REQUIRED', ['#FIELD#' => $label]);
+            } elseif (strpos($value, "\0") !== false || $hasTraversal($value)) {
+                $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_PATH', ['#FIELD#' => $label]);
+            } elseif (strlen($value) > 4096) {
+                $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_TOO_LONG', ['#FIELD#' => $label]);
+            }
+        }
+
+        if (!preg_match('/^\d+$/', $prefixLength) || (int)$prefixLength < 8 || (int)$prefixLength > 12) {
+            $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_MALWARE_HASH_PREFIX_LENGTH');
+        }
+
+        if (empty($errors)) {
+            try {
+                $result = (new PanelicaHashImporter(__DIR__))->import($expandDocumentRoot($panelicaSourcePath), [
+                    'hashes_output' => $expandDocumentRoot($malwareHashesPath),
+                    'prefixes_output' => $expandDocumentRoot($malwarePrefixesPath),
+                    'prefix_length' => (int)$prefixLength,
+                    'source_commit' => $sourceCommit,
+                ]);
+            } catch (Throwable $exception) {
+                $result = null;
+                $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_IMPORT_ERROR', [
+                    '#ERROR#' => htmlspecialcharsbx($exception->getMessage()),
+                ]);
+            }
+
+            if ($result !== null && !$result->isSuccess()) {
+                $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_IMPORT_ERROR', [
+                    '#ERROR#' => htmlspecialcharsbx($result->getError()),
+                ]);
+            } elseif ($result !== null) {
+                $metadata = $result->getMetadata();
+                Option::set($moduleId, 'enable_hash_db', 'Y');
+                Option::set($moduleId, 'panelica_source_path', $panelicaSourcePath);
+                Option::set($moduleId, 'panelica_last_import_at', (string)($metadata['imported_at'] ?? date('c')));
+                Option::set($moduleId, 'panelica_imported_count', (string)$result->getImported());
+                Option::set($moduleId, 'panelica_source_commit', $sourceCommit);
+                Option::set($moduleId, 'panelica_source_license', 'MIT');
+                Option::set($moduleId, 'malware_hashes_path', $malwareHashesPath);
+                Option::set($moduleId, 'malware_hash_prefixes_path', $malwarePrefixesPath);
+                Option::set($moduleId, 'malware_hash_prefix_length', $prefixLength);
+                $notes[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_IMPORT_OK', [
+                    '#COUNT#' => (string)$result->getImported(),
+                    '#SOURCE#' => htmlspecialcharsbx($result->getSourceUsed()),
+                ]);
+
+                foreach ($result->getWarnings() as $warning) {
+                    $notes[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_IMPORT_WARNING', [
+                        '#WARNING#' => htmlspecialcharsbx((string)$warning),
+                    ]);
+                }
+
+                $saved = true;
+            }
+        }
+    } elseif (isset($_POST['validate_hash_db'])) {
+        $malwareHashesPath = trim((string)($_POST['malware_hashes_path'] ?? $getDefault('malware_hashes_path')));
+        $malwarePrefixesPath = trim((string)($_POST['malware_hash_prefixes_path'] ?? $getDefault('malware_hash_prefixes_path')));
+        $postedValues = array_merge($postedValues ?: [], [
+            'malware_hashes_path' => $malwareHashesPath,
+            'malware_hash_prefixes_path' => $malwarePrefixesPath,
+        ]);
+        $database = HashDatabase::fromFile($expandDocumentRoot($malwareHashesPath));
+        $prefixIndex = HashPrefixIndex::fromFile($expandDocumentRoot($malwarePrefixesPath));
+        $warnings = array_merge($database->getWarnings(), $prefixIndex->getWarnings());
+
+        if (!empty($warnings)) {
+            foreach ($warnings as $warning) {
+                $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_HASH_DB_VALIDATE_WARNING', [
+                    '#WARNING#' => htmlspecialcharsbx((string)$warning),
+                ]);
+            }
+        } else {
+            $notes[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_HASH_DB_VALIDATE_OK', [
+                '#HASHES#' => (string)$database->count(),
+                '#PREFIXES#' => (string)$prefixIndex->count(),
+            ]);
+            $saved = true;
+        }
     } else {
         $values = [];
 
@@ -148,6 +387,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['save']) || isset($_P
         $values['enable_hash_db'] = isset($_POST['enable_hash_db']) && $_POST['enable_hash_db'] === 'Y' ? 'Y' : 'N';
         $values['malware_hashes_path'] = trim((string)($_POST['malware_hashes_path'] ?? ''));
         $values['malware_hash_prefixes_path'] = trim((string)($_POST['malware_hash_prefixes_path'] ?? ''));
+        $values['malware_hash_prefix_length'] = trim((string)($_POST['malware_hash_prefix_length'] ?? ''));
+        $values['panelica_source_path'] = trim((string)($_POST['panelica_source_path'] ?? ''));
+        $values['panelica_download_url'] = trim((string)($_POST['panelica_download_url'] ?? $getDefault('panelica_download_url')));
+        $values['panelica_source_commit'] = trim((string)($_POST['panelica_source_commit'] ?? ''));
+        $values['panelica_last_import_at'] = $getOption('panelica_last_import_at');
+        $values['panelica_imported_count'] = $getOption('panelica_imported_count');
+        $values['panelica_source_license'] = $getOption('panelica_source_license');
 
         $pathFields = [
             'scan_path' => Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_SCAN_PATH'),
@@ -194,6 +440,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['save']) || isset($_P
         foreach ([
             'malware_hashes_path' => Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_MALWARE_HASHES_PATH'),
             'malware_hash_prefixes_path' => Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_MALWARE_HASH_PREFIXES_PATH'),
+            'panelica_source_path' => Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_SOURCE_PATH'),
         ] as $name => $label) {
             if ($values[$name] === '') {
                 continue;
@@ -246,6 +493,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['save']) || isset($_P
             $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_ENTROPY_CONTEXT_WINDOW');
         }
 
+        if (!preg_match('/^\d+$/', $values['malware_hash_prefix_length']) || (int)$values['malware_hash_prefix_length'] < 8 || (int)$values['malware_hash_prefix_length'] > 12) {
+            $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ERROR_MALWARE_HASH_PREFIX_LENGTH');
+        }
+
+        if ($values['panelica_download_url'] === '' || strlen($values['panelica_download_url']) > 2048 || !$isPanelicaWebDownloadUrlAllowed($values['panelica_download_url'])) {
+            $errors[] = Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_DOWNLOAD_URL_ERROR');
+        }
+
         [$excludePaths, $excludeErrors] = $normalizeLines($_POST['exclude_paths'] ?? '');
 
         if (!empty($excludeErrors)) {
@@ -295,6 +550,10 @@ if (!empty($errors)) {
     ]);
 } elseif ($saved) {
     CAdminMessage::ShowNote(Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_SAVED'));
+}
+
+foreach ($notes as $note) {
+    CAdminMessage::ShowNote($note);
 }
 
 $tabControl->Begin();
@@ -638,10 +897,84 @@ $tabControl->Begin();
         </td>
     </tr>
     <tr>
+        <td class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_malware_hash_prefix_length"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_MALWARE_HASH_PREFIX_LENGTH'); ?></label>
+        </td>
+        <td class="adm-detail-content-cell-r">
+            <input type="number" min="8" max="12" id="delement_antivirus_malware_hash_prefix_length" name="malware_hash_prefix_length" value="<?php echo htmlspecialcharsbx($values['malware_hash_prefix_length']); ?>">
+        </td>
+    </tr>
+    <tr>
         <td class="adm-detail-content-cell-l"></td>
         <td class="adm-detail-content-cell-r">
             <?php echo BeginNote(); ?>
             <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_MALWARE_HASHES_PATH_HINT'); ?>
+            <?php echo EndNote(); ?>
+        </td>
+    </tr>
+    <tr class="heading">
+        <td colspan="2"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_SECTION'); ?></td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_DOWNLOAD_SOURCE'); ?></td>
+        <td class="adm-detail-content-cell-r">
+            <?php echo htmlspecialcharsbx($values['panelica_download_url']); ?>
+            <input type="hidden" name="panelica_download_url" value="<?php echo htmlspecialcharsbx($values['panelica_download_url']); ?>">
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_DOWNLOAD_LICENSE'); ?></td>
+        <td class="adm-detail-content-cell-r">MIT</td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l"></td>
+        <td class="adm-detail-content-cell-r">
+            <?php echo BeginNote(); ?>
+            <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_DOWNLOAD_HINT'); ?>
+            <?php echo EndNote(); ?>
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_panelica_source_path"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_SOURCE_PATH'); ?></label>
+        </td>
+        <td class="adm-detail-content-cell-r">
+            <input type="text" size="70" id="delement_antivirus_panelica_source_path" name="panelica_source_path" value="<?php echo htmlspecialcharsbx($values['panelica_source_path']); ?>">
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_panelica_source_commit"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_SOURCE_COMMIT'); ?></label>
+        </td>
+        <td class="adm-detail-content-cell-r">
+            <input type="text" size="40" id="delement_antivirus_panelica_source_commit" name="panelica_source_commit" value="<?php echo htmlspecialcharsbx($values['panelica_source_commit']); ?>">
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_LAST_IMPORT_AT'); ?></td>
+        <td class="adm-detail-content-cell-r"><?php echo htmlspecialcharsbx($values['panelica_last_import_at']); ?></td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_IMPORTED_COUNT'); ?></td>
+        <td class="adm-detail-content-cell-r"><?php echo htmlspecialcharsbx($values['panelica_imported_count']); ?></td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_SOURCE_LICENSE'); ?></td>
+        <td class="adm-detail-content-cell-r"><?php echo htmlspecialcharsbx($values['panelica_source_license']); ?></td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l"></td>
+        <td class="adm-detail-content-cell-r">
+            <input type="submit" name="download_panelica" value="<?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_DOWNLOAD_IMPORT_BUTTON'); ?>">
+            <input type="submit" name="import_panelica" value="<?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_IMPORT_BUTTON'); ?>">
+            <input type="submit" name="validate_hash_db" value="<?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_HASH_DB_VALIDATE_BUTTON'); ?>">
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l"></td>
+        <td class="adm-detail-content-cell-r">
+            <?php echo BeginNote(); ?>
+            <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_PANELICA_HINT'); ?>
             <?php echo EndNote(); ?>
         </td>
     </tr>

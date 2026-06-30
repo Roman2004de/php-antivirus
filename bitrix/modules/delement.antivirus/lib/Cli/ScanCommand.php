@@ -56,6 +56,10 @@ class ScanCommand
                 return $this->result(self::EXIT_OK, ModuleVersion::version($this->moduleRoot) . PHP_EOL, '');
             }
 
+            if ($this->isPanelicaImportRequest($parsed['options'], $flags)) {
+                return (new PanelicaImportCommand($this->moduleRoot))->execute($parsed['options'], !empty($flags['json']), $flags);
+            }
+
             $documentRoot = $this->resolveDocumentRoot($parsed['options']);
             $_SERVER['DOCUMENT_ROOT'] = $documentRoot;
             $options = $this->buildConfigOptions($parsed['options'], $flags, $documentRoot);
@@ -257,6 +261,13 @@ class ScanCommand
         return $options;
     }
 
+    private function isPanelicaImportRequest(array $cliOptions, array $flags): bool
+    {
+        return isset($cliOptions['import-panelica-hashes'])
+            || isset($cliOptions['panelica-source'])
+            || !empty($flags['download-panelica-hashes']);
+    }
+
     private function baseOptions(): array
     {
         $defaults = $this->loadDefaults();
@@ -390,6 +401,7 @@ class ScanCommand
             'enable_hash_db' => $config->isHashDatabaseEnabled(),
             'malware_hashes_path' => $config->getMalwareHashesPath(),
             'malware_hash_prefixes_path' => $config->getMalwareHashPrefixesPath(),
+            'malware_hash_prefix_length' => $config->getMalwareHashPrefixLength(),
             'ast_max_file_size' => $config->getAstMaxFileSize(),
         ];
     }
@@ -606,6 +618,26 @@ Options:
   --malware-hashes=PATH    JSON file with full SHA-256 malware hashes.
   --malware-hash-prefixes=PATH
                            JSON file with SHA-256 hash prefixes.
+  --import-panelica-hashes=PATH
+                           Import Panelica Malware Signatures hashes from a local repository path.
+  --download-panelica-hashes
+                           Download Panelica hash sources from the allowlisted URL and import them.
+  --panelica-source=PATH   Alias for --import-panelica-hashes.
+  --panelica-download-url=URL
+                           Panelica source URL. Defaults to https://github.com/Panelica/malware-signatures.
+  --panelica-hashes-json=PATH
+                           Explicit Panelica json/hashes.json path.
+  --panelica-sha256-txt=PATH
+                           Explicit Panelica hashes/sha256.txt path.
+  --panelica-license=PATH  Explicit Panelica LICENSE path.
+  --malware-hashes-output=PATH
+                           Output path for imported full SHA-256 hashes.
+  --malware-prefixes-output=PATH
+                           Output path for imported SHA-256 prefixes.
+  --malware-hash-prefix-length=N
+                           Prefix length for hash index, 8..12. Default: 8.
+  --panelica-source-commit=HASH
+                           Optional Panelica source commit/version metadata.
   --ast-max-file-size=N    Maximum PHP file size for AST analysis, bytes.
   --exclude=PATH           Add excluded path. Can be repeated.
   --batch-size=N           Files per scanner batch, 1..1000.
