@@ -28,7 +28,10 @@ $whitelistPages = [
 $quarantinePages = [
     'delement_antivirus_quarantine.php',
 ];
-$modulePages = array_merge($scanPages, $resultsPages, $whitelistPages, $quarantinePages);
+$baselinePages = [
+    'delement_antivirus_baseline.php',
+];
+$modulePages = array_merge($scanPages, $resultsPages, $whitelistPages, $quarantinePages, $baselinePages);
 
 return [
     'parent_menu' => 'global_menu_services',
@@ -64,6 +67,12 @@ return [
             'title' => Loc::getMessage('DELEMENT_ANTIVIRUS_MENU_QUARANTINE_TITLE'),
             'url' => 'delement_antivirus_quarantine.php?lang=' . LANGUAGE_ID,
             'more_url' => $quarantinePages,
+        ],
+        [
+            'text' => Loc::getMessage('DELEMENT_ANTIVIRUS_MENU_BASELINE'),
+            'title' => Loc::getMessage('DELEMENT_ANTIVIRUS_MENU_BASELINE_TITLE'),
+            'url' => 'delement_antivirus_baseline.php?lang=' . LANGUAGE_ID,
+            'more_url' => $baselinePages,
         ],
     ],
 ];

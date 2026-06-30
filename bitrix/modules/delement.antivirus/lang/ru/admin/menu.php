@@ -10,3 +10,5 @@ $MESS['DELEMENT_ANTIVIRUS_MENU_WHITELIST'] = 'Белый список';
 $MESS['DELEMENT_ANTIVIRUS_MENU_WHITELIST_TITLE'] = 'Правила белого списка';
 $MESS['DELEMENT_ANTIVIRUS_MENU_QUARANTINE'] = 'Карантин';
 $MESS['DELEMENT_ANTIVIRUS_MENU_QUARANTINE_TITLE'] = 'Файлы в карантине';
+$MESS['DELEMENT_ANTIVIRUS_MENU_BASELINE'] = 'Целостность / Baseline';
+$MESS['DELEMENT_ANTIVIRUS_MENU_BASELINE_TITLE'] = 'Пользовательский контроль целостности файлов';

@@ -26,6 +26,9 @@ class ArgvParser
         'enable-hash-db' => true,
         'disable-hash-db' => true,
         'download-panelica-hashes' => true,
+        'baseline-create' => true,
+        'baseline-check' => true,
+        'baseline-update' => true,
     ];
 
     private const VALUE_OPTIONS = [

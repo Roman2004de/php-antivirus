@@ -2,6 +2,8 @@
 
 namespace Delement\Antivirus\Cli;
 
+use Delement\Antivirus\Baseline\BaselineManager;
+use Delement\Antivirus\Baseline\BaselineStorage;
 use Delement\Antivirus\Config\ScanConfig;
 use Delement\Antivirus\Scanner\ScanRunService;
 use Delement\Antivirus\Support\ModuleVersion;
@@ -64,6 +66,11 @@ class ScanCommand
             $_SERVER['DOCUMENT_ROOT'] = $documentRoot;
             $options = $this->buildConfigOptions($parsed['options'], $flags, $documentRoot);
             $config = ScanConfig::fromModuleOptions($options, $documentRoot);
+
+            if ($this->isBaselineRequest($flags)) {
+                return $this->runBaselineCommand($flags, $config, !empty($flags['json']));
+            }
+
             $this->assertDestructiveActionIsConfirmed($config, $flags);
             $runner = $this->runner ?: new ScanRunService($documentRoot, null, null, $this->moduleRoot);
             $response = $runner->runToCompletion($config, 0);
@@ -268,6 +275,48 @@ class ScanCommand
             || !empty($flags['download-panelica-hashes']);
     }
 
+    private function isBaselineRequest(array $flags): bool
+    {
+        return !empty($flags['baseline-create'])
+            || !empty($flags['baseline-check'])
+            || !empty($flags['baseline-update']);
+    }
+
+    private function runBaselineCommand(array $flags, ScanConfig $config, bool $json): array
+    {
+        $requested = 0;
+        $requested += !empty($flags['baseline-create']) ? 1 : 0;
+        $requested += !empty($flags['baseline-check']) ? 1 : 0;
+        $requested += !empty($flags['baseline-update']) ? 1 : 0;
+
+        if ($requested !== 1) {
+            throw new InvalidArgumentException('cli_baseline_mode_required');
+        }
+
+        if (!empty($flags['baseline-update']) && empty($flags['force'])) {
+            throw new InvalidArgumentException('cli_force_required_for_baseline_update');
+        }
+
+        $manager = new BaselineManager(new BaselineStorage($this->moduleRoot));
+
+        if (!empty($flags['baseline-create'])) {
+            $report = $manager->createBaseline($config);
+        } elseif (!empty($flags['baseline-update'])) {
+            $report = $manager->updateBaseline($config);
+        } else {
+            $report = $manager->checkBaseline($config);
+        }
+
+        $payload = $this->buildBaselinePayload($report);
+        $exitCode = $this->baselineExitCode($payload);
+
+        return $this->result(
+            $exitCode,
+            $json ? $this->json($payload) . PHP_EOL : $this->baselineHumanSummary($payload),
+            ''
+        );
+    }
+
     private function baseOptions(): array
     {
         $defaults = $this->loadDefaults();
@@ -406,6 +455,33 @@ class ScanCommand
         ];
     }
 
+    private function buildBaselinePayload(array $report): array
+    {
+        $summary = isset($report['summary']) && is_array($report['summary']) ? $report['summary'] : [];
+
+        return [
+            'success' => true,
+            'module' => $this->moduleId,
+            'version' => ModuleVersion::version($this->moduleRoot),
+            'operation' => (string)($summary['operation'] ?? ''),
+            'status' => (string)($summary['status'] ?? 'unknown'),
+            'report_id' => (string)($report['report_id'] ?? ''),
+            'report_path' => (string)($report['report_path'] ?? ''),
+            'path' => (string)($summary['path'] ?? ''),
+            'baseline_records' => (int)($summary['baseline_records'] ?? 0),
+            'current_files' => (int)($summary['current_files'] ?? 0),
+            'changed_files' => (int)($summary['changed_files'] ?? 0),
+            'new_files' => (int)($summary['new_files'] ?? 0),
+            'modified_files' => (int)($summary['modified_files'] ?? 0),
+            'deleted_files' => (int)($summary['deleted_files'] ?? 0),
+            'critical_changes' => (int)($summary['critical_changes'] ?? 0),
+            'findings_total' => (int)($summary['findings_total'] ?? 0),
+            'tags' => isset($summary['tags']) && is_array($summary['tags']) ? $summary['tags'] : [],
+            'summary' => $summary,
+            'results' => isset($report['results']) && is_array($report['results']) ? $report['results'] : [],
+        ];
+    }
+
     private function exitCode(array $payload): int
     {
         if (empty($payload['success']) && ($payload['error'] ?? '') === 'scan_already_running') {
@@ -417,6 +493,19 @@ class ScanCommand
         }
 
         if ((int)($payload['found_total'] ?? 0) > 0) {
+            return self::EXIT_FINDINGS;
+        }
+
+        return self::EXIT_OK;
+    }
+
+    private function baselineExitCode(array $payload): int
+    {
+        if (empty($payload['success'])) {
+            return self::EXIT_RUNTIME_ERROR;
+        }
+
+        if ((int)($payload['changed_files'] ?? 0) > 0 || (int)($payload['findings_total'] ?? 0) > 0) {
             return self::EXIT_FINDINGS;
         }
 
@@ -545,6 +634,29 @@ class ScanCommand
         return implode(PHP_EOL, $lines) . PHP_EOL;
     }
 
+    private function baselineHumanSummary(array $payload): string
+    {
+        $lines = [
+            'delement.antivirus baseline',
+            'Operation: ' . $payload['operation'],
+            'Status: ' . $payload['status'],
+            'Path: ' . $payload['path'],
+            'Baseline records: ' . $payload['baseline_records'],
+            'Current files: ' . $payload['current_files'],
+            'Changed files: ' . $payload['changed_files'],
+            'New: ' . $payload['new_files'],
+            'Modified: ' . $payload['modified_files'],
+            'Deleted: ' . $payload['deleted_files'],
+            'Critical changes: ' . $payload['critical_changes'],
+        ];
+
+        if ($payload['report_path'] !== '') {
+            $lines[] = 'Report: ' . $payload['report_path'];
+        }
+
+        return implode(PHP_EOL, $lines) . PHP_EOL;
+    }
+
     private function errorResult(int $exitCode, string $error, bool $json): array
     {
         $payload = [
@@ -638,6 +750,9 @@ Options:
                            Prefix length for hash index, 8..12. Default: 8.
   --panelica-source-commit=HASH
                            Optional Panelica source commit/version metadata.
+  --baseline-create        Create a user file integrity baseline for --path.
+  --baseline-check         Compare --path with the saved user baseline.
+  --baseline-update        Replace the saved user baseline for --path. Requires --force.
   --ast-max-file-size=N    Maximum PHP file size for AST analysis, bytes.
   --exclude=PATH           Add excluded path. Can be repeated.
   --batch-size=N           Files per scanner batch, 1..1000.

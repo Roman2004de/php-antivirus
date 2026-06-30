@@ -149,6 +149,11 @@ bitrix/modules/delement.antivirus/
 - `Delement\Antivirus\Detection\Hash\Import\PanelicaHashDownloader`
 - `Delement\Antivirus\Detection\Hash\Import\PanelicaHashImporter`
 - `Delement\Antivirus\Detection\Hash\Import\PanelicaHashNormalizer`
+- `Delement\Antivirus\Baseline\BaselineManager`
+- `Delement\Antivirus\Baseline\BaselineStorage`
+- `Delement\Antivirus\Baseline\BaselineRecord`
+- `Delement\Antivirus\Detection\Baseline\BaselineAnalyzer`
+- `Delement\Antivirus\Detection\Baseline\BaselineFindingFactory`
 - `Delement\Antivirus\Detection\Htaccess\HtaccessAnalyzer`
 - `Delement\Antivirus\Detection\Taint\TaintAnalyzer`
 - `Delement\Antivirus\Detection\Taint\TaintPropagator`
@@ -175,6 +180,41 @@ Entropy-слой ищет длинные строки с высокой Shannon 
 URL-слой извлекает внешние `http://` и `https://` URL из PHP, JavaScript, HTML и `.htaccess`. Он отдельно помечает remote payload loaders, `iframe src`, `script src`, `document.write('<script ...>')`, `.htaccess` redirects и совпадения с локальной JSON-базой подозрительных доменов. Findings категории `url` содержат `url`, `domain`, `trace` и теги `engine:url`, `risk:external_url`, а для loader-сценариев также `risk:remote_loader`. Обычный внешний URL фиксируется как informational finding со score `0` и не увеличивает `found_files`; такие срабатывания считаются отдельно в `informational_findings_total`. База доменов находится в `var/signatures/suspicious_domains.json` и не содержит сторонних malware databases.
 
 Hash DB слой считает SHA-256 файла, проверяет первые 8-12 символов по prefix-index и только после этого сверяет полный хеш. Prefix-only match не создает malware finding. Полное совпадение дает `known_malware_hash_match` с `severity=critical`, `score=100`, `confidence=high`, `recommendation=quarantine`, тегами `engine:hash_db` и `risk:known_malware_hash`. Базы `var/signatures/malware_hashes.json` и `var/signatures/malware_hash_prefixes.json` являются внутренним runtime-форматом; scanner не зависит от структуры внешних репозиториев.
+
+## Baseline / Integrity Scanner
+
+Baseline scanner хранит пользовательский снимок целостности файлов сайта и сравнивает текущие файлы с этим снимком. Это не `CoreIntegrityChecker` Bitrix: модуль не сверяет файлы с эталоном ядра Bitrix, а сравнивает сайт с ранее созданным пользовательским baseline.
+
+Snapshot хранится через защищенный runtime storage модуля и содержит путь файла, размер, `mtime`, SHA-256 и `normalized_hash`, если normalized hash включен в настройках. Проверка baseline выявляет:
+
+- новые файлы;
+- измененные файлы;
+- удаленные файлы;
+- изменения в критичных директориях Bitrix;
+- PHP-файлы в `/upload`;
+- новые файлы в `/bitrix/tools` и `/bitrix/admin`.
+
+Findings категории `baseline` получают теги `engine:baseline` и `risk:baseline_change`. Для PHP-файлов в `/upload` дополнительно добавляются `path:upload` и `risk:executable_upload`.
+
+CLI:
+
+```bash
+php /home/site/public_html/bitrix/tools/delement.antivirus/scan.php \
+  --baseline-create \
+  --path=/home/site/public_html
+
+php /home/site/public_html/bitrix/tools/delement.antivirus/scan.php \
+  --baseline-check \
+  --path=/home/site/public_html \
+  --json
+
+php /home/site/public_html/bitrix/tools/delement.antivirus/scan.php \
+  --baseline-update \
+  --path=/home/site/public_html \
+  --force
+```
+
+В Web UI раздел доступен как `Сервисы -> Антивирус: поиск вирусов и троянов -> Целостность / Baseline`. Там можно создать baseline, проверить сайт, обновить baseline и скачать последний baseline report в JSON.
 
 ## Panelica Malware Signatures Integration
 
@@ -364,6 +404,9 @@ php /home/site/public_html/bitrix/tools/delement.antivirus/scan.php --path=/home
 - `--malware-prefixes-output=PATH`: путь выходного файла prefix-index;
 - `--malware-hash-prefix-length=N`: длина prefix-index от 8 до 12;
 - `--panelica-source-commit=HASH`: commit/version источника для attribution metadata;
+- `--baseline-create`: создать пользовательский baseline для `--path`;
+- `--baseline-check`: сравнить `--path` с сохраненным baseline;
+- `--baseline-update`: перезаписать baseline новым снимком, требует `--force`;
 - `--ast-max-file-size=N`: лимит размера PHP-файла для AST-анализа в байтах;
 - `--exclude=PATH`: добавить исключение, можно указывать несколько раз;
 - `--batch-size=N`: размер порции сканирования от 1 до 1000;
@@ -535,6 +578,13 @@ Smoke-test Panelica hash import:
 php bitrix/modules/delement.antivirus/tests/panelica_hash_import_smoke.php
 php bitrix/modules/delement.antivirus/tests/panelica_hash_download_smoke.php
 php bitrix/modules/delement.antivirus/tests/hash_database_panelica_smoke.php
+```
+
+Smoke-test Baseline / Integrity Scanner:
+
+```bash
+php bitrix/modules/delement.antivirus/tests/baseline_smoke.php
+php bitrix/modules/delement.antivirus/tests/baseline_critical_paths_smoke.php
 ```
 
 ## Важные ограничения

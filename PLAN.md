@@ -639,19 +639,26 @@ Acceptance:
 - добавить настройки/CLI-флаги;
 - покрыть smoke-тестом на synthetic fixtures.
 
-#### [ ] Этап 10.9. Baseline / Integrity Scanner
+#### [x] Этап 10.9. Baseline / Integrity Scanner
 
 Цель: добавить пользовательский baseline целостности файлов.
 
-Задачи:
+Сделано:
 
-- создать baseline storage;
-- поддержать create/update/compare;
-- использовать file hash и normalized hash;
-- отразить статусы new/changed/deleted/restored;
-- добавить UI и CLI;
-- добавить JSON report секцию integrity;
-- покрыть smoke-тестом.
+- добавлены `Baseline/BaselineManager.php`, `BaselineStorage.php`, `BaselineRecord.php`;
+- добавлены `Detection/Baseline/BaselineAnalyzer.php` и `BaselineFindingFactory.php`;
+- baseline хранится через защищенный `RuntimeDirectory` в runtime-каталоге модуля;
+- snapshot содержит path, relative_path, size, mtime, sha256, normalized_hash и created_at;
+- baseline-check определяет новые, измененные и удаленные файлы;
+- normalized_hash считается и попадает в baseline, если включен в `ScanConfig`;
+- изменения в `/bitrix/php_interface/init.php`, `/local/php_interface/init.php`, `/bitrix/admin/`, `/bitrix/tools/`, `/upload/`, `/local/modules/`, `/bitrix/modules/` и `.htaccess` усиливаются отдельным finding `baseline_critical_path_modified`;
+- новый PHP-файл в `/upload` получает `baseline_php_in_upload`, `severity=critical`, теги `path:upload` и `risk:executable_upload`;
+- новый файл в `/bitrix/tools` или `/bitrix/admin` получает `baseline_unknown_file_in_tools`;
+- baseline findings получают категорию `baseline`, теги `engine:baseline` и `risk:baseline_change`;
+- добавлены CLI-команды `--baseline-create`, `--baseline-check`, `--baseline-update`; update требует `--force`;
+- добавлена Web-страница `Сервисы -> Антивирус: поиск вирусов и троянов -> Целостность / Baseline`;
+- Web UI позволяет создать baseline, проверить baseline, обновить baseline и скачать последний JSON report;
+- добавлены `tests/baseline_smoke.php` и `tests/baseline_critical_paths_smoke.php`.
 
 #### [ ] Этап 10.10. `AgentScanner`
 
