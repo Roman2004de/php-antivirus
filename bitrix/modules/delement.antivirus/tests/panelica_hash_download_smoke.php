@@ -137,12 +137,31 @@ try {
         ]);
     }
 
+    $blockedSimilarPath = $command->execute([
+        'scan.php',
+        '--download-panelica-hashes',
+        '--panelica-download-url=https://github.com/Panelica/malware-signatures-anything',
+        '--json',
+    ]);
+    $blockedSimilarPathPayload = json_decode((string)$blockedSimilarPath['stdout'], true);
+
+    if (
+        ($blockedSimilarPath['exit_code'] ?? null) !== PanelicaImportCommand::EXIT_RUNTIME_ERROR
+        || (string)($blockedSimilarPathPayload['error'] ?? '') !== 'panelica_download_url_not_allowed'
+    ) {
+        delement_antivirus_panelica_download_fail('Panelica download similar-path allowlist guard failed', [
+            'result' => $blockedSimilarPath,
+            'payload' => $blockedSimilarPathPayload,
+        ]);
+    }
+
     echo json_encode([
         'panelica_download' => 'ok',
         'imported' => $payload['imported'],
         'source_url' => $payload['download']['source_url'],
         'downloaded' => $payload['download']['downloaded'],
         'allowlist_guard' => $blockedPayload['error'],
+        'similar_path_guard' => $blockedSimilarPathPayload['error'],
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
 } finally {
     delement_antivirus_panelica_download_remove_tree($root);

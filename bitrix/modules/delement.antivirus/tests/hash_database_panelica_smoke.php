@@ -72,6 +72,25 @@ function delement_antivirus_panelica_runtime_finding(array $result, string $sign
     return [];
 }
 
+function delement_antivirus_panelica_runtime_count_findings(array $summary, string $signatureId): int
+{
+    $count = 0;
+
+    foreach ((array)($summary['results'] ?? []) as $result) {
+        if (!is_array($result)) {
+            continue;
+        }
+
+        foreach ((array)($result['findings'] ?? []) as $finding) {
+            if (is_array($finding) && (string)($finding['signature_id'] ?? '') === $signatureId) {
+                $count++;
+            }
+        }
+    }
+
+    return $count;
+}
+
 $root = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'delement_antivirus_panelica_runtime_smoke_' . getmypid();
 $documentRoot = $root . DIRECTORY_SEPARATOR . 'site';
 $moduleRoot = $root . DIRECTORY_SEPARATOR . 'module';
@@ -209,6 +228,19 @@ try {
         ]);
     }
 
+    $badJsonDirectorySummary = (new Scanner())->scan(new ScanConfig(array_merge($baseConfig, [
+        'path' => $documentRoot,
+        'malware_hashes_path' => $badHashesPath,
+    ])))->toArray();
+    $badJsonWarningCount = delement_antivirus_panelica_runtime_count_findings($badJsonDirectorySummary, 'hash_db_runtime_warning');
+
+    if ($badJsonWarningCount !== 1) {
+        delement_antivirus_panelica_runtime_fail('Bad Panelica hash database warning must be emitted once per scan issue', [
+            'warning_count' => $badJsonWarningCount,
+            'summary' => $badJsonDirectorySummary,
+        ]);
+    }
+
     echo json_encode([
         'hash_database_panelica' => 'ok',
         'hit_hash' => $hitHash,
@@ -217,6 +249,7 @@ try {
         'score' => $hitFinding['score'],
         'prefix_only_findings' => count((array)($prefixOnly['findings'] ?? [])),
         'bad_json_warning' => $badJsonFinding['signature_id'],
+        'bad_json_warning_count' => $badJsonWarningCount,
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
 } finally {
     delement_antivirus_panelica_runtime_remove_tree($root);

@@ -111,7 +111,8 @@ $isPanelicaWebDownloadUrlAllowed = static function ($value) {
     $path = '/' . trim((string)($parts['path'] ?? ''), '/');
 
     if ($host === 'github.com') {
-        return strpos($path, '/Panelica/malware-signatures') === 0;
+        return $path === '/Panelica/malware-signatures'
+            || strpos($path, '/Panelica/malware-signatures/') === 0;
     }
 
     if ($host === 'raw.githubusercontent.com') {

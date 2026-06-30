@@ -153,8 +153,10 @@ class PanelicaHashDownloader
                 return null;
             }
 
+            $content = '';
+            $tooLarge = false;
             curl_setopt_array($curl, [
-                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_RETURNTRANSFER => false,
                 CURLOPT_HEADER => false,
                 CURLOPT_FOLLOWLOCATION => false,
                 CURLOPT_CONNECTTIMEOUT => $this->timeoutSeconds,
@@ -162,13 +164,24 @@ class PanelicaHashDownloader
                 CURLOPT_SSL_VERIFYPEER => true,
                 CURLOPT_SSL_VERIFYHOST => 2,
                 CURLOPT_USERAGENT => 'delement.antivirus-panelica-importer',
+                CURLOPT_WRITEFUNCTION => static function ($curlHandle, string $chunk) use (&$content, &$tooLarge, $maxBytes): int {
+                    if (strlen($content) + strlen($chunk) > $maxBytes) {
+                        $tooLarge = true;
+
+                        return 0;
+                    }
+
+                    $content .= $chunk;
+
+                    return strlen($chunk);
+                },
             ]);
 
-            $content = curl_exec($curl);
+            $success = curl_exec($curl);
             $status = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
             curl_close($curl);
 
-            if (!is_string($content) || $status < 200 || $status >= 300 || strlen($content) > $maxBytes) {
+            if ($success !== true || $tooLarge || $status < 200 || $status >= 300) {
                 return null;
             }
 
@@ -192,7 +205,24 @@ class PanelicaHashDownloader
             return null;
         }
 
+        if (!$this->isSuccessfulStreamResponse(isset($http_response_header) ? $http_response_header : [])) {
+            return null;
+        }
+
         return $content;
+    }
+
+    private function isSuccessfulStreamResponse(array $headers): bool
+    {
+        $statusCode = null;
+
+        foreach ($headers as $header) {
+            if (preg_match('#^HTTP/\S+\s+(\d{3})#i', (string)$header, $matches) === 1) {
+                $statusCode = (int)$matches[1];
+            }
+        }
+
+        return $statusCode !== null && $statusCode >= 200 && $statusCode < 300;
     }
 
     private function isAllowedSourceUrl(string $sourceUrl): bool
@@ -211,7 +241,8 @@ class PanelicaHashDownloader
         $path = '/' . trim((string)($parts['path'] ?? ''), '/');
 
         if ($host === 'github.com') {
-            return strpos($path, '/Panelica/malware-signatures') === 0;
+            return $path === '/Panelica/malware-signatures'
+                || strpos($path, '/Panelica/malware-signatures/') === 0;
         }
 
         if ($host === 'raw.githubusercontent.com') {
