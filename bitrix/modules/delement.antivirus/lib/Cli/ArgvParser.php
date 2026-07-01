@@ -61,6 +61,8 @@ class ArgvParser
         'panelica-download-url' => true,
         'bitrix-db' => true,
         'scan-agents' => true,
+        'scan-events' => true,
+        'resolve-event-code' => true,
         'quarantine-path' => true,
     ];
 

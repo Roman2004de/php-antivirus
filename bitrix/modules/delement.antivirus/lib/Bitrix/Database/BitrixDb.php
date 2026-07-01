@@ -59,30 +59,15 @@ class BitrixDb
     public function fetchAgents(): array
     {
         $sql = 'SELECT ID, MODULE_ID, NAME, ACTIVE, NEXT_EXEC FROM b_agent ORDER BY ID ASC';
-        $rows = [];
-        $connection = $this->getConnection();
 
-        if ($connection !== null && method_exists($connection, 'query')) {
-            $result = $connection->query($sql);
+        return array_map([$this, 'normalizeAgentRow'], $this->fetchRows($sql));
+    }
 
-            while (is_object($result) && method_exists($result, 'fetch') && ($row = $result->fetch())) {
-                $rows[] = $this->normalizeAgentRow(is_array($row) ? $row : []);
-            }
+    public function fetchEventHandlers(): array
+    {
+        $sql = 'SELECT ID, FROM_MODULE_ID, MESSAGE_ID, TO_MODULE_ID, TO_CLASS, TO_METHOD, SORT FROM b_module_to_module ORDER BY ID ASC';
 
-            return $rows;
-        }
-
-        $legacyDb = $this->getLegacyDb();
-
-        if ($legacyDb !== null && method_exists($legacyDb, 'Query')) {
-            $result = $legacyDb->Query($sql);
-
-            while (is_object($result) && method_exists($result, 'Fetch') && ($row = $result->Fetch())) {
-                $rows[] = $this->normalizeAgentRow(is_array($row) ? $row : []);
-            }
-        }
-
-        return $rows;
+        return array_map([$this, 'normalizeEventHandlerRow'], $this->fetchRows($sql));
     }
 
     public function isModuleInstalled(string $moduleId): ?bool
@@ -118,6 +103,47 @@ class BitrixDb
             'NEXT_EXEC' => isset($row['NEXT_EXEC']) ? (string)$row['NEXT_EXEC'] : '',
             'LAST_EXEC' => isset($row['LAST_EXEC']) ? (string)$row['LAST_EXEC'] : '',
         ];
+    }
+
+    protected function normalizeEventHandlerRow(array $row): array
+    {
+        return [
+            'ID' => isset($row['ID']) ? (string)$row['ID'] : '',
+            'FROM_MODULE_ID' => isset($row['FROM_MODULE_ID']) ? (string)$row['FROM_MODULE_ID'] : '',
+            'MESSAGE_ID' => isset($row['MESSAGE_ID']) ? (string)$row['MESSAGE_ID'] : '',
+            'TO_MODULE_ID' => isset($row['TO_MODULE_ID']) ? (string)$row['TO_MODULE_ID'] : '',
+            'TO_CLASS' => isset($row['TO_CLASS']) ? (string)$row['TO_CLASS'] : '',
+            'TO_METHOD' => isset($row['TO_METHOD']) ? (string)$row['TO_METHOD'] : '',
+            'SORT' => isset($row['SORT']) ? (string)$row['SORT'] : '',
+        ];
+    }
+
+    private function fetchRows(string $sql): array
+    {
+        $rows = [];
+        $connection = $this->getConnection();
+
+        if ($connection !== null && method_exists($connection, 'query')) {
+            $result = $connection->query($sql);
+
+            while (is_object($result) && method_exists($result, 'fetch') && ($row = $result->fetch())) {
+                $rows[] = is_array($row) ? $row : [];
+            }
+
+            return $rows;
+        }
+
+        $legacyDb = $this->getLegacyDb();
+
+        if ($legacyDb !== null && method_exists($legacyDb, 'Query')) {
+            $result = $legacyDb->Query($sql);
+
+            while (is_object($result) && method_exists($result, 'Fetch') && ($row = $result->Fetch())) {
+                $rows[] = is_array($row) ? $row : [];
+            }
+        }
+
+        return $rows;
     }
 
     private function getConnection()

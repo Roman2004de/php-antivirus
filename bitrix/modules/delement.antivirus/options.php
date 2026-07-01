@@ -78,6 +78,8 @@ $optionNames = [
     'malware_hash_prefix_length',
     'enable_bitrix_db_scan',
     'scan_agents',
+    'scan_event_handlers',
+    'resolve_event_handler_code',
     'panelica_source_path',
     'panelica_download_url',
     'panelica_last_import_at',
@@ -393,6 +395,8 @@ if (
         $values['malware_hash_prefix_length'] = trim((string)($_POST['malware_hash_prefix_length'] ?? ''));
         $values['enable_bitrix_db_scan'] = isset($_POST['enable_bitrix_db_scan']) && $_POST['enable_bitrix_db_scan'] === 'Y' ? 'Y' : 'N';
         $values['scan_agents'] = isset($_POST['scan_agents']) && $_POST['scan_agents'] === 'Y' ? 'Y' : 'N';
+        $values['scan_event_handlers'] = isset($_POST['scan_event_handlers']) && $_POST['scan_event_handlers'] === 'Y' ? 'Y' : 'N';
+        $values['resolve_event_handler_code'] = isset($_POST['resolve_event_handler_code']) && $_POST['resolve_event_handler_code'] === 'Y' ? 'Y' : 'N';
         $values['panelica_source_path'] = trim((string)($_POST['panelica_source_path'] ?? ''));
         $values['panelica_download_url'] = trim((string)($_POST['panelica_download_url'] ?? $getDefault('panelica_download_url')));
         $values['panelica_source_commit'] = trim((string)($_POST['panelica_source_commit'] ?? ''));
@@ -934,6 +938,22 @@ $tabControl->Begin();
         </td>
         <td class="adm-detail-content-cell-r">
             <input type="checkbox" id="delement_antivirus_scan_agents" name="scan_agents" value="Y"<?php echo $values['scan_agents'] === 'Y' ? ' checked' : ''; ?>>
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_scan_event_handlers"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_SCAN_EVENT_HANDLERS'); ?></label>
+        </td>
+        <td class="adm-detail-content-cell-r">
+            <input type="checkbox" id="delement_antivirus_scan_event_handlers" name="scan_event_handlers" value="Y"<?php echo $values['scan_event_handlers'] === 'Y' ? ' checked' : ''; ?>>
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_resolve_event_handler_code"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_RESOLVE_EVENT_HANDLER_CODE'); ?></label>
+        </td>
+        <td class="adm-detail-content-cell-r">
+            <input type="checkbox" id="delement_antivirus_resolve_event_handler_code" name="resolve_event_handler_code" value="Y"<?php echo $values['resolve_event_handler_code'] === 'Y' ? ' checked' : ''; ?>>
         </td>
     </tr>
     <tr>

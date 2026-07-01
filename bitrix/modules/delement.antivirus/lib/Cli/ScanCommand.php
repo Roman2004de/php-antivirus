@@ -264,6 +264,14 @@ class ScanCommand
             $options['scan_agents'] = $this->normalizeCliBoolOption('scan-agents', (string)$cliOptions['scan-agents']);
         }
 
+        if (isset($cliOptions['scan-events'])) {
+            $options['scan_event_handlers'] = $this->normalizeCliBoolOption('scan-events', (string)$cliOptions['scan-events']);
+        }
+
+        if (isset($cliOptions['resolve-event-code'])) {
+            $options['resolve_event_handler_code'] = $this->normalizeCliBoolOption('resolve-event-code', (string)$cliOptions['resolve-event-code']);
+        }
+
         if (isset($cliOptions['exclude']) && is_array($cliOptions['exclude'])) {
             $exclusions = $this->normalizeExclusions($cliOptions['exclude']);
             $baseExclusions = isset($options['exclude_paths']) ? trim((string)$options['exclude_paths']) : '';
@@ -477,6 +485,8 @@ class ScanCommand
             'malware_hash_prefix_length' => $config->getMalwareHashPrefixLength(),
             'enable_bitrix_db_scan' => $config->isBitrixDbScanEnabled(),
             'scan_agents' => $config->isAgentScanEnabled(),
+            'scan_event_handlers' => $config->isEventHandlerScanEnabled(),
+            'resolve_event_handler_code' => $config->isEventHandlerCodeResolveEnabled(),
             'ast_max_file_size' => $config->getAstMaxFileSize(),
         ];
     }
@@ -759,6 +769,8 @@ Options:
                            JSON file with SHA-256 hash prefixes.
   --bitrix-db=Y|N          Enable or disable Bitrix database scanners.
   --scan-agents=Y|N        Scan b_agent records when Bitrix DB scanning is enabled.
+  --scan-events=Y|N        Scan b_module_to_module event handlers when Bitrix DB scanning is enabled.
+  --resolve-event-code=Y|N Resolve event handler code files and scan them. Default: Y.
   --import-panelica-hashes=PATH
                            Import Panelica Malware Signatures hashes from a local repository path.
   --download-panelica-hashes

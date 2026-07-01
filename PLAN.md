@@ -680,17 +680,25 @@ Acceptance:
 - для виртуальных `bitrix-db://` результатов не показывается действие принудительного карантина;
 - добавлен smoke-тест `tests/bitrix_agent_scanner_smoke.php`.
 
-#### [ ] Этап 10.11. `EventHandlerScanner`
+#### [x] Этап 10.11. `EventHandlerScanner`
 
 Цель: анализировать зарегистрированные обработчики событий Bitrix.
 
-Задачи:
+Сделано:
 
-- извлекать event handlers через Bitrix API;
-- проверять suspicious callbacks и payload;
-- использовать RuleEngine/AST/Taint, tags и suppress;
-- добавить настройки/CLI-флаги;
-- покрыть smoke-тестом.
+- `BitrixDb` умеет читать `b_module_to_module` запросом `SELECT ID, FROM_MODULE_ID, MESSAGE_ID, TO_MODULE_ID, TO_CLASS, TO_METHOD, SORT FROM b_module_to_module ORDER BY ID ASC`;
+- добавлены `Bitrix/Scanner/EventHandlerScanner.php` и `EventHandlerRiskAnalyzer.php`;
+- добавлены `Bitrix/Resolver/EventHandlerResolver.php` и `ClassMethodLocator.php`;
+- обработчики получают virtual path `bitrix-db://b_module_to_module/{ID}`;
+- риск-анализ записи ловит dangerous method names, dynamic callable, empty/unknown `TO_MODULE_ID`, request-to-sink и critical hooks;
+- критичные события усиливаются для `OnPageStart`, `OnBeforeProlog`, `OnProlog`, `OnEpilog`, login/register hooks, iblock hooks, sale/mail hooks;
+- resolver ищет код в `/local/php_interface/init.php`, `/bitrix/php_interface/init.php`, `include.php` и `lib/**/*.php` local/bitrix modules;
+- найденные файлы прогоняются через существующий file detector, а подозрительные срабатывания отражаются как `bitrix_event_handler_file_suspicious`;
+- event findings получают `target=db_event`, category `bitrix_db`, trace с `ID`, `FROM_MODULE_ID`, `MESSAGE_ID`, `TO_MODULE_ID`, `TO_CLASS`, `TO_METHOD`, `SORT`, `risk_reason`, `resolved_file`;
+- добавлены настройки `scan_event_handlers` и `resolve_event_handler_code`;
+- добавлены CLI-параметры `--scan-events=Y|N` и `--resolve-event-code=Y|N`;
+- таблица отчета получила дополнительные CAdminList-колонки для event context;
+- добавлен smoke-тест `tests/bitrix_event_handler_scanner_smoke.php`.
 
 #### [ ] Этап 10.12. `TemplateConditionScanner`
 

@@ -542,9 +542,13 @@ class ScanRunService
 
             foreach ([
                 '/Database/BitrixDb.php',
+                '/Resolver/ClassMethodLocator.php',
+                '/Resolver/EventHandlerResolver.php',
                 '/Scanner/BitrixDbFindingFactory.php',
                 '/Scanner/VirtualCodeScanner.php',
                 '/Scanner/AgentScanner.php',
+                '/Scanner/EventHandlerRiskAnalyzer.php',
+                '/Scanner/EventHandlerScanner.php',
                 '/Scanner/BitrixDatabaseScanService.php',
             ] as $relativePath) {
                 $path = $base . $relativePath;

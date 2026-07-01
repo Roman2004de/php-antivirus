@@ -266,9 +266,16 @@ if (!function_exists('delement_antivirus_report_finding_rows')) {
                     'recommendation' => (string)($finding['recommendation'] ?? ''),
                     'entity_type' => $entity,
                     'db_id' => (string)($trace['id'] ?? ''),
-                    'db_module_id' => (string)($trace['module_id'] ?? ''),
+                    'db_module_id' => (string)($trace['module_id'] ?? ($trace['to_module_id'] ?? '')),
+                    'db_from_module_id' => (string)($trace['from_module_id'] ?? ''),
+                    'db_message_id' => (string)($trace['message_id'] ?? ''),
+                    'db_to_class' => (string)($trace['to_class'] ?? ''),
+                    'db_to_method' => (string)($trace['to_method'] ?? ''),
+                    'db_sort' => (string)($trace['sort'] ?? ''),
                     'db_active' => (string)($trace['active'] ?? ''),
                     'db_next_exec' => (string)($trace['next_exec'] ?? ''),
+                    'risk_reason' => (string)($trace['risk_reason'] ?? ''),
+                    'resolved_file' => (string)($trace['resolved_file'] ?? ''),
                     'db_trace' => $trace,
                     'excerpt' => (string)($finding['excerpt'] ?? ''),
                     'tags' => delement_antivirus_report_merge_tags($result['tags'] ?? [], $finding['tags'] ?? []),
@@ -319,8 +326,15 @@ if (!function_exists('delement_antivirus_report_sort_finding_rows')) {
             'entity_type',
             'db_id',
             'db_module_id',
+            'db_from_module_id',
+            'db_message_id',
+            'db_to_class',
+            'db_to_method',
+            'db_sort',
             'db_active',
             'db_next_exec',
+            'risk_reason',
+            'resolved_file',
             'normalized_hash',
             'excerpt',
             'tags',
@@ -825,6 +839,36 @@ $lAdmin->AddHeaders([
         'default' => false,
     ],
     [
+        'id' => 'DB_FROM_MODULE_ID',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_DB_FROM_MODULE_ID'),
+        'sort' => 'db_from_module_id',
+        'default' => false,
+    ],
+    [
+        'id' => 'DB_MESSAGE_ID',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_DB_MESSAGE_ID'),
+        'sort' => 'db_message_id',
+        'default' => false,
+    ],
+    [
+        'id' => 'DB_TO_CLASS',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_DB_TO_CLASS'),
+        'sort' => 'db_to_class',
+        'default' => false,
+    ],
+    [
+        'id' => 'DB_TO_METHOD',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_DB_TO_METHOD'),
+        'sort' => 'db_to_method',
+        'default' => false,
+    ],
+    [
+        'id' => 'DB_SORT',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_DB_SORT'),
+        'sort' => 'db_sort',
+        'default' => false,
+    ],
+    [
         'id' => 'DB_ACTIVE',
         'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_DB_ACTIVE'),
         'sort' => 'db_active',
@@ -834,6 +878,18 @@ $lAdmin->AddHeaders([
         'id' => 'DB_NEXT_EXEC',
         'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_DB_NEXT_EXEC'),
         'sort' => 'db_next_exec',
+        'default' => false,
+    ],
+    [
+        'id' => 'RISK_REASON',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_RISK_REASON'),
+        'sort' => 'risk_reason',
+        'default' => false,
+    ],
+    [
+        'id' => 'RESOLVED_FILE',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_RESOLVED_FILE'),
+        'sort' => 'resolved_file',
         'default' => false,
     ],
     [
@@ -894,14 +950,25 @@ while ($rowData = $rsData->NavNext(true, 'f_')) {
     );
     $row->AddViewField('RECOMMENDATION', (string)($rowData['recommendation'] ?? '') !== '' ? htmlspecialcharsbx((string)$rowData['recommendation']) : '&mdash;');
     $entityType = (string)($rowData['entity_type'] ?? '');
-    $entityLabel = $entityType === 'bitrix_agent'
-        ? Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_ENTITY_BITRIX_AGENT')
-        : $entityType;
+    if ($entityType === 'bitrix_agent') {
+        $entityLabel = Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_ENTITY_BITRIX_AGENT');
+    } elseif ($entityType === 'bitrix_event_handler') {
+        $entityLabel = Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_ENTITY_BITRIX_EVENT_HANDLER');
+    } else {
+        $entityLabel = $entityType;
+    }
     $row->AddViewField('ENTITY_TYPE', $entityLabel !== '' ? htmlspecialcharsbx($entityLabel) : '&mdash;');
     $row->AddViewField('DB_ID', (string)($rowData['db_id'] ?? '') !== '' ? htmlspecialcharsbx((string)$rowData['db_id']) : '&mdash;');
     $row->AddViewField('DB_MODULE_ID', (string)($rowData['db_module_id'] ?? '') !== '' ? htmlspecialcharsbx((string)$rowData['db_module_id']) : '&mdash;');
+    $row->AddViewField('DB_FROM_MODULE_ID', (string)($rowData['db_from_module_id'] ?? '') !== '' ? htmlspecialcharsbx((string)$rowData['db_from_module_id']) : '&mdash;');
+    $row->AddViewField('DB_MESSAGE_ID', (string)($rowData['db_message_id'] ?? '') !== '' ? htmlspecialcharsbx((string)$rowData['db_message_id']) : '&mdash;');
+    $row->AddViewField('DB_TO_CLASS', (string)($rowData['db_to_class'] ?? '') !== '' ? htmlspecialcharsbx((string)$rowData['db_to_class']) : '&mdash;');
+    $row->AddViewField('DB_TO_METHOD', (string)($rowData['db_to_method'] ?? '') !== '' ? htmlspecialcharsbx((string)$rowData['db_to_method']) : '&mdash;');
+    $row->AddViewField('DB_SORT', (string)($rowData['db_sort'] ?? '') !== '' ? htmlspecialcharsbx((string)$rowData['db_sort']) : '&mdash;');
     $row->AddViewField('DB_ACTIVE', (string)($rowData['db_active'] ?? '') !== '' ? htmlspecialcharsbx((string)$rowData['db_active']) : '&mdash;');
     $row->AddViewField('DB_NEXT_EXEC', (string)($rowData['db_next_exec'] ?? '') !== '' ? htmlspecialcharsbx((string)$rowData['db_next_exec']) : '&mdash;');
+    $row->AddViewField('RISK_REASON', (string)($rowData['risk_reason'] ?? '') !== '' ? htmlspecialcharsbx((string)$rowData['risk_reason']) : '&mdash;');
+    $row->AddViewField('RESOLVED_FILE', (string)($rowData['resolved_file'] ?? '') !== '' ? '<span title="' . htmlspecialcharsbx((string)$rowData['resolved_file']) . '">' . htmlspecialcharsbx((string)$rowData['resolved_file']) . '</span>' : '&mdash;');
     $row->AddViewField(
         'NORMALIZED_HASH',
         (string)($rowData['normalized_hash'] ?? '') !== ''

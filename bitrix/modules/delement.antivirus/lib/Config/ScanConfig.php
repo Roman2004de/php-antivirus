@@ -115,6 +115,8 @@ class ScanConfig
     private $malwareHashPrefixLength;
     private $enableBitrixDbScan;
     private $scanAgents;
+    private $scanEventHandlers;
+    private $resolveEventHandlerCode;
     private $extensions;
     private $documentRoot;
 
@@ -156,6 +158,8 @@ class ScanConfig
         $this->malwareHashPrefixLength = $this->normalizeInt(isset($options['malware_hash_prefix_length']) ? $options['malware_hash_prefix_length'] : 8, 8, 12);
         $this->enableBitrixDbScan = $this->normalizeBool(isset($options['enable_bitrix_db_scan']) ? $options['enable_bitrix_db_scan'] : false);
         $this->scanAgents = $this->normalizeBool(isset($options['scan_agents']) ? $options['scan_agents'] : false);
+        $this->scanEventHandlers = $this->normalizeBool(isset($options['scan_event_handlers']) ? $options['scan_event_handlers'] : false);
+        $this->resolveEventHandlerCode = $this->normalizeBool(isset($options['resolve_event_handler_code']) ? $options['resolve_event_handler_code'] : true);
         $this->extensions = $this->normalizeExtensions(isset($options['extensions']) ? $options['extensions'] : $this->defaultExtensionsForScanProfile($this->scanProfile));
     }
 
@@ -194,6 +198,8 @@ class ScanConfig
             'malware_hash_prefix_length' => isset($options['malware_hash_prefix_length']) ? $options['malware_hash_prefix_length'] : null,
             'enable_bitrix_db_scan' => isset($options['enable_bitrix_db_scan']) ? $options['enable_bitrix_db_scan'] : null,
             'scan_agents' => isset($options['scan_agents']) ? $options['scan_agents'] : null,
+            'scan_event_handlers' => isset($options['scan_event_handlers']) ? $options['scan_event_handlers'] : null,
+            'resolve_event_handler_code' => isset($options['resolve_event_handler_code']) ? $options['resolve_event_handler_code'] : null,
         ]);
     }
 
@@ -403,6 +409,16 @@ class ScanConfig
         return $this->scanAgents;
     }
 
+    public function isEventHandlerScanEnabled(): bool
+    {
+        return $this->scanEventHandlers;
+    }
+
+    public function isEventHandlerCodeResolveEnabled(): bool
+    {
+        return $this->resolveEventHandlerCode;
+    }
+
     public function getExtensions(): array
     {
         return $this->extensions;
@@ -457,6 +473,8 @@ class ScanConfig
             'malware_hash_prefix_length' => $this->malwareHashPrefixLength,
             'enable_bitrix_db_scan' => $this->enableBitrixDbScan,
             'scan_agents' => $this->scanAgents,
+            'scan_event_handlers' => $this->scanEventHandlers,
+            'resolve_event_handler_code' => $this->resolveEventHandlerCode,
             'extensions' => $this->extensions,
         ];
     }
