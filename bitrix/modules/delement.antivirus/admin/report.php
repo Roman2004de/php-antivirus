@@ -242,6 +242,9 @@ if (!function_exists('delement_antivirus_report_finding_rows')) {
                     $fingerprint = SuppressionFingerprint::forFinding($filePath, $finding, $documentRoot);
                 }
 
+                $trace = isset($finding['trace']) && is_array($finding['trace']) ? $finding['trace'] : [];
+                $entity = (string)($trace['entity'] ?? '');
+
                 $rows[] = [
                     'id' => $rowId,
                     'scan_id' => $scanId,
@@ -261,6 +264,12 @@ if (!function_exists('delement_antivirus_report_finding_rows')) {
                     'domain' => (string)($finding['domain'] ?? ''),
                     'hash' => (string)($finding['hash'] ?? ''),
                     'recommendation' => (string)($finding['recommendation'] ?? ''),
+                    'entity_type' => $entity,
+                    'db_id' => (string)($trace['id'] ?? ''),
+                    'db_module_id' => (string)($trace['module_id'] ?? ''),
+                    'db_active' => (string)($trace['active'] ?? ''),
+                    'db_next_exec' => (string)($trace['next_exec'] ?? ''),
+                    'db_trace' => $trace,
                     'excerpt' => (string)($finding['excerpt'] ?? ''),
                     'tags' => delement_antivirus_report_merge_tags($result['tags'] ?? [], $finding['tags'] ?? []),
                     'scan_result' => $result,
@@ -307,6 +316,11 @@ if (!function_exists('delement_antivirus_report_sort_finding_rows')) {
             'domain',
             'hash',
             'recommendation',
+            'entity_type',
+            'db_id',
+            'db_module_id',
+            'db_active',
+            'db_next_exec',
             'normalized_hash',
             'excerpt',
             'tags',
@@ -363,6 +377,7 @@ if (!function_exists('delement_antivirus_report_display_rows')) {
         foreach ($rows as $row) {
             unset($row['scan_result']);
             unset($row['finding']);
+            unset($row['db_trace']);
             $displayRows[] = $row;
         }
 
@@ -792,6 +807,36 @@ $lAdmin->AddHeaders([
         'default' => false,
     ],
     [
+        'id' => 'ENTITY_TYPE',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_ENTITY_TYPE'),
+        'sort' => 'entity_type',
+        'default' => false,
+    ],
+    [
+        'id' => 'DB_ID',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_DB_ID'),
+        'sort' => 'db_id',
+        'default' => false,
+    ],
+    [
+        'id' => 'DB_MODULE_ID',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_DB_MODULE_ID'),
+        'sort' => 'db_module_id',
+        'default' => false,
+    ],
+    [
+        'id' => 'DB_ACTIVE',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_DB_ACTIVE'),
+        'sort' => 'db_active',
+        'default' => false,
+    ],
+    [
+        'id' => 'DB_NEXT_EXEC',
+        'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_DB_NEXT_EXEC'),
+        'sort' => 'db_next_exec',
+        'default' => false,
+    ],
+    [
         'id' => 'NORMALIZED_HASH',
         'content' => Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_NORMALIZED_HASH'),
         'sort' => 'normalized_hash',
@@ -848,6 +893,15 @@ while ($rowData = $rsData->NavNext(true, 'f_')) {
             : '&mdash;'
     );
     $row->AddViewField('RECOMMENDATION', (string)($rowData['recommendation'] ?? '') !== '' ? htmlspecialcharsbx((string)$rowData['recommendation']) : '&mdash;');
+    $entityType = (string)($rowData['entity_type'] ?? '');
+    $entityLabel = $entityType === 'bitrix_agent'
+        ? Loc::getMessage('DELEMENT_ANTIVIRUS_RESULTS_ENTITY_BITRIX_AGENT')
+        : $entityType;
+    $row->AddViewField('ENTITY_TYPE', $entityLabel !== '' ? htmlspecialcharsbx($entityLabel) : '&mdash;');
+    $row->AddViewField('DB_ID', (string)($rowData['db_id'] ?? '') !== '' ? htmlspecialcharsbx((string)$rowData['db_id']) : '&mdash;');
+    $row->AddViewField('DB_MODULE_ID', (string)($rowData['db_module_id'] ?? '') !== '' ? htmlspecialcharsbx((string)$rowData['db_module_id']) : '&mdash;');
+    $row->AddViewField('DB_ACTIVE', (string)($rowData['db_active'] ?? '') !== '' ? htmlspecialcharsbx((string)$rowData['db_active']) : '&mdash;');
+    $row->AddViewField('DB_NEXT_EXEC', (string)($rowData['db_next_exec'] ?? '') !== '' ? htmlspecialcharsbx((string)$rowData['db_next_exec']) : '&mdash;');
     $row->AddViewField(
         'NORMALIZED_HASH',
         (string)($rowData['normalized_hash'] ?? '') !== ''
@@ -893,7 +947,7 @@ while ($rowData = $rsData->NavNext(true, 'f_')) {
             ];
         }
 
-        if ($quarantineManager !== null) {
+        if ($quarantineManager !== null && strpos($filePath, 'bitrix-db://') !== 0) {
             if (!empty($actions)) {
                 $actions[] = ['SEPARATOR' => true];
             }

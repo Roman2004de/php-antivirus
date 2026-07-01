@@ -256,6 +256,14 @@ class ScanCommand
             $options['malware_hash_prefixes_path'] = (string)$cliOptions['malware-hash-prefixes'];
         }
 
+        if (isset($cliOptions['bitrix-db'])) {
+            $options['enable_bitrix_db_scan'] = $this->normalizeCliBoolOption('bitrix-db', (string)$cliOptions['bitrix-db']);
+        }
+
+        if (isset($cliOptions['scan-agents'])) {
+            $options['scan_agents'] = $this->normalizeCliBoolOption('scan-agents', (string)$cliOptions['scan-agents']);
+        }
+
         if (isset($cliOptions['exclude']) && is_array($cliOptions['exclude'])) {
             $exclusions = $this->normalizeExclusions($cliOptions['exclude']);
             $baseExclusions = isset($options['exclude_paths']) ? trim((string)$options['exclude_paths']) : '';
@@ -413,6 +421,21 @@ class ScanCommand
         return $result;
     }
 
+    private function normalizeCliBoolOption(string $name, string $value): string
+    {
+        $value = strtolower(trim($value));
+
+        if (in_array($value, ['y', 'yes', '1', 'true'], true)) {
+            return 'Y';
+        }
+
+        if (in_array($value, ['n', 'no', '0', 'false'], true)) {
+            return 'N';
+        }
+
+        throw new InvalidArgumentException('cli_invalid_' . str_replace('-', '_', $name));
+    }
+
     private function buildPayload(array $response, ScanConfig $config): array
     {
         $success = !empty($response['success']) && !in_array((string)($response['status'] ?? ''), ['failed'], true);
@@ -429,6 +452,7 @@ class ScanCommand
             'files_discovered' => (int)($response['files_discovered'] ?? 0),
             'found_total' => (int)($response['found_total'] ?? 0),
             'informational_findings_total' => (int)($response['informational_findings_total'] ?? 0),
+            'bitrix_db_results_total' => (int)($response['bitrix_db_results_total'] ?? 0),
             'runtime_errors' => (int)($response['runtime_errors'] ?? 0),
             'report_path' => (string)($response['report_path'] ?? ''),
             'runtime_report_path' => '',
@@ -451,6 +475,8 @@ class ScanCommand
             'malware_hashes_path' => $config->getMalwareHashesPath(),
             'malware_hash_prefixes_path' => $config->getMalwareHashPrefixesPath(),
             'malware_hash_prefix_length' => $config->getMalwareHashPrefixLength(),
+            'enable_bitrix_db_scan' => $config->isBitrixDbScanEnabled(),
+            'scan_agents' => $config->isAgentScanEnabled(),
             'ast_max_file_size' => $config->getAstMaxFileSize(),
         ];
     }
@@ -620,6 +646,7 @@ class ScanCommand
             'Processed: ' . $payload['processed_files'] . '/' . $payload['total_files_estimated'],
             'Found: ' . $payload['found_total'],
             'Informational findings: ' . $payload['informational_findings_total'],
+            'Bitrix DB results: ' . $payload['bitrix_db_results_total'],
             'Runtime errors: ' . $payload['runtime_errors'],
         ];
 
@@ -730,6 +757,8 @@ Options:
   --malware-hashes=PATH    JSON file with full SHA-256 malware hashes.
   --malware-hash-prefixes=PATH
                            JSON file with SHA-256 hash prefixes.
+  --bitrix-db=Y|N          Enable or disable Bitrix database scanners.
+  --scan-agents=Y|N        Scan b_agent records when Bitrix DB scanning is enabled.
   --import-panelica-hashes=PATH
                            Import Panelica Malware Signatures hashes from a local repository path.
   --download-panelica-hashes

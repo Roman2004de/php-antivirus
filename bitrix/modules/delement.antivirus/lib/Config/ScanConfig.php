@@ -113,6 +113,8 @@ class ScanConfig
     private $malwareHashesPath;
     private $malwareHashPrefixesPath;
     private $malwareHashPrefixLength;
+    private $enableBitrixDbScan;
+    private $scanAgents;
     private $extensions;
     private $documentRoot;
 
@@ -152,6 +154,8 @@ class ScanConfig
         $this->malwareHashesPath = $this->normalizeOptionalPath(isset($options['malware_hashes_path']) ? (string)$options['malware_hashes_path'] : '');
         $this->malwareHashPrefixesPath = $this->normalizeOptionalPath(isset($options['malware_hash_prefixes_path']) ? (string)$options['malware_hash_prefixes_path'] : '');
         $this->malwareHashPrefixLength = $this->normalizeInt(isset($options['malware_hash_prefix_length']) ? $options['malware_hash_prefix_length'] : 8, 8, 12);
+        $this->enableBitrixDbScan = $this->normalizeBool(isset($options['enable_bitrix_db_scan']) ? $options['enable_bitrix_db_scan'] : false);
+        $this->scanAgents = $this->normalizeBool(isset($options['scan_agents']) ? $options['scan_agents'] : false);
         $this->extensions = $this->normalizeExtensions(isset($options['extensions']) ? $options['extensions'] : $this->defaultExtensionsForScanProfile($this->scanProfile));
     }
 
@@ -188,6 +192,8 @@ class ScanConfig
             'malware_hashes_path' => isset($options['malware_hashes_path']) ? $options['malware_hashes_path'] : null,
             'malware_hash_prefixes_path' => isset($options['malware_hash_prefixes_path']) ? $options['malware_hash_prefixes_path'] : null,
             'malware_hash_prefix_length' => isset($options['malware_hash_prefix_length']) ? $options['malware_hash_prefix_length'] : null,
+            'enable_bitrix_db_scan' => isset($options['enable_bitrix_db_scan']) ? $options['enable_bitrix_db_scan'] : null,
+            'scan_agents' => isset($options['scan_agents']) ? $options['scan_agents'] : null,
         ]);
     }
 
@@ -387,6 +393,16 @@ class ScanConfig
         return $this->malwareHashPrefixLength;
     }
 
+    public function isBitrixDbScanEnabled(): bool
+    {
+        return $this->enableBitrixDbScan;
+    }
+
+    public function isAgentScanEnabled(): bool
+    {
+        return $this->scanAgents;
+    }
+
     public function getExtensions(): array
     {
         return $this->extensions;
@@ -439,6 +455,8 @@ class ScanConfig
             'malware_hashes_path' => $this->malwareHashesPath,
             'malware_hash_prefixes_path' => $this->malwareHashPrefixesPath,
             'malware_hash_prefix_length' => $this->malwareHashPrefixLength,
+            'enable_bitrix_db_scan' => $this->enableBitrixDbScan,
+            'scan_agents' => $this->scanAgents,
             'extensions' => $this->extensions,
         ];
     }

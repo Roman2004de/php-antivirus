@@ -32,6 +32,7 @@
 - UrlExtractor/UrlAnalyzer: извлечение внешних URL, remote loaders, iframe/script-инъекций, `.htaccess` redirects и локальная suspicious-domain база.
 - Known Malware Hash Database: быстрая проверка SHA-256 через prefix-index и полную пользовательскую/тестовую базу malware-хешей.
 - Panelica Malware Signatures importer: конвертация MIT-licensed Panelica hash signatures во внутренний формат hash DB с сохранением attribution.
+- AgentScanner: проверка Bitrix-агентов из `b_agent.NAME` как виртуального PHP-кода.
 - Поддержка внешнего файла regex-сигнатур с добавлением к встроенным правилам.
 - AST-анализ PHP поверх regex-слоя: опасные вызовы, динамические вызовы, include/require и encoded execution chains.
 - Taint-анализ PHP: request/php://input/filter_input -> переменные/трансформеры -> dangerous sink с сохранением trace.
@@ -181,6 +182,21 @@ URL-слой извлекает внешние `http://` и `https://` URL из 
 
 Hash DB слой считает SHA-256 файла, проверяет первые 8-12 символов по prefix-index и только после этого сверяет полный хеш. Prefix-only match не создает malware finding. Полное совпадение дает `known_malware_hash_match` с `severity=critical`, `score=100`, `confidence=high`, `recommendation=quarantine`, тегами `engine:hash_db` и `risk:known_malware_hash`. Базы `var/signatures/malware_hashes.json` и `var/signatures/malware_hash_prefixes.json` являются внутренним runtime-форматом; scanner не зависит от структуры внешних репозиториев.
 
+## Bitrix DB Agent Scanner
+
+AgentScanner анализирует записи таблицы `b_agent`, потому что вредоносный PHP-код может храниться не в файле, а в поле `NAME` агента. DB-сканирование выключено по умолчанию и включается явно через настройки или CLI.
+
+Для каждого агента создается виртуальный путь `bitrix-db://b_agent/{ID}` и виртуальный PHP-код:
+
+```php
+<?php
+{NAME};
+```
+
+Этот код проходит через текущие слои анализа: regex `RuleEngine`, AST/Taint, EntropyAnalyzer и UrlAnalyzer. Дополнительно применяются Bitrix-aware эвристики для активных агентов, пустого или неизвестного `MODULE_ID`, длинного `NAME`, encoded payload, dangerous sinks, request input, remote loaders и file-write поведения.
+
+Findings из агентов получают `target=db_agent`, category `bitrix_db`, trace с `ID`, `MODULE_ID`, `ACTIVE`, `NEXT_EXEC` и теги `entity:db_agent`, `engine:bitrix_db`, `risk:persistence`. На первом этапе модуль только показывает агенты в отчете: не удаляет и не отключает их.
+
 ## Baseline / Integrity Scanner
 
 Baseline scanner хранит пользовательский снимок целостности файлов сайта и сравнивает текущие файлы с этим снимком. Это не `CoreIntegrityChecker` Bitrix: модуль не сверяет файлы с эталоном ядра Bitrix, а сравнивает сайт с ранее созданным пользовательским baseline.
@@ -291,6 +307,8 @@ Attribution: This product can import hash signatures from Panelica Malware Signa
 - Known malware hash database;
 - путь к полной базе malware-хешей и prefix-index;
 - длина prefix-index для импорта malware-хешей;
+- сканирование сущностей базы данных Bitrix;
+- сканирование агентов `b_agent`;
 - локальный путь Panelica, download source URL, last import date, imported hashes count, source license и source commit/version;
 - список исключений.
 
@@ -404,6 +422,8 @@ php /home/site/public_html/bitrix/tools/delement.antivirus/scan.php --path=/home
 - `--malware-prefixes-output=PATH`: путь выходного файла prefix-index;
 - `--malware-hash-prefix-length=N`: длина prefix-index от 8 до 12;
 - `--panelica-source-commit=HASH`: commit/version источника для attribution metadata;
+- `--bitrix-db=Y|N`: включить или выключить сканирование сущностей базы Bitrix;
+- `--scan-agents=Y|N`: проверять `b_agent`, если DB-сканирование включено;
 - `--baseline-create`: создать пользовательский baseline для `--path`;
 - `--baseline-check`: сравнить `--path` с сохраненным baseline;
 - `--baseline-update`: перезаписать baseline новым снимком, требует `--force`;
@@ -585,6 +605,12 @@ Smoke-test Baseline / Integrity Scanner:
 ```bash
 php bitrix/modules/delement.antivirus/tests/baseline_smoke.php
 php bitrix/modules/delement.antivirus/tests/baseline_critical_paths_smoke.php
+```
+
+Smoke-test AgentScanner:
+
+```bash
+php bitrix/modules/delement.antivirus/tests/bitrix_agent_scanner_smoke.php
 ```
 
 ## Важные ограничения

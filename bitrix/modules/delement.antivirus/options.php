@@ -76,6 +76,8 @@ $optionNames = [
     'malware_hashes_path',
     'malware_hash_prefixes_path',
     'malware_hash_prefix_length',
+    'enable_bitrix_db_scan',
+    'scan_agents',
     'panelica_source_path',
     'panelica_download_url',
     'panelica_last_import_at',
@@ -389,6 +391,8 @@ if (
         $values['malware_hashes_path'] = trim((string)($_POST['malware_hashes_path'] ?? ''));
         $values['malware_hash_prefixes_path'] = trim((string)($_POST['malware_hash_prefixes_path'] ?? ''));
         $values['malware_hash_prefix_length'] = trim((string)($_POST['malware_hash_prefix_length'] ?? ''));
+        $values['enable_bitrix_db_scan'] = isset($_POST['enable_bitrix_db_scan']) && $_POST['enable_bitrix_db_scan'] === 'Y' ? 'Y' : 'N';
+        $values['scan_agents'] = isset($_POST['scan_agents']) && $_POST['scan_agents'] === 'Y' ? 'Y' : 'N';
         $values['panelica_source_path'] = trim((string)($_POST['panelica_source_path'] ?? ''));
         $values['panelica_download_url'] = trim((string)($_POST['panelica_download_url'] ?? $getDefault('panelica_download_url')));
         $values['panelica_source_commit'] = trim((string)($_POST['panelica_source_commit'] ?? ''));
@@ -910,6 +914,33 @@ $tabControl->Begin();
         <td class="adm-detail-content-cell-r">
             <?php echo BeginNote(); ?>
             <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_MALWARE_HASHES_PATH_HINT'); ?>
+            <?php echo EndNote(); ?>
+        </td>
+    </tr>
+    <tr class="heading">
+        <td colspan="2"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_BITRIX_DB_SECTION'); ?></td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_enable_bitrix_db_scan"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_ENABLE_BITRIX_DB_SCAN'); ?></label>
+        </td>
+        <td class="adm-detail-content-cell-r">
+            <input type="checkbox" id="delement_antivirus_enable_bitrix_db_scan" name="enable_bitrix_db_scan" value="Y"<?php echo $values['enable_bitrix_db_scan'] === 'Y' ? ' checked' : ''; ?>>
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l">
+            <label for="delement_antivirus_scan_agents"><?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_SCAN_AGENTS'); ?></label>
+        </td>
+        <td class="adm-detail-content-cell-r">
+            <input type="checkbox" id="delement_antivirus_scan_agents" name="scan_agents" value="Y"<?php echo $values['scan_agents'] === 'Y' ? ' checked' : ''; ?>>
+        </td>
+    </tr>
+    <tr>
+        <td class="adm-detail-content-cell-l"></td>
+        <td class="adm-detail-content-cell-r">
+            <?php echo BeginNote(); ?>
+            <?php echo Loc::getMessage('DELEMENT_ANTIVIRUS_OPTIONS_BITRIX_DB_HINT'); ?>
             <?php echo EndNote(); ?>
         </td>
     </tr>

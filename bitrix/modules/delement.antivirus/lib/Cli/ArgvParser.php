@@ -59,6 +59,8 @@ class ArgvParser
         'malware-hash-prefix-length' => true,
         'panelica-source-commit' => true,
         'panelica-download-url' => true,
+        'bitrix-db' => true,
+        'scan-agents' => true,
         'quarantine-path' => true,
     ];
 

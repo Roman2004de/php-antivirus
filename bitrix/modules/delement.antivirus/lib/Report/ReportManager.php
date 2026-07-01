@@ -129,6 +129,7 @@ class ReportManager
             'total_files_estimated' => isset($session['total_files_estimated']) ? (int)$session['total_files_estimated'] : 0,
             'found_total' => isset($session['found_total']) ? (int)$session['found_total'] : 0,
             'runtime_errors' => isset($session['runtime_errors']) ? (int)$session['runtime_errors'] : 0,
+            'bitrix_db_results_total' => isset($session['bitrix_db_results_total']) ? (int)$session['bitrix_db_results_total'] : 0,
             'findings_total' => $this->countFindings($results),
             'informational_findings_total' => isset($session['informational_findings_total'])
                 ? (int)$session['informational_findings_total']
@@ -165,6 +166,7 @@ class ReportManager
             'total_files_estimated' => isset($report['total_files_estimated']) ? (int)$report['total_files_estimated'] : 0,
             'found_total' => isset($report['found_total']) ? (int)$report['found_total'] : 0,
             'runtime_errors' => isset($report['runtime_errors']) ? (int)$report['runtime_errors'] : 0,
+            'bitrix_db_results_total' => isset($report['bitrix_db_results_total']) ? (int)$report['bitrix_db_results_total'] : 0,
             'findings_total' => $this->countFindings($results),
             'informational_findings_total' => $this->countInformationalFindings($results),
             'tags' => $this->collectTags($results),

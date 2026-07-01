@@ -2,6 +2,7 @@
 
 namespace Delement\Antivirus\Scanner;
 
+use Delement\Antivirus\Bitrix\Scanner\BitrixDatabaseScanService;
 use Delement\Antivirus\Config\ScanConfig;
 use Delement\Antivirus\Detection\Tags\ResultTagger;
 use Delement\Antivirus\File\FileCollector;
@@ -21,6 +22,7 @@ class ScanRunService
     private $actionApplier;
     private $whitelistManager;
     private $resultTagger;
+    private $bitrixDatabaseScanService;
 
     public function __construct(
         string $documentRoot,
@@ -31,7 +33,8 @@ class ScanRunService
         Scanner $scanner = null,
         ScanActionApplier $actionApplier = null,
         WhitelistManager $whitelistManager = null,
-        ResultTagger $resultTagger = null
+        ResultTagger $resultTagger = null,
+        $bitrixDatabaseScanService = null
     ) {
         $this->documentRoot = rtrim($documentRoot, '/\\');
         $this->moduleRoot = $moduleRoot ?: dirname(__DIR__, 2);
@@ -42,6 +45,7 @@ class ScanRunService
         $this->actionApplier = $actionApplier ?: new ScanActionApplier($this->documentRoot);
         $this->whitelistManager = $whitelistManager;
         $this->resultTagger = $resultTagger;
+        $this->bitrixDatabaseScanService = $bitrixDatabaseScanService;
 
         if ($this->resultTagger === null && class_exists(ResultTagger::class)) {
             $this->resultTagger = new ResultTagger();
@@ -376,11 +380,63 @@ class ScanRunService
 
     private function finishSession(array $session): array
     {
+        $session = $this->appendBitrixDatabaseResults($session);
         $session['status'] = 'finished';
         $session['finished_at'] = date('c');
         $session['current_file'] = '';
 
         return $this->saveReportForTerminalSession($session);
+    }
+
+    private function appendBitrixDatabaseResults(array $session): array
+    {
+        if (!empty($session['bitrix_db_scanned'])) {
+            return $session;
+        }
+
+        $config = isset($session['config']) && is_array($session['config'])
+            ? ScanConfig::fromArray($session['config'])
+            : ScanConfig::fromArray([]);
+
+        if (!$config->isBitrixDbScanEnabled()) {
+            $session['bitrix_db_scanned'] = false;
+            $session['bitrix_db_results_total'] = 0;
+            return $session;
+        }
+
+        $session['current_file'] = 'bitrix-db://scan';
+        $session['bitrix_db_scanned'] = true;
+        $session['bitrix_db_results_total'] = 0;
+
+        try {
+            $service = $this->getBitrixDatabaseScanService();
+            $results = $service !== null ? $service->scan($config) : [];
+
+            foreach ($results as $result) {
+                if (!is_array($result)) {
+                    continue;
+                }
+
+                $result = $this->getWhitelistManager()->filterResult($result, $config->getThresholds());
+                $result = $this->tagResultArray($result);
+                $session['results'][] = $result;
+                $session['bitrix_db_results_total']++;
+                $session['informational_findings_total'] = (int)($session['informational_findings_total'] ?? 0) + $this->countInformationalFindings($result);
+
+                if ($this->hasRiskFindings($result)) {
+                    $session['found_total']++;
+                }
+
+                if (($result['status'] ?? '') === 'error') {
+                    $session['runtime_errors']++;
+                }
+            }
+        } catch (Throwable $exception) {
+            $session['runtime_errors'] = isset($session['runtime_errors']) ? (int)$session['runtime_errors'] + 1 : 1;
+            $session['bitrix_db_error'] = 'bitrix_db_scan_failed';
+        }
+
+        return $session;
     }
 
     private function saveReportForTerminalSession(array $session): array
@@ -411,6 +467,7 @@ class ScanRunService
                 : (isset($session['files']) && is_array($session['files']) ? count($session['files']) : 0),
             'found_total' => (int)$session['found_total'],
             'informational_findings_total' => (int)($session['informational_findings_total'] ?? 0),
+            'bitrix_db_results_total' => (int)($session['bitrix_db_results_total'] ?? 0),
             'runtime_errors' => (int)$session['runtime_errors'],
             'current_file' => (string)$session['current_file'],
             'cursor' => (int)$session['cursor'],
@@ -435,6 +492,7 @@ class ScanRunService
             'files_discovered' => (int)($activeSession['files_discovered'] ?? 0),
             'found_total' => (int)($activeSession['found_total'] ?? 0),
             'informational_findings_total' => (int)($activeSession['informational_findings_total'] ?? 0),
+            'bitrix_db_results_total' => (int)($activeSession['bitrix_db_results_total'] ?? 0),
             'runtime_errors' => (int)($activeSession['runtime_errors'] ?? 0),
             'current_file' => (string)($activeSession['current_file'] ?? ''),
             'discovery_done' => $discoveryDone,
@@ -471,6 +529,37 @@ class ScanRunService
         }
 
         return $total;
+    }
+
+    private function getBitrixDatabaseScanService()
+    {
+        if ($this->bitrixDatabaseScanService !== null) {
+            return $this->bitrixDatabaseScanService;
+        }
+
+        if (!class_exists(BitrixDatabaseScanService::class)) {
+            $base = dirname(__DIR__) . '/Bitrix';
+
+            foreach ([
+                '/Database/BitrixDb.php',
+                '/Scanner/BitrixDbFindingFactory.php',
+                '/Scanner/VirtualCodeScanner.php',
+                '/Scanner/AgentScanner.php',
+                '/Scanner/BitrixDatabaseScanService.php',
+            ] as $relativePath) {
+                $path = $base . $relativePath;
+
+                if (is_file($path)) {
+                    require_once $path;
+                }
+            }
+        }
+
+        $this->bitrixDatabaseScanService = class_exists(BitrixDatabaseScanService::class)
+            ? new BitrixDatabaseScanService()
+            : null;
+
+        return $this->bitrixDatabaseScanService;
     }
 
     private function validateScanPath(string $path): string

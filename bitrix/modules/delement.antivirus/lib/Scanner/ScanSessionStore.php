@@ -148,6 +148,8 @@ class ScanSessionStore
             'runtime_errors' => 0,
             'current_file' => '',
             'results' => [],
+            'bitrix_db_scanned' => false,
+            'bitrix_db_results_total' => 0,
             'report_path' => '',
         ];
     }
@@ -246,6 +248,7 @@ class ScanSessionStore
             'found_total' => isset($session['found_total']) ? (int)$session['found_total'] : 0,
             'informational_findings_total' => isset($session['informational_findings_total']) ? (int)$session['informational_findings_total'] : 0,
             'runtime_errors' => isset($session['runtime_errors']) ? (int)$session['runtime_errors'] : 0,
+            'bitrix_db_results_total' => isset($session['bitrix_db_results_total']) ? (int)$session['bitrix_db_results_total'] : 0,
             'current_file' => isset($session['current_file']) ? (string)$session['current_file'] : '',
             'discovery_done' => !empty($session['discovery_done']),
         ];

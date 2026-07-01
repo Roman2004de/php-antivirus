@@ -660,17 +660,25 @@ Acceptance:
 - Web UI позволяет создать baseline, проверить baseline, обновить baseline и скачать последний JSON report;
 - добавлены `tests/baseline_smoke.php` и `tests/baseline_critical_paths_smoke.php`.
 
-#### [ ] Этап 10.10. `AgentScanner`
+#### [x] Этап 10.10. `AgentScanner`
 
 Цель: анализировать Bitrix agents как DB-backed источник подозрительного кода.
 
-Задачи:
+Сделано:
 
-- читать agents через Bitrix API;
-- анализировать payload через существующие RuleEngine/AST/Taint там, где применимо;
-- использовать tags и suppress;
-- добавить настройки/CLI-флаги;
-- покрыть smoke-тестом с mock/fake Bitrix data layer.
+- добавлен DB wrapper `Bitrix/Database/BitrixDb.php` с мягкой проверкой доступности Bitrix runtime и таблицы `b_agent`;
+- добавлены `BitrixDatabaseScanService`, `AgentScanner`, `VirtualCodeScanner` и `BitrixDbFindingFactory`;
+- агенты читаются запросом `SELECT ID, MODULE_ID, NAME, ACTIVE, NEXT_EXEC FROM b_agent ORDER BY ID ASC`;
+- `NAME` агента анализируется как виртуальный PHP-код с путем `bitrix-db://b_agent/{ID}`;
+- виртуальный код проходит через `RuleEngine`, AST/Taint, EntropyAnalyzer и UrlAnalyzer;
+- добавлены agent-specific findings: `bitrix_agent_dangerous_php_execution`, `bitrix_agent_encoded_payload`, `bitrix_agent_request_to_sink`, `bitrix_agent_suspicious_long_code`, `bitrix_agent_unknown_module`, `bitrix_agent_remote_loader`, `bitrix_agent_file_write`;
+- findings получают `target=db_agent`, category `bitrix_db`, trace с `ID`, `MODULE_ID`, `ACTIVE`, `NEXT_EXEC` и теги `entity:db_agent`, `engine:bitrix_db`, `risk:persistence`;
+- DB-результаты добавляются в общий JSON-отчет после файлового прохода, при этом `processed_files` остается счетчиком файлов;
+- добавлены настройки `enable_bitrix_db_scan` и `scan_agents`, по умолчанию выключены;
+- добавлены CLI-параметры `--bitrix-db=Y|N` и `--scan-agents=Y|N`;
+- в таблицу отчета добавлены колонки для типа DB-сущности, ID, MODULE_ID, ACTIVE и NEXT_EXEC;
+- для виртуальных `bitrix-db://` результатов не показывается действие принудительного карантина;
+- добавлен smoke-тест `tests/bitrix_agent_scanner_smoke.php`.
 
 #### [ ] Этап 10.11. `EventHandlerScanner`
 

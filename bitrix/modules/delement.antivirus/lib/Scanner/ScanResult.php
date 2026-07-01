@@ -164,6 +164,10 @@ class ScanResult
 
     private static function calculateHash(string $filePath): string
     {
+        if (strpos($filePath, '://') !== false) {
+            return '';
+        }
+
         if (!is_file($filePath) || !is_readable($filePath)) {
             return '';
         }
